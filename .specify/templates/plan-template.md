@@ -31,7 +31,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Default gates for this repository (sofIA Copilot CLI) — derived from `.specify/memory/constitution.md`:
+
+- **Outcome-first discovery**: plan ties work to a measurable business/user outcome.
+- **Secure-by-default**: least privilege, no secrets/PII in logs or prompts.
+- **Node.js + TypeScript**: aligns with GitHub Copilot SDK patterns used here.
+- **MCP-first**: prefer MCP tools over ad-hoc HTTP when available.
+- **Test-first (NON-NEGOTIABLE)**: new behavior is implemented via Red → Green → Review.
+- **CLI transparency**: long-running steps stream progress; failures include recovery options.
+
+If any gate cannot be met, document the exception under **Complexity Tracking** with rationale.
 
 ## Project Structure
 

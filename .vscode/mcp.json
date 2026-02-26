@@ -1,0 +1,42 @@
+{
+    "servers": {
+        "workiq": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@microsoft/workiq",
+                "mcp"
+            ]
+        },
+        "github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/"
+        },
+        "azure": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@azure/mcp",
+                "server",
+                "start"
+            ]
+        },
+        "context7": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp"
+            ]
+        },
+        "playwright": {
+            "command": "npx",
+            "args": [
+                "@playwright/mcp@latest"
+            ]
+        },
+        "microsoftdocs/mcp": {
+            "type": "http",
+            "url": "https://learn.microsoft.com/api/mcp"
+        }
+    }
+}
