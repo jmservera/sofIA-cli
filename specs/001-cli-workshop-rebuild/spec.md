@@ -81,8 +81,8 @@ As an operator or automation pipeline, I want to continue a session non-interact
 
 **Scope & Outcomes**
 
-- **FR-001**: System MUST support a full end-to-end workshop flow: Discover → Ideate → Design → Select → Plan → Develop.
-- **FR-002**: System MUST produce customer-ready workshop artifacts and a PoC repository as primary outputs.
+- **FR-001**: System MUST support a full end-to-end workshop flow for Discover → Ideate → Design → Select → Plan, and MUST capture PoC requirements for a subsequent Develop feature.
+- **FR-002**: System MUST produce customer-ready workshop artifacts as primary outputs, and MUST record sufficient PoC intent/requirements for an external PoC generator.
 - **FR-003**: System MUST be resilient and recoverable: failures must not require restarting the app or losing session state.
 
 **User Modes & CLI UX**
@@ -141,12 +141,12 @@ As an operator or automation pipeline, I want to continue a session non-interact
 
 - **FR-035**: Plan MUST produce an implementation roadmap including milestones, dependencies, risks, success metrics, and a high-level timeline.
 
-**Develop Phase (PoC + Ralph Loop)**
+**Develop Phase (boundary in this feature)**
 
-- **FR-036**: Develop MUST generate a PoC repository via GitHub MCP when available.
-- **FR-036a**: If GitHub MCP is unavailable during Develop in interactive mode, system MUST fall back to local scaffolding that creates a PoC repository structure in the workspace and clearly marks the session output as locally generated.
-- **FR-037**: Generated PoC repository MUST include: README, run/deploy instructions, minimal docs, and smoke tests.
-- **FR-038**: Develop MUST support iterative refinement (Ralph loop) driven by failing tests and/or captured errors.
+- **FR-036**: This feature MUST capture PoC-related requirements and intent (e.g., target stack, key scenarios, constraints) into session state, suitable for consumption by a separate PoC generation feature.
+- **FR-036a**: Detailed behavior for generating a PoC repository (GitHub MCP vs local scaffolding), repo layout, and Ralph loop refinement is out of scope for this feature and is defined in feature 002-poc-generation.
+- **FR-037**: This feature MUST expose enough structured data in the poc-related fields of the session model for downstream tools (including feature 002) to generate a PoC repository and report status back.
+- **FR-038**: This feature MUST record user-visible summaries of any PoC discussions/decisions so that Develop-phase implementation details in feature 002 can be audited against the captured intent.
 
 **Session, Persistence, Backtracking**
 

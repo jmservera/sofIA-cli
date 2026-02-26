@@ -10,7 +10,7 @@
 
 ## Summary
 
-Build a Node.js + TypeScript GitHub Copilot SDK CLI that runs the full workshop lifecycle end-to-end (Discover → Ideate → Design → Select → Plan → Develop) with governed phase decision gates, repo-local session persistence, robust recovery, and deterministic automated testability (including PTY-based interactive harness).
+Build a Node.js + TypeScript GitHub Copilot SDK CLI that runs the governed workshop lifecycle for Discover → Ideate → Design → Select → Plan and captures PoC requirements for Develop, with explicit phase decision gates, repo-local session persistence, robust recovery, and deterministic automated testability (including PTY-based interactive harness). Concrete PoC repository generation and the Ralph loop are implemented in a separate feature (002-poc-generation) that consumes the session data produced here.
 
 Transparency UX: provide a user-visible **reasoning/rationale view** as structured summaries (why we’re asking, what we inferred, what trade-offs we made), plus an **activity/telemetry stream** (phase state, tool usage, progress, retries) and an optional debug log.
 
@@ -138,7 +138,7 @@ src/
 ├── cli/                  # command routing, menus, IO adapters
 ├── loop/                 # ConversationLoop abstraction + streaming renderer
 ├── sessions/             # session model, persistence, backtracking, exports
-├── phases/               # discover/ideate/design/select/plan/develop phase modules
+├── phases/               # discover/ideate/design/select/plan, plus a Develop boundary module for PoC intent capture and delegation to feature 002
 ├── mcp/                  # wrappers for WorkIQ/Context7/MicrosoftDocs/GitHub MCP
 ├── logging/              # redaction + pino setup + log file routing
 ├── prompts/               # canonical runtime prompts (derived from src/originalPrompts)

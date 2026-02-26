@@ -150,8 +150,8 @@ This is a conceptual data model for persistence and exports. It is not an implem
 
 ### 13) PocDevelopmentState
 
-- `repoPath?: string`
-- `iterations: PocIteration[]`
+- `repoPath?: string` (local path or external repo location, populated by Develop feature 002)
+- `iterations: PocIteration[]` (high-level record of Develop iterations; detailed behavior defined in feature 002)
 - `finalStatus?: "success" | "failed"`
 
 `PocIteration`
