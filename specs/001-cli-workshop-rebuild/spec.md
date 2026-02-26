@@ -3,7 +3,7 @@
 **Feature Branch**: `001-cli-workshop-rebuild`  
 **Created**: 2026-02-26  
 **Status**: Draft  
-**Input**: Unified build-from-scratch specification (workshop orchestration + PoC generation)
+**Input**: Unified build-from-scratch specification (workshop orchestration + PoC intent capture; PoC generation in feature `002-poc-generation`)
 
 ## Clarifications
 
@@ -11,7 +11,7 @@
 
 - Q: Where should sessions be persisted by default? → A: Inside the repo/workspace (repo-local state).
 - Q: What persistence format should the repo-local session store use by default? → A: Single JSON file per session.
-- Q: If GitHub MCP is unavailable during Develop, what should happen in interactive mode? → A: Switch to a non-MCP fallback (local scaffolding) to still create a PoC repo.
+- Q: If GitHub MCP is unavailable during Develop, what should happen in interactive mode? → A: The PoC generation feature (002-poc-generation) MUST fall back to local scaffolding that creates a PoC repository structure in the workspace and clearly marks the output as locally generated; this feature (001) is responsible for capturing PoC intent and surfacing status.
 - Q: What is the default Export output format/location? → A: Write a folder to `./exports/<sessionId>/` containing Markdown artifacts + a `summary.json`.
 - Q: When should the session be persisted? → A: After every user input (each turn).
 
@@ -196,22 +196,22 @@ As an operator or automation pipeline, I want to continue a session non-interact
 
 ### Key Entities *(include if feature involves data)*
 
-- **WorkshopSession**: id, name, currentPhase, completedPhases, contextSummary, journeyMap, ideas, bxtEvaluations, selectedIdeaId, plan, pocRepository, turns, timestamps.
+- **WorkshopSession**: id, name, currentPhase, completedPhases, contextSummary, journeyMap, ideas, bxtEvaluations, selectedIdeaId, plan, poc (PocDevelopmentState), turns, timestamps.
 - **ConversationTurn**: phase, sequence, role, content, timestamp, metadata.
 - **IdeaCard**: title, summary, mappedJourneySteps, dataRequirements, architecture, services, risks.
 - **BxtEvaluation**: businessScore, experienceScore, technicalScore, rationale, classification.
-- **PocRepository**: url/path, technologies, docs status, smoke-test status, refinement history.
+- **PocDevelopmentState**: repoPath, iterations, finalStatus (detailed behavior defined in feature `002-poc-generation`).
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Users can complete a guided workshop from Discover through Develop with explicit decision control after each phase.
+- **SC-001**: Users can complete a guided workshop from Discover through Plan with explicit decision control after each phase, and PoC intent is captured for a subsequent Develop feature.
 - **SC-002**: Interactive failures recover to a user decision flow without requiring restarting the application.
 - **SC-003**: No raw SDK JSON appears in normal user output across interactive and JSON modes.
 - **SC-004**: The system persists session state such that a session can be resumed after exit without losing phase artifacts or turn history.
 - **SC-005**: First visible token for streamed phase output appears within 3 seconds in a properly configured environment.
-- **SC-006**: The PoC repository is successfully generated in a high percentage of properly configured runs (target threshold defined in planning).
+- **SC-006**: PoC-related requirements (intent, target stack, key scenarios, constraints) are successfully captured in a high percentage of properly configured runs (target threshold defined in planning); concrete PoC repository generation success is measured in feature `002-poc-generation`.
 - **SC-007**: The interactive harness validates at least one happy-path run and one failure/recovery run and catches regressions prior to release.
 
 ## Open Validation Items

@@ -47,6 +47,8 @@
 - [ ] T017 [P] Create initial CLI entrypoint in src/cli/index.ts wired to commander (no workshop commands implemented yet)
 - [ ] T018 [P] Add node-pty based E2E harness skeleton in tests/e2e/harness.spec.ts for driving the CLI interactively
 - [ ] T019 Add foundational unit tests for sessionStore, logger, markdownRenderer, and ConversationLoop in tests/unit/
+ - [ ] T059 [P] Implement `web.search` tool backed by the Azure AI Foundry Bing Search agent in src/mcp/webSearch.ts, wired through McpManager and exposed to the Copilot SDK
+ - [ ] T060 [P] Add unit/integration tests for `web.search` behavior and degradation paths (Foundry misconfigured/unavailable) in tests/unit/mcp/webSearch.spec.ts and/or tests/integration/webSearch.spec.ts
 
 **Checkpoint**: Foundation ready – user story implementation can now begin in parallel.
 
