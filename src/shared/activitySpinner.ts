@@ -49,6 +49,7 @@ export class ActivitySpinner {
     this.spinner = ora({
       text: 'Thinking...',
       stream: this.stream,
+      discardStdin: false,
     }).start();
     this._active = true;
   }
@@ -63,6 +64,7 @@ export class ActivitySpinner {
       this.spinner = ora({
         text: `${toolName}...`,
         stream: this.stream,
+        discardStdin: false,
       }).start();
       this._active = true;
     }
@@ -72,15 +74,15 @@ export class ActivitySpinner {
    * Stop spinner and print a one-line tool completion summary.
    * The summary line remains visible in the output stream.
    */
-  completeToolCall(toolName: string, summary: string): void {
+  completeToolCall(_toolName: string, _summary: string): void {
     if (!this.enabled) return;
 
     if (this._active && this.spinner) {
       this.spinner.stop();
     }
     this._active = false;
-
-    this.stream.write(`✓ ${toolName}: ${summary}\n`);
+    // Summary output is handled by io.writeToolSummary() to respect
+    // JSON/debug mode — no duplicate write here.
   }
 
   /** Stop any active spinner. */

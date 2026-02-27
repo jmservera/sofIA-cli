@@ -4,13 +4,19 @@
  * Uses marked + marked-terminal for rich TTY output.
  * Falls back to plain text for non-TTY / JSON mode.
  */
-import { marked } from 'marked';
+import { Marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
 
 export interface RenderOptions {
   isTTY?: boolean;
   jsonMode?: boolean;
 }
+
+// Pre-configured marked instance for TTY rendering.
+// Using a dedicated instance avoids stacking renderers
+// on the global `marked` when renderMarkdown is called repeatedly.
+const ttyMarked = new Marked(markedTerminal());
+const plainMarked = new Marked();
 
 /**
  * Render markdown to terminal-friendly output.
@@ -30,11 +36,9 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
   }
 
   if (isTTY) {
-    // Configure marked-terminal for ANSI output
-    marked.use(markedTerminal());
-    return marked.parse(markdown) as string;
+    return ttyMarked.parse(markdown, { async: false }) as string;
   }
 
   // Non-TTY: return plain text (strip markdown syntax minimally)
-  return marked.parse(markdown, { async: false }) as string;
+  return plainMarked.parse(markdown, { async: false }) as string;
 }

@@ -2,10 +2,15 @@
  * Tests for ActivitySpinner module (T084).
  *
  * Verifies spinner lifecycle methods: startThinking, startToolCall,
- * completeToolCall, stop, isActive, and TTY/JSON suppression.
+ * completeToolCall, stop, isActive, TTY/JSON suppression, and
+ * that ora is configured with discardStdin: false to avoid
+ * conflicting with the app's readline on process.stdin.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Writable } from 'node:stream';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { ActivitySpinner, createNoOpSpinner } from '../../../src/shared/activitySpinner.js';
 
@@ -65,8 +70,8 @@ describe('ActivitySpinner (T084)', () => {
       spinner.completeToolCall('WorkIQ', 'Found 12 processes');
 
       expect(spinner.isActive()).toBe(false);
-      const output = stream.getOutput();
-      expect(output).toContain('✓ WorkIQ: Found 12 processes');
+      // Summary output is now handled by io.writeToolSummary(),
+      // not by the spinner itself.
     });
 
     it('stop() clears any active spinner', () => {
@@ -86,8 +91,7 @@ describe('ActivitySpinner (T084)', () => {
 
     it('completeToolCall() works even if spinner was already stopped', () => {
       spinner.completeToolCall('GitHub', '3 repos found');
-      const output = stream.getOutput();
-      expect(output).toContain('✓ GitHub: 3 repos found');
+      // Should not throw; summary output handled by io.writeToolSummary()
     });
 
     it('handles multiple sequential tool calls', () => {
@@ -99,9 +103,9 @@ describe('ActivitySpinner (T084)', () => {
       spinner.startToolCall('Context7');
       spinner.completeToolCall('Context7', '12 docs retrieved');
 
-      const output = stream.getOutput();
-      expect(output).toContain('✓ WorkIQ: Found 5 processes');
-      expect(output).toContain('✓ Context7: 12 docs retrieved');
+      // Spinner should be inactive after all tools complete
+      expect(spinner.isActive()).toBe(false);
+      // Summary output handled by io.writeToolSummary(), not the spinner
     });
   });
 
@@ -171,6 +175,37 @@ describe('ActivitySpinner (T084)', () => {
       noop.startToolCall('TestTool');
       expect(noop.isActive()).toBe(false);
       noop.stop();
+    });
+  });
+
+  describe('ora configuration', () => {
+    it('creates ora with discardStdin: false to avoid stdin conflicts', () => {
+      const stream = createCaptureStream();
+      const spinner = new ActivitySpinner({ isTTY: true, isJsonMode: false, stream });
+
+      // Start thinking to trigger ora creation
+      spinner.startThinking();
+
+      // Access the internal ora instance to verify the option.
+      // ora stores options in a private field, but we can verify behaviour
+      // by checking that the spinner was created (isActive) and that our
+      // code explicitly passes discardStdin: false in the source.
+      expect(spinner.isActive()).toBe(true);
+
+      // Verify via source inspection: read the activitySpinner source and
+      // confirm discardStdin: false is present in all ora() calls
+      const __dirname = path.dirname(fileURLToPath(import.meta.url));
+      const source = fs.readFileSync(
+        path.resolve(__dirname, '../../../src/shared/activitySpinner.ts'),
+        'utf8',
+      );
+      // Count ora constructor calls vs discardStdin: false occurrences
+      const oraCallCount = (source.match(/ora\(\{/g) || []).length;
+      const discardFalseCount = (source.match(/discardStdin:\s*false/g) || []).length;
+      expect(oraCallCount).toBeGreaterThan(0);
+      expect(discardFalseCount).toBe(oraCallCount);
+
+      spinner.stop();
     });
   });
 });

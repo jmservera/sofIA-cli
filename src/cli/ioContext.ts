@@ -31,14 +31,17 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
   const isDebug = options.debug ?? false;
 
   let rl: readline.Interface | null = null;
+  let rlClosed = false;
 
   function getReadline(): readline.Interface {
-    if (!rl) {
+    if (!rl || rlClosed) {
+      rlClosed = false;
       rl = readline.createInterface({
         input: input as NodeJS.ReadableStream,
         output: isTTY ? (output as NodeJS.WritableStream) : undefined,
         terminal: isTTY,
       });
+      rl.on('close', () => { rlClosed = true; });
     }
     return rl;
   }

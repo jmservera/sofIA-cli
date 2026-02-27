@@ -225,42 +225,47 @@ export class ConversationLoop {
     // Start "Thinking..." spinner before sending
     this.spinner.startThinking();
 
-    for await (const event of session.send(message)) {
-      this.emitEvent(event);
+    try {
+      for await (const event of session.send(message)) {
+        // Check if user pressed Ctrl+C during streaming
+        if (this.aborted) break;
 
-      if (event.type === 'TextDelta') {
-        // Stop spinner on first text output
-        if (firstTextDelta) {
-          this.spinner.stop();
-          firstTextDelta = false;
-        }
+        this.emitEvent(event);
 
-        chunks.push(event.text);
-        if (!this.io.isJsonMode) {
-          // Render markdown for TTY, raw for non-TTY
-          if (this.io.isTTY) {
-            this.io.write(renderMarkdown(event.text, { isTTY: true }));
-          } else {
-            this.io.write(event.text);
+        if (event.type === 'TextDelta') {
+          // Stop spinner on first text output
+          if (firstTextDelta) {
+            this.spinner.stop();
+            firstTextDelta = false;
           }
-        }
-      } else if (event.type === 'Activity') {
-        this.io.writeActivity(event.message);
-      } else if (event.type === 'ToolCall') {
-        this.spinner.startToolCall(event.toolName);
-      } else if (event.type === 'ToolResult') {
-        const summary = typeof event.result === 'string'
-          ? event.result
-          : JSON.stringify(event.result).slice(0, 120);
-        this.spinner.completeToolCall(event.toolName, summary);
-        this.io.writeToolSummary(event.toolName, summary);
-        // Resume thinking spinner in case more processing follows
-        this.spinner.startThinking();
-      }
-    }
 
-    // Ensure spinner is stopped after stream completes
-    this.spinner.stop();
+          chunks.push(event.text);
+          if (!this.io.isJsonMode) {
+            // Render markdown for TTY, raw for non-TTY
+            if (this.io.isTTY) {
+              this.io.write(renderMarkdown(event.text, { isTTY: true }));
+            } else {
+              this.io.write(event.text);
+            }
+          }
+        } else if (event.type === 'Activity') {
+          this.io.writeActivity(event.message);
+        } else if (event.type === 'ToolCall') {
+          this.spinner.startToolCall(event.toolName);
+        } else if (event.type === 'ToolResult') {
+          const summary = typeof event.result === 'string'
+            ? event.result
+            : JSON.stringify(event.result).slice(0, 120);
+          this.spinner.completeToolCall(event.toolName, summary);
+          this.io.writeToolSummary(event.toolName, summary);
+          // Resume thinking spinner in case more processing follows
+          this.spinner.startThinking();
+        }
+      }
+    } finally {
+      // Always stop spinner — prevents cursor-hidden state on errors
+      this.spinner.stop();
+    }
 
     const fullResponse = chunks.join('');
 
