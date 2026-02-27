@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/cli/index.ts",
+    "start": "tsx src/cli/index.ts",
     "clean": "rimraf dist coverage .nyc_output",
     "lint": "eslint --ext .ts src tests",
     "format": "prettier --check .",

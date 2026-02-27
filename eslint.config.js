@@ -4,6 +4,9 @@ import prettier from 'eslint-config-prettier';
 import pluginImport from 'eslint-plugin-import';
 
 export default tseslint.config(
+  {
+    ignores: ['node_modules/', 'dist/', 'build/', 'coverage/', '*.min.js', '.sofia/', 'exports/'],
+  },
   eslint.configs.recommended,
   tseslint.configs.recommended,
   prettier,
