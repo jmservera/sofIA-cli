@@ -198,7 +198,17 @@ import { Command } from 'commander';
 import type { PhaseValue } from '../shared/schemas/session.js';
 ```
 
-Always run `npm run lint` before finishing a task. If the linter reports `import/order` warnings, add blank lines between the import groups.
+Always run `npm run lint` and `npm run typecheck` before finishing a task. If the linter reports `import/order` warnings, add blank lines between the import groups.
+
+### Typecheck
+
+The project enforces strict TypeScript checking via `npm run typecheck` (`tsc --noEmit`). Before marking any task as done:
+
+1. Run `npm run typecheck` and fix all errors.
+2. Never suppress errors with `@ts-ignore` or `any` — use proper types, type narrowing, or Vitest's `Mock<>` generic.
+3. For third-party packages without `@types`, add an ambient module declaration in `src/types/<package>.d.ts`.
+
+> **Rationale:** Type mismatches between production code and Zod schemas (e.g., wrong property names in `exportWriter.ts`) were only caught by strict typechecking, not by tests. Running `npm run typecheck` ensures schema shapes stay in sync.
 
 ## MCP Server Configuration
 

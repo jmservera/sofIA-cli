@@ -12,6 +12,7 @@
     "start": "tsx src/cli/index.ts",
     "clean": "rimraf dist coverage .nyc_output",
     "lint": "eslint src tests",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run",

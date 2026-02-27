@@ -72,13 +72,13 @@ describe('workshopSessionSchema', () => {
 
   it('rejects invalid phase value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ phase: 'InvalidPhase' as Phase[number] })),
+      workshopSessionSchema.parse(validSession({ phase: 'InvalidPhase' as (typeof Phase)[number] })),
     ).toThrow();
   });
 
   it('rejects invalid status value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ status: 'Nope' as SessionStatus[number] })),
+      workshopSessionSchema.parse(validSession({ status: 'Nope' as (typeof SessionStatus)[number] })),
     ).toThrow();
   });
 
@@ -97,8 +97,9 @@ describe('workshopSessionSchema', () => {
   });
 
   it('preserves unknown extra fields (forward compat)', () => {
-    const raw = { ...validSession(), futureField: 'hello' } as Record<string, unknown>;
-    const result = workshopSessionSchema.parse(raw);
+    const base = validSession() as Record<string, unknown>;
+    base.futureField = 'hello';
+    const result = workshopSessionSchema.parse(base);
     // Zod passthrough should keep the extra field
     expect((result as Record<string, unknown>).futureField).toBe('hello');
   });
@@ -146,7 +147,7 @@ describe('workshopSessionSchema', () => {
     expect(() =>
       workshopSessionSchema.parse(
         validSession({
-          participants: [{ id: 'p1', displayName: 'Alice', role: 'Admin' }],
+          participants: [{ id: 'p1', displayName: 'Alice', role: 'Admin' as 'Facilitator' }],
         }),
       ),
     ).toThrow();
@@ -305,7 +306,7 @@ describe('workshopSessionSchema', () => {
 
   it('rejects non-string name field', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ name: 42 })),
+      workshopSessionSchema.parse(validSession({ name: 42 as unknown as string })),
     ).toThrow();
   });
 

@@ -7,7 +7,11 @@
  * - `--help` shows workshop options (--new-session, --phase, --retry) at top level
  * - `sofia status` and `sofia export` subcommands continue to work after restructure
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, type Mock, beforeEach, afterEach } from 'vitest';
+
+import type { CliHandlers } from '../../src/cli/index.js';
+
+type HandlerMock = Mock<CliHandlers['workshopHandler']>;
 
 // Mock all heavy dependencies so we only test CLI argument routing
 vi.mock('../../src/sessions/sessionStore.js', () => ({
@@ -52,14 +56,14 @@ vi.mock('../../src/cli/ioContext.js', () => ({
 }));
 
 describe('Default command behavior (T070)', () => {
-  let workshopSpy: ReturnType<typeof vi.fn>;
-  let statusSpy: ReturnType<typeof vi.fn>;
-  let exportSpy: ReturnType<typeof vi.fn>;
+  let workshopSpy: HandlerMock;
+  let statusSpy: HandlerMock;
+  let exportSpy: HandlerMock;
 
   beforeEach(() => {
-    workshopSpy = vi.fn(async () => {});
-    statusSpy = vi.fn(async () => {});
-    exportSpy = vi.fn(async () => {});
+    workshopSpy = vi.fn<CliHandlers['workshopHandler']>(async () => {});
+    statusSpy = vi.fn<CliHandlers['statusHandler']>(async () => {});
+    exportSpy = vi.fn<CliHandlers['exportHandler']>(async () => {});
   });
 
   afterEach(() => {

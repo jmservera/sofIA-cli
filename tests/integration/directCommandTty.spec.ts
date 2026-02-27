@@ -179,6 +179,6 @@ describe('Direct command TTY mode', () => {
 
     const loaded = await store.load(session.sessionId);
     expect(loaded.updatedAt).not.toBe(session.updatedAt);
-    expect(loaded.turns.length).toBeGreaterThan(0);
+    expect(loaded.turns!.length).toBeGreaterThan(0);
   });
 });

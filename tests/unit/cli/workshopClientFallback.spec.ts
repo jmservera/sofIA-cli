@@ -43,7 +43,7 @@ describe('workshopCommand — client creation failure', () => {
   let exitCodeBefore: number | undefined;
 
   beforeEach(() => {
-    exitCodeBefore = process.exitCode;
+    exitCodeBefore = process.exitCode as number | undefined;
     process.exitCode = undefined;
   });
 
