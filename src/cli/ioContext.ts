@@ -13,6 +13,7 @@ import { renderMarkdown } from '../shared/markdownRenderer.js';
 export interface IoContextOptions {
   json?: boolean;
   nonInteractive?: boolean;
+  debug?: boolean;
   input?: NodeJS.ReadableStream;
   output?: NodeJS.WritableStream;
   errorOutput?: NodeJS.WritableStream;
@@ -27,6 +28,7 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
   const errorOutput = options.errorOutput ?? process.stderr;
   const isTTY = !options.nonInteractive && Boolean((input as NodeJS.ReadStream).isTTY);
   const isJsonMode = options.json ?? false;
+  const isDebug = options.debug ?? false;
 
   let rl: readline.Interface | null = null;
 
@@ -49,6 +51,21 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
     writeActivity(text: string): void {
       if (!isJsonMode) {
         (errorOutput as NodeJS.WritableStream).write(`[activity] ${text}\n`);
+      }
+    },
+
+    writeToolSummary(toolName: string, summary: string, details?: { args?: Record<string, unknown>; result?: unknown }): void {
+      if (isJsonMode || options.nonInteractive) return;
+
+      (errorOutput as NodeJS.WritableStream).write(`✓ ${toolName}: ${summary}\n`);
+
+      if (isDebug && details) {
+        if (details.args) {
+          (errorOutput as NodeJS.WritableStream).write(`  args: ${JSON.stringify(details.args, null, 2)}\n`);
+        }
+        if (details.result !== undefined) {
+          (errorOutput as NodeJS.WritableStream).write(`  result: ${JSON.stringify(details.result, null, 2)}\n`);
+        }
       }
     },
 

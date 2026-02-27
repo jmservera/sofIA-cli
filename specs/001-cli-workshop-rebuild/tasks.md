@@ -229,6 +229,95 @@
 
 ---
 
+## Phase 8: Visual Feedback & Streaming Markdown (FR-009a, FR-043a/b/c)
+
+**Purpose**: Implement incremental markdown rendering during streaming, activity spinners (Thinking... + tool-specific), tool call summaries, and `--debug` verbose tool output.
+
+**Prerequisites**: Phase 7 complete (T079 passed). Depends on existing `ConversationLoop`, `markdownRenderer`, `LoopIO`, and `events.ts`.
+
+### 8a. Incremental Streaming Markdown Rendering (FR-009a)
+
+**Goal**: Render LLM streaming text through `marked` + `marked-terminal` incrementally so users see formatted markdown (headings, bold, code, lists) in real time instead of raw syntax.
+
+**Independent Test**: Unit tests verify that `TextDelta` chunks are rendered through `renderMarkdown()` before being written in TTY mode, and that raw markdown is preserved for session persistence.
+
+#### Tests for 8a (REQUIRED — write first, verify they fail) ⚠️
+
+- [X] T080 [P] [US1] Add unit tests for incremental markdown rendering in streaming in tests/unit/loop/conversationLoop.spec.ts: verify `TextDelta` chunks are passed through `renderMarkdown()` in TTY mode, raw markdown in non-TTY/JSON mode, and turn history stores raw markdown (not ANSI)
+- [X] T081 [P] [US1] Add unit tests for `renderMarkdown()` handling of partial/incremental chunks in tests/unit/shared/markdownRenderer.spec.ts: verify partial markdown (split heading, incomplete bold) renders without crashing
+
+#### Implementation for 8a
+
+- [X] T082 [US1] Update `ConversationLoop.streamResponse()` in src/loop/conversationLoop.ts to pass `TextDelta` chunks through `renderMarkdown()` before `io.write()` in TTY mode; ensure raw markdown is accumulated separately for turn history persistence
+- [X] T083 [US1] Update `renderMarkdown()` in src/shared/markdownRenderer.ts if needed to handle incremental chunk rendering gracefully (ensure `marked.parse()` doesn't throw on partial markdown)
+
+**Checkpoint**: LLM streaming output appears as formatted markdown (colored headings, bold, code blocks) in the terminal during streaming.
+
+---
+
+### 8b. Activity Spinner Module (FR-043a, FR-043c)
+
+**Goal**: Create a unified spinner module wrapping `ora` that manages "Thinking..." and tool-specific spinners with proper lifecycle.
+
+**Independent Test**: Unit tests verify spinner methods (`startThinking`, `startToolCall`, `completeToolCall`, `stop`) produce expected outputs and respect TTY/JSON mode suppression.
+
+#### Tests for 8b (REQUIRED — write first, verify they fail) ⚠️
+
+- [X] T084 [P] [US1] Add unit tests for `ActivitySpinner` in tests/unit/shared/activitySpinner.spec.ts: verify `startThinking()` starts a spinner with "Thinking..." text, `startToolCall(name)` updates spinner text, `completeToolCall(name, summary)` stops spinner and prints summary, `stop()` clears spinner, and all methods are no-ops when non-TTY or JSON mode
+
+#### Implementation for 8b
+
+- [X] T085 [US1] Create `src/shared/activitySpinner.ts` with `ActivitySpinner` class wrapping `ora`: constructor accepts `{ isTTY, isJsonMode, debugMode }`; methods: `startThinking()`, `startToolCall(toolName)`, `completeToolCall(toolName, summary)`, `stop()`, `isActive()`; writes to stderr; all operations no-op when non-TTY or JSON mode
+
+**Checkpoint**: `ActivitySpinner` module exists with full test coverage; can be instantiated and used independently.
+
+---
+
+### 8c. Tool Call Summaries & Debug Verbose Output (FR-043b)
+
+**Goal**: After each tool call completes, display a one-line summary. In `--debug` mode, show full arguments and result details.
+
+**Independent Test**: Unit tests verify `writeToolSummary()` outputs correct format in default and `--debug` modes, and is suppressed in JSON/non-TTY mode.
+
+#### Tests for 8c (REQUIRED — write first, verify they fail) ⚠️
+
+- [X] T086 [P] [US1] Add unit tests for `writeToolSummary()` in tests/unit/cli/ioContext.spec.ts: verify default mode prints "✓ <toolName>: <summary>" to stderr, `--debug` mode additionally prints args and result, and JSON/non-TTY mode omits tool summaries from stdout
+
+#### Implementation for 8c
+
+- [X] T087 [US1] Add `writeToolSummary(toolName, summary, debug?)` method to `LoopIO` interface in src/loop/conversationLoop.ts and implement in `createLoopIO()` in src/cli/ioContext.ts: default prints one-line summary to stderr; `--debug` expands with formatted JSON of args and result; non-TTY/JSON omits from stdout
+- [X] T088 [US1] Update `IoContextOptions` in src/cli/ioContext.ts to accept `debug?: boolean` option so `createLoopIO()` can control verbose tool output behavior
+
+**Checkpoint**: Tool call completions produce visible one-line summaries; `--debug` shows full details.
+
+---
+
+### 8d. ConversationLoop Spinner Integration (FR-043a/b/c combined)
+
+**Goal**: Wire `ActivitySpinner` into `ConversationLoop.streamResponse()` to manage the full spinner lifecycle across thinking → tool calls → text streaming.
+
+**Independent Test**: Integration tests verify the full spinner lifecycle: "Thinking..." appears after user input, transitions to tool-specific spinner on ToolCall, prints summary on ToolResult, clears on TextDelta.
+
+#### Tests for 8d (REQUIRED — write first, verify they fail) ⚠️
+
+- [X] T089 [P] [US1] Add integration tests for spinner lifecycle in ConversationLoop in tests/integration/spinnerLifecycle.spec.ts: verify spinner starts with "Thinking..." after user input, transitions on ToolCall events, prints tool summary on ToolResult, stops on first TextDelta, and handles multi-tool sequences correctly
+- [X] T090 [P] [US1] Add unit tests for ConversationLoop spinner injection in tests/unit/loop/conversationLoop.spec.ts: verify spinner option is accepted, no-op spinner works for non-TTY, spinner.stop() is called on response complete
+
+#### Implementation for 8d
+
+- [X] T091 [US1] Add `spinner?: ActivitySpinner` to `ConversationLoopOptions` in src/loop/conversationLoop.ts; update `streamResponse()` to manage spinner lifecycle: `startThinking()` before send, `startToolCall()` on ToolCall event, `completeToolCall()` + `io.writeToolSummary()` on ToolResult event, `stop()` on first TextDelta event, `stop()` on response complete
+- [X] T092 [US1] Wire spinner creation into src/cli/workshopCommand.ts `runWorkshop()`: create `ActivitySpinner` from IO context options and pass to `ConversationLoop` constructor; pass `debug` option through to `createLoopIO()`
+
+**Checkpoint**: Full visual feedback lifecycle works end-to-end: users see "Thinking...", tool-specific spinners, tool summaries, and formatted markdown streaming.
+
+---
+
+### Phase 8 Validation
+
+- [X] T093 Run full test suite (`npx vitest run`) and manual smoke test with a live Copilot session to verify: (1) "Thinking..." spinner appears during LLM processing, (2) tool-specific spinners appear during tool calls, (3) tool summaries display after completion, (4) LLM text streams as formatted markdown, (5) `--debug` shows verbose tool output, (6) `--json` mode suppresses all spinners and ANSI
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -242,6 +331,11 @@
   - **7a (Session Naming)**, **7b (Default Command)**, and **7c (Auto-Start)** can proceed in parallel — they touch different files.
   - Within each sub-phase: test tasks run first (must fail), then implementation tasks.
   - **T079** (validation) runs last after all Phase 7 tasks complete.
+- **Visual Feedback & Streaming Markdown (Phase 8)**: Depends on Phase 7 completion.
+  - **8a (Streaming Markdown)** and **8b (Activity Spinner)** can proceed in parallel — they touch different files.
+  - **8c (Tool Summaries)** depends on 8b (uses ActivitySpinner types).
+  - **8d (Spinner Integration)** depends on 8a, 8b, and 8c (wires everything together).
+  - **T093** (validation) runs last after all Phase 8 tasks complete.
 
 ### User Story Dependencies
 
@@ -309,6 +403,52 @@ T078: src/cli/workshopCommand.ts              (depends on T076, T077 — SHARED 
 3. 7c tests → 7c implementation → verify tests pass
 4. T079 full validation
 
+### Phase 8 Parallel Opportunities
+
+Within Phase 8, sub-phases have the following parallelization profile:
+
+```bash
+# 8a tests (parallel — different files):
+T080: tests/unit/loop/conversationLoop.spec.ts
+T081: tests/unit/shared/markdownRenderer.spec.ts
+
+# 8b tests (parallel with 8a — different file):
+T084: tests/unit/shared/activitySpinner.spec.ts
+
+# 8c tests (parallel with 8a, 8b — different file):
+T086: tests/unit/cli/ioContext.spec.ts
+
+# 8a implementation — after 8a tests fail:
+T082: src/loop/conversationLoop.ts       (streaming markdown rendering)
+T083: src/shared/markdownRenderer.ts     [P] (incremental chunk handling)
+
+# 8b implementation — after 8b tests fail (parallel with 8a impl):
+T085: src/shared/activitySpinner.ts      (new file — no conflicts)
+
+# 8c implementation — after 8c tests fail:
+T087: src/loop/conversationLoop.ts       (LoopIO interface — SHARED with T082)
+T088: src/cli/ioContext.ts               [P] (IoContextOptions update)
+
+# 8d tests — after 8a+8b+8c implementation:
+T089: tests/integration/spinnerLifecycle.spec.ts  [P]
+T090: tests/unit/loop/conversationLoop.spec.ts
+
+# 8d implementation — after 8d tests fail:
+T091: src/loop/conversationLoop.ts       (spinner integration — SHARED with T082, T087)
+T092: src/cli/workshopCommand.ts         (spinner wiring)
+
+# ⚠ Cross-sub-phase file conflicts (serialize edits):
+#   src/loop/conversationLoop.ts → T082 (8a), T087 (8c), T091 (8d)
+#   src/cli/ioContext.ts → T088 (8c)
+#   src/cli/workshopCommand.ts → T092 (8d)
+```
+
+**Recommended serial order** (single developer):
+1. 8a tests + 8b tests (parallel) → 8a implementation + 8b implementation (parallel) → verify
+2. 8c tests → 8c implementation → verify
+3. 8d tests → 8d implementation → verify
+4. T093 full validation
+
 ---
 
 ## Implementation Strategy
@@ -328,6 +468,7 @@ T078: src/cli/workshopCommand.ts              (depends on T076, T077 — SHARED 
 3. Add User Story 3 (direct command/automation) and validate independently.
 4. Apply Phase 6 polish and cross-cutting improvements.
 5. Add Phase 7 new capabilities (session naming → default command → auto-start) and validate with full regression suite.
+6. Add Phase 8 visual feedback and streaming markdown (activity spinners → tool summaries → streaming markdown → spinner integration) and validate with live session smoke test.
 
 ### Relation to Feature 002 (PoC Generation & Ralph Loop)
 

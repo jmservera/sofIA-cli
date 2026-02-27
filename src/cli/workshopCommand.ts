@@ -8,6 +8,7 @@
 import { ConversationLoop } from '../loop/conversationLoop.js';
 import { createCopilotClient } from '../shared/copilotClient.js';
 import type { CopilotClient } from '../shared/copilotClient.js';
+import { ActivitySpinner } from '../shared/activitySpinner.js';
 import { getLogger } from '../logging/logger.js';
 import type { WorkshopSession, PhaseValue } from '../shared/schemas/session.js';
 import { SessionStore, createDefaultStore } from '../sessions/sessionStore.js';
@@ -140,12 +141,20 @@ async function runWorkshop(
 
     const events: SofiaEvent[] = [];
 
+    // Create activity spinner for visual feedback
+    const spinner = new ActivitySpinner({
+      isTTY: io.isTTY,
+      isJsonMode: io.isJsonMode,
+      debugMode: options.debug,
+    });
+
     const loop = new ConversationLoop({
       client,
       io,
       session,
       phaseHandler: handler,
       initialMessage,
+      spinner,
       onEvent: (e) => {
         events.push(e);
         if (options.debug && e.type === 'Activity') {
@@ -204,7 +213,7 @@ async function runWorkshop(
 
 export async function workshopCommand(opts: WorkshopCommandOptions): Promise<void> {
   const store = createDefaultStore();
-  const io = createLoopIO({ json: opts.json, nonInteractive: opts.nonInteractive });
+  const io = createLoopIO({ json: opts.json, nonInteractive: opts.nonInteractive, debug: opts.debug });
 
   // Get Copilot client
   let client: CopilotClient;

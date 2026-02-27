@@ -44,6 +44,9 @@ function makeIO(inputs: (string | null)[], opts?: { json?: boolean; tty?: boolea
     writeActivity(text: string) {
       activities.push(text);
     },
+    writeToolSummary(_toolName: string, _summary: string) {
+      // no-op for tests
+    },
     async readInput(_prompt?: string): Promise<string | null> {
       if (inputIndex >= inputs.length) return null;
       return inputs[inputIndex++] ?? null;
@@ -200,7 +203,9 @@ describe('ConversationLoop', () => {
       await loop.run();
 
       const ioAny = io as unknown as { _written: string[] };
-      expect(ioAny._written).toContain('Streaming content');
+      // In TTY mode, text goes through renderMarkdown which may add formatting
+      const allOutput = ioAny._written.join('');
+      expect(allOutput).toContain('Streaming content');
     });
 
     it('outputs JSON envelope in JSON mode', async () => {

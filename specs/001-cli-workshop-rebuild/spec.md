@@ -22,6 +22,11 @@
 - Q: What should the auto-start greeting include when starting a new session? → A: LLM briefly introduces the current phase purpose and immediately asks the first question (concise, action-oriented). On resume, provides a summary of progress so far and asks the next question.
 - Q: What is the acceptable timeout for the initial auto-start LLM greeting? → A: 10 seconds. If no first token arrives within 10s, treat as a transient failure and apply retry logic.
 - Q: How should the session name be extracted from the LLM response? → A: LLM includes `sessionName` in the structured JSON block (same extraction path as businessContext). Deterministic, testable, consistent with existing extractors.
+- Q: How should streaming LLM markdown be rendered? → A: Render markdown incrementally during streaming using marked + marked-terminal, accepting minor rendering artifacts on partial chunks (headings, tables).
+- Q: What visual feedback should users see during internal operations (LLM wait, tool calls)? → A: Spinner with contextual status text that updates in-place per operation (e.g., "⠋ Calling WorkIQ...", "⠋ Searching docs...") and clears when the operation completes.
+- Q: What should users see about tool call results? → A: By default, a one-line summary after each tool completes (tool name + brief result, e.g., "✓ WorkIQ: Found 12 relevant processes"). With `--debug`, also show full tool arguments and result details inline.
+- Q: Should the user see a "thinking" indicator during silent gaps? → A: Yes. Show a "Thinking..." spinner during all silent gaps: after user input before first token, and after tool results before next text output.
+- Q: Should `--verbose` be a new flag or reuse `--debug`? → A: Reuse `--debug`. When `--debug` is set, also show verbose tool output inline (tool arguments and full result details). No new `--verbose` flag.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -104,6 +109,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 **Conversation Model (Authoritative)**
 
 - **FR-009**: System MUST stream responses incrementally (no full-buffer blocking output).
+- **FR-009a**: In TTY mode, streamed LLM text MUST be rendered as formatted markdown incrementally (using `marked` + `marked-terminal`) rather than written as raw text. Minor rendering artifacts from partial markdown chunks are acceptable for responsiveness. In non-TTY/JSON mode, raw markdown is preserved without ANSI rendering.
 - **FR-010**: System MUST preserve turn history for each phase and persist turns in session state.
 - **FR-011**: System MUST support multi-turn conversations per phase.
 - **FR-012**: System MUST support agent-driven prompts to the user (ask-user style prompts) via the SDK handler.
@@ -169,6 +175,9 @@ As an operator or automation pipeline, I want to continue a session non-interact
 **Telemetry, Logs, and Output Separation**
 
 - **FR-043**: System MUST show operational telemetry (tool/progress) in a dedicated activity stream during interactive execution.
+- **FR-043a**: In TTY interactive mode, system MUST display a spinner (using `ora` or equivalent) with contextual status text during waiting periods: waiting for LLM first token, executing MCP tool calls, and processing internal operations. The spinner text MUST update in-place to reflect the current operation (e.g., "⠋ Calling WorkIQ...", "⠋ Searching documentation..."). The spinner MUST clear when the operation completes and output resumes. Spinners MUST NOT appear in non-TTY or JSON mode.
+- **FR-043b**: After each tool call completes, system MUST display a one-line summary showing the tool name and a brief result description (e.g., "✓ WorkIQ: Found 12 relevant processes", "✓ Web search: 3 results for 'Contoso logistics'"). These summaries MUST remain visible in the output stream. When `--debug` is specified, system MUST additionally show the tool arguments and full result details (multi-line) inline. In non-TTY/JSON mode, tool summaries MUST be omitted from stdout (written to stderr or debug log only).
+- **FR-043c**: In TTY interactive mode, system MUST display a "Thinking..." spinner during all silent gaps where the LLM is processing but no text or tool events are being emitted. This includes: (1) after user input is submitted and before the first text token arrives, (2) after tool results are returned and before the next text output begins, and (3) during any internal reasoning delay. The "Thinking..." spinner MUST be replaced by the tool-specific spinner (FR-043a) when a tool call begins, and MUST clear when text streaming starts. In non-TTY/JSON mode, no thinking indicator is shown.
 - **FR-044**: In JSON/non-interactive scenarios, system MUST keep stdout machine-readable and MUST NOT interleave telemetry into stdout.
 - **FR-045**: System MUST persist a detailed debug log to a separate file by default, and MUST allow disabling logs via parameter.
 

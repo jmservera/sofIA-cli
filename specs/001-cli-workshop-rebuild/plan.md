@@ -35,9 +35,39 @@ Goal: when possible, workshop outputs are authored in Markdown and rendered to t
 Rendering rules:
 
 - If `process.stdout.isTTY` and not `--json`, render Markdown to ANSI using `marked` + `marked-terminal`.
-- Render tables using `cli-table3` for consistent borders/column widths.
+- **Streaming responses**: LLM text is rendered as formatted markdown incrementally during streaming using `marked` + `marked-terminal`. Each text chunk is processed through the renderer as it arrives, producing ANSI-formatted output in real time. Minor rendering artifacts from partial markdown (e.g., split headings, incomplete tables) are acceptable for responsiveness.
+- Render tables using `cli-table3` for consistent borders/column widths (used for structured outputs like status, BXT scores; not for inline streaming).
 - If non-TTY or `--json`, do not emit ANSI/spinners; output plain text (or raw Markdown when plain text would lose meaning).
 - Keep activity/telemetry on stderr so stdout can remain clean for scripting.
+
+### Visual Feedback & Activity Indicators (FR-043a/b/c)
+
+The CLI provides continuous visual feedback during all operations via `ora` spinners and inline status summaries:
+
+1. **"Thinking..." spinner**: Displayed during all silent gaps — after user input before LLM first token, and between tool results and next text output. Cleared when text streaming begins.
+2. **Tool-specific spinner**: When the LLM triggers a tool call, the "Thinking..." spinner transitions to a contextual message (e.g., "⠋ Calling WorkIQ...", "⠋ Searching documentation..."). Cleared when the tool completes.
+3. **Tool result summaries**: After each tool call completes, a one-line summary is printed below the spinner area (e.g., "✓ WorkIQ: Found 12 relevant processes"). These summaries remain visible in the output stream.
+4. **`--debug` verbose tool output**: When `--debug` is specified, tool summaries expand to include arguments and full result details (multi-line). This reuses the existing `--debug` flag — no separate `--verbose` flag.
+5. **Non-TTY/JSON suppression**: Spinners and tool summaries are suppressed in non-TTY and `--json` mode. Tool activity is written to stderr or the debug log only.
+
+Spinner lifecycle in the ConversationLoop `streamResponse()` method:
+
+```
+User input → Start "Thinking..." spinner
+  → ToolCall event  → Transition spinner to "⠋ <toolName>..."
+  → ToolResult event → Stop spinner, print "✓ <toolName>: <summary>"
+                       → Restart "Thinking..." spinner (if more processing expected)
+  → TextDelta event → Stop spinner, stream rendered markdown
+  → Response complete → Ensure spinner stopped
+```
+
+Implementation approach:
+
+- Create `src/shared/activitySpinner.ts` module wrapping `ora` with methods: `startThinking()`, `startToolCall(toolName)`, `completeToolCall(toolName, summary)`, `stop()`, and `isActive()`.
+- The spinner module respects `isTTY` and `isJsonMode` from the IO context.
+- `ConversationLoop.streamResponse()` manages spinner lifecycle based on event types.
+- `LoopIO` interface gains `writeToolSummary(toolName: string, summary: string, debug?: { args: Record<string, unknown>; result: unknown }): void` method.
+- In `--debug` mode, `writeToolSummary()` expands the summary with args and full result details.
 
 ## Existing Assets: Prompts + Discovery Cards Dataset
 
@@ -247,6 +277,79 @@ These additions address three new requirements clarified in Session 2026-02-27 (
 - **Secure-by-default**: No new secrets introduced; session name is derived from business context already in the session.
 - **Test-first**: All new behavior requires failing tests before implementation (TDD).
 - **CLI transparency**: Auto-start greeting makes the system proactive and informative.
+
+## Phase 8: Visual Feedback & Streaming Markdown (FR-009a, FR-043a/b/c)
+
+These additions address requirements clarified in Session 2026-02-27 regarding visual feedback during internal operations and incremental markdown rendering.
+
+### 8a. Incremental Streaming Markdown Rendering (FR-009a)
+
+**Goal**: Render LLM streaming text through `marked` + `marked-terminal` incrementally during streaming, so users see formatted markdown (headings, bold, code blocks, lists) in real time rather than raw markdown syntax.
+
+**Design**:
+
+- Update `ConversationLoop.streamResponse()` to pass each `TextDelta` chunk through `renderMarkdown()` before writing to `io.write()`.
+- Update `renderMarkdown()` to handle incremental rendering: process chunks through `marked` + `marked-terminal` as they arrive. Accept minor artifacts from partial markdown (split headings, incomplete tables).
+- Ensure the full response is still captured as raw markdown for session persistence (turn history stores raw markdown, not ANSI).
+- In non-TTY/JSON mode, chunks are written raw (no ANSI rendering), preserving existing behavior.
+
+**Files touched**: `src/loop/conversationLoop.ts`, `src/shared/markdownRenderer.ts`
+
+### 8b. Activity Spinner Module (FR-043a, FR-043c)
+
+**Goal**: Provide a unified spinner module wrapping `ora` that manages "Thinking..." and tool-specific spinners with proper lifecycle management.
+
+**Design**:
+
+- Create `src/shared/activitySpinner.ts` with an `ActivitySpinner` class:
+  - `startThinking()`: Display "Thinking..." spinner. No-op if non-TTY/JSON.
+  - `startToolCall(toolName: string)`: Transition to "⠋ <toolName>..." spinner. If already spinning, update text in-place.
+  - `completeToolCall(toolName: string, summary: string)`: Stop spinner, print "✓ <toolName>: <summary>" line.
+  - `stop()`: Stop any active spinner.
+  - `isActive(): boolean`: Check if a spinner is currently running.
+- Constructor accepts `{ isTTY: boolean; isJsonMode: boolean; debugMode: boolean }` — all spinner operations are no-ops when not TTY or in JSON mode.
+- The spinner writes to stderr to avoid polluting stdout.
+
+**Files touched**: `src/shared/activitySpinner.ts` (new)
+
+### 8c. Tool Call Summaries & Debug Verbose Output (FR-043b)
+
+**Goal**: After each tool call completes, display a one-line summary. In `--debug` mode, expand with full arguments and result details.
+
+**Design**:
+
+- Add `writeToolSummary(toolName: string, summary: string, debug?: { args: Record<string, unknown>; result: unknown }): void` method to `LoopIO` interface.
+- Implement in `createLoopIO()` in `src/cli/ioContext.ts`:
+  - Default: prints `✓ <toolName>: <summary>` to stderr.
+  - `--debug`: additionally prints formatted JSON of args and result below the summary.
+  - Non-TTY/JSON: omit from stdout; write to stderr or debug log only.
+- Update `ConversationLoop.streamResponse()` to call `io.writeToolSummary()` when a `ToolResult` event is received, constructing the summary from the event data.
+
+**Files touched**: `src/loop/conversationLoop.ts`, `src/cli/ioContext.ts`
+
+### 8d. ConversationLoop Spinner Integration (FR-043a/b/c combined)
+
+**Goal**: Wire the `ActivitySpinner` into `ConversationLoop.streamResponse()` to manage the full spinner lifecycle across thinking, tool calls, and text streaming.
+
+**Design**:
+
+- `ConversationLoop` constructor accepts an `ActivitySpinner` instance (injected via options or created from IO context).
+- In `streamResponse()`, manage spinner state based on event types:
+  1. Before sending message: call `spinner.startThinking()`.
+  2. On `ToolCall` event: call `spinner.startToolCall(event.toolName)`.
+  3. On `ToolResult` event: call `spinner.completeToolCall(event.toolName, summarize(event.result))`, then `spinner.startThinking()` if more events expected.
+  4. On first `TextDelta` event: call `spinner.stop()` (clear spinner, start streaming text).
+  5. On response complete: call `spinner.stop()` (safety net).
+- Expose `spinner` option in `ConversationLoopOptions` to allow injection for testing (pass a no-op spinner in tests).
+
+**Files touched**: `src/loop/conversationLoop.ts`
+
+### Post-Design Constitution Re-check (Phase 8)
+
+- **Outcome-first**: Visual feedback eliminates "dead terminal" anxiety — users always know the system is working. Markdown rendering improves readability of LLM outputs.
+- **CLI transparency**: Spinners, tool summaries, and thinking indicators make internal operations visible without exposing raw SDK internals.
+- **Test-first**: All new behavior requires failing tests before implementation (TDD). Spinner can be tested via a fake/mock `ora` or by verifying event-driven callbacks.
+- **Secure-by-default**: Tool summaries in default mode show no sensitive data. `--debug` verbose output is opt-in and goes to stderr.
 
 ## Complexity Tracking
 

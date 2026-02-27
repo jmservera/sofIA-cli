@@ -14,6 +14,9 @@
 import type { ConversationSession, CopilotClient, CopilotMessage, SessionOptions } from '../shared/copilotClient.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { createActivityEvent } from '../shared/events.js';
+import { renderMarkdown } from '../shared/markdownRenderer.js';
+import type { ActivitySpinner } from '../shared/activitySpinner.js';
+import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
 
@@ -37,6 +40,8 @@ export interface LoopIO {
   write(text: string): void;
   /** Write activity/telemetry to stderr. */
   writeActivity(text: string): void;
+  /** Write a tool completion summary to stderr. */
+  writeToolSummary(toolName: string, summary: string, details?: { args?: Record<string, unknown>; result?: unknown }): void;
   /** Read user input. Returns the input string or null on EOF/Ctrl+D. */
   readInput(prompt?: string): Promise<string | null>;
   /** Show the decision gate and get user choice. */
@@ -71,6 +76,8 @@ export interface ConversationLoopOptions {
   onSessionUpdate?: (session: WorkshopSession) => Promise<void>;
   /** If provided, send this message to the LLM before waiting for user input (auto-start). */
   initialMessage?: string;
+  /** Activity spinner for visual feedback (no-op spinner used if omitted). */
+  spinner?: ActivitySpinner;
 }
 
 // ── ConversationLoop ─────────────────────────────────────────────────────────
@@ -84,6 +91,7 @@ export class ConversationLoop {
   private readonly onEvent: (event: SofiaEvent) => void;
   private readonly onSessionUpdate: (session: WorkshopSession) => Promise<void>;
   private readonly initialMessage?: string;
+  private readonly spinner: ActivitySpinner;
 
   constructor(options: ConversationLoopOptions) {
     this.client = options.client;
@@ -93,6 +101,7 @@ export class ConversationLoop {
     this.onEvent = options.onEvent ?? (() => {});
     this.onSessionUpdate = options.onSessionUpdate ?? (async () => {});
     this.initialMessage = options.initialMessage;
+    this.spinner = options.spinner ?? createNoOpSpinner();
   }
 
   /** Run the conversation loop for the current phase. */
@@ -211,19 +220,47 @@ export class ConversationLoop {
     message: CopilotMessage,
   ): Promise<string> {
     const chunks: string[] = [];
+    let firstTextDelta = true;
+
+    // Start "Thinking..." spinner before sending
+    this.spinner.startThinking();
 
     for await (const event of session.send(message)) {
       this.emitEvent(event);
 
       if (event.type === 'TextDelta') {
+        // Stop spinner on first text output
+        if (firstTextDelta) {
+          this.spinner.stop();
+          firstTextDelta = false;
+        }
+
         chunks.push(event.text);
         if (!this.io.isJsonMode) {
-          this.io.write(event.text);
+          // Render markdown for TTY, raw for non-TTY
+          if (this.io.isTTY) {
+            this.io.write(renderMarkdown(event.text, { isTTY: true }));
+          } else {
+            this.io.write(event.text);
+          }
         }
       } else if (event.type === 'Activity') {
         this.io.writeActivity(event.message);
+      } else if (event.type === 'ToolCall') {
+        this.spinner.startToolCall(event.toolName);
+      } else if (event.type === 'ToolResult') {
+        const summary = typeof event.result === 'string'
+          ? event.result
+          : JSON.stringify(event.result).slice(0, 120);
+        this.spinner.completeToolCall(event.toolName, summary);
+        this.io.writeToolSummary(event.toolName, summary);
+        // Resume thinking spinner in case more processing follows
+        this.spinner.startThinking();
       }
     }
+
+    // Ensure spinner is stopped after stream completes
+    this.spinner.stop();
 
     const fullResponse = chunks.join('');
 

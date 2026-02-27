@@ -61,6 +61,9 @@ function createScriptedIO(
     writeActivity(text: string) {
       activityLog.push(text);
     },
+    writeToolSummary(_toolName: string, _summary: string) {
+      // no-op
+    },
     async readInput(_prompt?: string): Promise<string | null> {
       if (inputIdx >= inputs.length) return null; // EOF
       return inputs[inputIdx++];
