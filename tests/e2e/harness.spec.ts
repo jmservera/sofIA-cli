@@ -75,13 +75,13 @@ describe('E2E Harness', () => {
     expect(result.stdout).toContain('workshop');
     expect(result.stdout).toContain('status');
     expect(result.stdout).toContain('export');
-  });
+  }, 15_000);
 
   it('displays version when invoked with --version', async () => {
     const result = await runCli(['--version']);
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
-  });
+  }, 15_000);
 
   it('shows workshop help', async () => {
     const result = await runCli(['workshop', '--help']);

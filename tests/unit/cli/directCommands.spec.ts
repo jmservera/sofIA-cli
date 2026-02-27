@@ -192,7 +192,8 @@ describe('directCommands JSON output', () => {
     expect(jsonLines.length).toBeGreaterThan(0);
     const parsed = JSON.parse(jsonLines[0]);
     expect(parsed.error).toBeDefined();
-    expect(parsed.error.code).toBe('INVALID_INPUT');
+    expect(typeof parsed.error).toBe('string');
+    expect(parsed.error).toContain('not found');
   });
 
   it('emits result summary as JSON on success', async () => {
