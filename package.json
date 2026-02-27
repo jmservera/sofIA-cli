@@ -19,6 +19,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "sofia": "node --enable-source-maps dist/cli/index.js"
   },
   "dependencies": {
@@ -30,10 +31,8 @@
     "marked-terminal": "^6.2.0",
     "ora": "^7.0.1",
     "pino": "^8.17.2",
-    "zod": "^4.3.6"
-  },
-  "optionalDependencies": {
-    "@github/copilot-sdk": "0.8.0"
+    "zod": "^4.3.6",
+    "@github/copilot-sdk": "^0.1.28"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -43,7 +43,8 @@ program
       const { runDirectCommand } = await import('./directCommands.js');
       const { createLoopIO } = await import('./ioContext.js');
       const { createDefaultStore } = await import('../sessions/sessionStore.js');
-      const { createCopilotClient, createFakeCopilotClient } = await import('../shared/copilotClient.js');
+      const { createCopilotClient } = await import('../shared/copilotClient.js');
+      const { getLogger } = await import('../logging/logger.js');
 
       const store = createDefaultStore();
       const io = createLoopIO({ json: merged.json, nonInteractive: merged.nonInteractive });
@@ -51,10 +52,17 @@ program
       let client;
       try {
         client = await createCopilotClient();
-      } catch {
-        client = createFakeCopilotClient([
-          { role: 'assistant', content: 'Direct command mode response.' },
-        ]);
+      } catch (err: unknown) {
+        const logger = getLogger();
+        logger.error({ err }, 'Failed to create Copilot client — cannot run direct command');
+        const msg = err instanceof Error ? err.message : 'Unknown error creating Copilot client';
+        if (merged.json) {
+          process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+        } else {
+          console.error(`Error: ${msg}`);
+        }
+        process.exitCode = 1;
+        return;
       }
 
       const result = await runDirectCommand({

@@ -164,14 +164,15 @@
 
 - [ ] T061 [P] [US1] Add unit test for `name` field in `workshopSessionSchema` (accepts string, omits gracefully) in tests/unit/schemas/session.spec.ts
 - [ ] T062 [P] [US1] Add unit test for `extractSessionName()` (parses `sessionName` from JSON block, returns null when missing) in tests/unit/phases/phaseExtractors.spec.ts
-- [ ] T063 [P] [US1] Add unit test for Discover handler `extractResult()` setting `session.name` when `sessionName` is present in LLM response in tests/unit/phases/phaseHandlers.spec.ts
+- [ ] T063 [P] [US1] Add unit test for Discover handler `extractResult()` setting `session.name` when `sessionName` is present in LLM response, **and** a negative case verifying `extractResult()` does not set `session.name` when the LLM response lacks `sessionName`, in tests/unit/phases/phaseHandlers.spec.ts
 - [ ] T064 [P] [US1] Add unit test for `statusCommand` displaying session name in table and JSON output in tests/unit/cli/statusCommand.spec.ts
+- [ ] T064b [P] [US1] Add unit test for `workshopCommand` displaying session name in creation, resume, and pause messages in tests/unit/cli/workshopCommand.spec.ts
 
 #### Implementation for 7a
 
 - [ ] T065 [US1] Add `name?: string` field to `workshopSessionSchema` in src/shared/schemas/session.ts
 - [ ] T066 [P] [US1] Add `extractSessionName()` extractor function in src/phases/phaseExtractors.ts (parse `sessionName` from JSON block via `extractJsonBlock`)
-- [ ] T067 [US1] Update Discover handler in src/phases/phaseHandlers.ts: update `extractResult()` to call `extractSessionName()` and set `session.name`; update Discover system prompt to instruct LLM to include `sessionName` in JSON output
+- [ ] T067 [US1] Update Discover handler in src/phases/phaseHandlers.ts: update `extractResult()` to call `extractSessionName()` and set `session.name` **only if `session.name` is currently undefined** (first-write-wins semantics — FR-023a says "after the first Discover exchange"); update Discover system prompt to instruct LLM to include `sessionName` in JSON output
 - [ ] T068 [P] [US1] Update src/cli/statusCommand.ts to display session name in TTY table row and JSON output
 - [ ] T069 [P] [US1] Update src/cli/workshopCommand.ts to display session name when showing session info (creation, resume, pause messages)
 
@@ -187,12 +188,12 @@
 
 #### Tests for 7b (REQUIRED — write first, verify they fail) ⚠️
 
-- [ ] T070 [P] [US1] Add integration tests for default command behavior: `sofia` with no subcommand enters workshop, `sofia workshop` works as alias, `--help` shows workshop options at top level in tests/integration/defaultCommand.spec.ts
+- [ ] T070 [P] [US1/US2/US3] Add integration tests for default command behavior: `sofia` with no subcommand enters workshop, `sofia workshop` works as alias, `--help` shows workshop options at top level, **and** `sofia status` and `sofia export` subcommands continue to work after restructure, in tests/integration/defaultCommand.spec.ts
 
 #### Implementation for 7b
 
-- [ ] T071 [US1] Restructure src/cli/index.ts: promote `--new-session`, `--phase`, `--retry` options to top-level `program`; add default action on `program` that invokes `workshopCommand()`; keep `program.command('workshop')` as alias pointing to same handler; keep `status` and `export` as explicit subcommands
-- [ ] T072 [US1] Update src/cli/workshopCommand.ts `WorkshopCommandOptions` interface to accept `retry` at top level (if not already) and ensure direct command mode (`--session` + `--phase`) works from top level
+- [ ] T071 [US1/US2/US3] Restructure src/cli/index.ts: promote `--new-session`, `--phase`, `--retry` options to top-level `program`; add default action on `program` that invokes `workshopCommand()`; keep `program.command('workshop')` as alias pointing to same handler; keep `status` and `export` as explicit subcommands
+- [ ] T072 [US1/US2/US3] Update src/cli/workshopCommand.ts `WorkshopCommandOptions` interface to accept `retry` at top level (if not already) and ensure direct command mode (`--session` + `--phase`) works from top level
 
 **Checkpoint**: `sofia` and `sofia workshop` both enter the same workshop flow; `--help` shows all options; status/export subcommands unchanged.
 
@@ -209,6 +210,8 @@
 - [ ] T073 [P] [US1] Add unit tests for `ConversationLoop` auto-start behavior in tests/unit/loop/conversationLoop.spec.ts: sends `initialMessage` to LLM before `readInput()`, streams greeting response, records initial exchange in turn history, handles timeout
 - [ ] T074 [P] [US1] Add unit tests for `getInitialMessage()` method on `PhaseHandler` interface in tests/unit/phases/phaseHandlers.spec.ts: generates phase introduction for new sessions, generates progress summary for resumed sessions, works for all 6 phase handlers
 - [ ] T075 [P] [US1] Add integration test for auto-start wiring in tests/integration/autoStartConversation.spec.ts: verifying workshop flow sends initial message at phase start and LLM speaks first
+
+> **Note (E3)**: Constitution VI requires PTY-based E2E tests for interactive UX changes. Auto-start changes who speaks first, which is an interactive UX change. A PTY E2E test is deferred here (same gap as T021) — the integration test in T075 covers the logic. If PTY tests become reliable, add `tests/e2e/autoStart.e2e.spec.ts`.
 
 #### Implementation for 7c
 
@@ -282,17 +285,22 @@ T075: tests/integration/autoStartConversation.spec.ts
 T065: src/shared/schemas/session.ts           (schema change — do first)
 T066: src/phases/phaseExtractors.ts           [P] (different file)
 T068: src/cli/statusCommand.ts                [P] (different file)
-T069: src/cli/workshopCommand.ts              [P] (different file, display only)
-T067: src/phases/phaseHandlers.ts             (depends on T065, T066)
+T069: src/cli/workshopCommand.ts              (display only — SHARED with T072, T078)
+T064b: tests/unit/cli/workshopCommand.spec.ts [P] (test for T069)
+T067: src/phases/phaseHandlers.ts             (depends on T065, T066 — SHARED with T077)
 
 # 7b implementation — after 7b tests fail:
 T071: src/cli/index.ts                        (main restructure)
-T072: src/cli/workshopCommand.ts              (depends on T071)
+T072: src/cli/workshopCommand.ts              (depends on T071 — SHARED with T069, T078)
 
 # 7c implementation — after 7c tests fail:
 T076: src/loop/conversationLoop.ts            (core auto-start)
-T077: src/phases/phaseHandlers.ts             (depends on T076 interface)
-T078: src/cli/workshopCommand.ts              (depends on T076, T077)
+T077: src/phases/phaseHandlers.ts             (depends on T076 interface — SHARED with T067)
+T078: src/cli/workshopCommand.ts              (depends on T076, T077 — SHARED with T069, T072)
+
+# ⚠ Cross-sub-phase file conflicts (serialize edits to these files):
+#   src/phases/phaseHandlers.ts  → T067 (7a) and T077 (7c)
+#   src/cli/workshopCommand.ts   → T069 (7a), T072 (7b), and T078 (7c)
 ```
 
 **Recommended serial order** (single developer):

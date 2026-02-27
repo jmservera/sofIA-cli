@@ -5,11 +5,10 @@
  * with New Session, Resume Session, Status, and Export menu options.
  * Drives phase-by-phase conversation with decision gates.
  */
-import { randomUUID } from 'node:crypto';
-
 import { ConversationLoop } from '../loop/conversationLoop.js';
-import { createFakeCopilotClient, createCopilotClient } from '../shared/copilotClient.js';
+import { createCopilotClient } from '../shared/copilotClient.js';
 import type { CopilotClient } from '../shared/copilotClient.js';
+import { getLogger } from '../logging/logger.js';
 import type { WorkshopSession, PhaseValue } from '../shared/schemas/session.js';
 import { SessionStore, createDefaultStore } from '../sessions/sessionStore.js';
 import { createLoopIO } from './ioContext.js';
@@ -28,12 +27,29 @@ export interface WorkshopCommandOptions {
 }
 
 /**
+ * Generate a timestamp-based session ID for human-friendly filenames.
+ * Format: YYYY-MM-DD_HHmmss  (e.g. "2026-02-27_143052")
+ */
+function generateSessionId(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return [
+    d.getFullYear(),
+    '-', pad(d.getMonth() + 1),
+    '-', pad(d.getDate()),
+    '_', pad(d.getHours()),
+    pad(d.getMinutes()),
+    pad(d.getSeconds()),
+  ].join('');
+}
+
+/**
  * Create a new empty workshop session.
  */
 function createNewSession(): WorkshopSession {
   const now = new Date().toISOString();
   return {
-    sessionId: randomUUID(),
+    sessionId: generateSessionId(),
     schemaVersion: '1.0.0',
     createdAt: now,
     updatedAt: now,
@@ -179,12 +195,17 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
   let client: CopilotClient;
   try {
     client = await createCopilotClient();
-  } catch {
-    // Fall back to fake client for development/testing
-    client = createFakeCopilotClient([
-      { role: 'assistant', content: 'Welcome to the AI Discovery Workshop! Let\'s start by understanding your business. Please describe your company, industry, and the main challenges you\'re facing.' },
-      { role: 'assistant', content: 'Thank you for sharing that. Let me summarize what I\'ve heard and we can move forward.' },
-    ]);
+  } catch (err: unknown) {
+    const logger = getLogger();
+    logger.error({ err }, 'Failed to create Copilot client — cannot start workshop');
+    const msg = err instanceof Error ? err.message : 'Unknown error creating Copilot client';
+    if (opts.json) {
+      process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+    } else {
+      console.error(`Error: ${msg}`);
+    }
+    process.exitCode = 1;
+    return;
   }
 
   // Direct session resumption

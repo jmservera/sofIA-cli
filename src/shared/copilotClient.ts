@@ -109,22 +109,76 @@ export function createFakeCopilotClient(
 
 /**
  * Create a real CopilotClient using the GitHub Copilot SDK.
- * Falls back to a diagnostic error if the SDK is not installed.
+ * Wraps the SDK's CopilotClient + CopilotSession behind our
+ * CopilotClient / ConversationSession interfaces so the rest of
+ * the codebase (ConversationLoop, phaseHandlers) stays decoupled.
+ *
+ * Throws a clear error if the SDK is not installed.
  */
 export async function createCopilotClient(): Promise<CopilotClient> {
+  // Dynamic import — SDK is listed in dependencies but may fail in
+  // environments where the native add-on cannot build.
+  let sdk: typeof import('@github/copilot-sdk');
   try {
-    // Dynamic import — SDK is optional dependency
-    const sdk = await import('@github/copilot-sdk');
-    // TODO: Wire up real SDK conversation session when SDK API is confirmed
-    void sdk;
-    throw new Error('Live Copilot SDK client not yet implemented — use createFakeCopilotClient for tests');
+    sdk = await import('@github/copilot-sdk');
   } catch (err: unknown) {
-    if (err instanceof Error && err.message.includes('not yet implemented')) {
-      throw err;
-    }
+    const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      'GitHub Copilot SDK (@github/copilot-sdk) is not available. ' +
-      'Install it or use createFakeCopilotClient for tests.',
+      `GitHub Copilot SDK (@github/copilot-sdk) is not available: ${detail}`,
     );
   }
+
+  const { CopilotClient: SdkClient, approveAll } = sdk;
+
+  // A single SDK client instance is shared across sessions.
+  // autoStart: true (default) means `start()` is called lazily on
+  // the first `createSession`.
+  const sdkClient = new SdkClient();
+
+  return {
+    async createSession(options: SessionOptions): Promise<ConversationSession> {
+      const sdkSession = await sdkClient.createSession({
+        onPermissionRequest: approveAll,
+        systemMessage: {
+          mode: 'replace' as const,
+          content: options.systemPrompt,
+        },
+      });
+
+      const history: CopilotMessage[] = [];
+
+      return {
+        send(message: CopilotMessage): AsyncIterable<SofiaEvent> {
+          history.push(message);
+
+          // Return an AsyncIterable that bridges SDK events → SofiaEvents.
+          // We use `sendAndWait` which blocks until the assistant is idle
+          // and then yield the complete response as a single TextDelta,
+          // keeping the same contract the fake client provides.
+          return {
+            async *[Symbol.asyncIterator]() {
+              const response = await sdkSession.sendAndWait(
+                { prompt: message.content },
+                120_000, // 2-minute timeout
+              );
+
+              const content = response?.data.content ?? '';
+              if (content) {
+                const assistantMsg: CopilotMessage = {
+                  role: 'assistant',
+                  content,
+                };
+                history.push(assistantMsg);
+                yield createTextDeltaEvent(content);
+              }
+            },
+          };
+        },
+
+        getHistory(): CopilotMessage[] {
+          return [...history];
+        },
+      };
+    },
+  };
 }
