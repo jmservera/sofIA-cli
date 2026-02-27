@@ -81,7 +81,6 @@ This constitution governs the design, development, and operation of the sofIA Co
 - All long‑running operations (multi‑phase workshops, MCP orchestrations) must **stream progress**, not leave users idle.
 - Users MUST always see the current execution state (current phase, waiting for input, running tool/action, retry/recovery state) during interactive and long-running operations.
 - On failures, user-facing output MUST include: what failed, why it likely failed, what was already completed, and the next actionable recovery options.
-- Operational telemetry shown to users MUST stay separate from model reasoning/private chain-of-thought.
 - The agent must be honest about limitations, uncertainty, and trade‑offs, avoiding over‑confident claims.
 
 ## Architecture & Scope

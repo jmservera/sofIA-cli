@@ -180,6 +180,36 @@ Each agent phase should:
   - Knowledge sources and suggested prompts
   - Uploaded reference files (workshop materials, card decks)
 
+### Import Ordering & Linting
+
+The project uses ESLint with `eslint-plugin-import` and the `import/order` rule set to `warn`. Imports **must** be separated into groups with a blank line between each group:
+
+1. **Built-in / External** — Node.js built-ins and `node_modules` packages (e.g., `commander`, `vitest`, `pino`)
+2. **Internal / Parent / Sibling** — Project-relative imports (e.g., `../shared/schemas/session.js`)
+
+```typescript
+// ✅ Correct — blank line between groups
+import { Command } from 'commander';
+
+import type { PhaseValue } from '../shared/schemas/session.js';
+
+// ❌ Wrong — no blank line between external and internal
+import { Command } from 'commander';
+import type { PhaseValue } from '../shared/schemas/session.js';
+```
+
+Always run `npm run lint` and `npm run typecheck` before finishing a task. If the linter reports `import/order` warnings, add blank lines between the import groups.
+
+### Typecheck
+
+The project enforces strict TypeScript checking via `npm run typecheck` (`tsc --noEmit`). Before marking any task as done:
+
+1. Run `npm run typecheck` and fix all errors.
+2. Never suppress errors with `@ts-ignore` or `any` — use proper types, type narrowing, or Vitest's `Mock<>` generic.
+3. For third-party packages without `@types`, add an ambient module declaration in `src/types/<package>.d.ts`.
+
+> **Rationale:** Type mismatches between production code and Zod schemas (e.g., wrong property names in `exportWriter.ts`) were only caught by strict typechecking, not by tests. Running `npm run typecheck` ensures schema shapes stay in sync.
+
 ## MCP Server Configuration
 
 The project uses Model Context Protocol servers for external integrations. Configuration is in:
@@ -206,6 +236,15 @@ WorkIQ requires Microsoft 365 tenant access and admin consent. On first use:
 1. Run `npx -y @microsoft/workiq accept-eula` to accept the EULA
 2. Sign in when prompted - admin consent may be required
 3. See [WorkIQ Admin Instructions](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md) for tenant setup
+
+## Terminal Command Safety
+
+The CLI solution may hang or get stuck during development (e.g., interactive prompts waiting for input, infinite loops, watch modes). To avoid blocking the agent:
+
+- **Always use a timeout** when running `npm test`, `npm run build`, `npm run dev`, or any command that could hang. Use the `timeout` parameter on terminal calls (e.g., 30000ms for tests, 60000ms for builds).
+- **Never run `npm run dev` without a timeout** — it starts a watch process that never exits on its own.
+- **Prefer targeted test runs** (`npm test -- <specific-file>`) over full suite runs when iterating on a single module.
+- **If a command hangs**, kill it and investigate the root cause rather than waiting indefinitely.
 
 ## Security Considerations
 
