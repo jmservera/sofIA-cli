@@ -63,7 +63,11 @@ function validateInputs(opts: DirectCommandOptions): DirectCommandResult | null 
 
 function emitError(opts: DirectCommandOptions, message: string): void {
   if (opts.json || opts.io.isJsonMode) {
-    opts.io.write(JSON.stringify({ error: { code: 'INVALID_INPUT', message } }) + '\n');
+    // JSON mode: follow the standard `{ error: "..." }` shape used by other commands
+    opts.io.write(JSON.stringify({ error: message }) + '\n');
+  } else {
+    // Non-JSON mode: emit a human-readable error message so failures are visible
+    opts.io.write(`Error: ${message}\n`);
   }
 }
 
