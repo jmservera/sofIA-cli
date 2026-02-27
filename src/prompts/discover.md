@@ -37,6 +37,18 @@ Produce a summary containing:
 
 Confirm this summary with the user before the workshop proceeds to the Ideate phase.
 
+## Structured JSON Output
+
+When you produce your first business context summary (after Step 1), include a JSON code block with the following fields. Include a short, descriptive `sessionName` (3-6 words) that captures the company and focus area:
+
+```json
+{
+  "businessDescription": "...",
+  "challenges": ["..."],
+  "sessionName": "Short Descriptive Name"
+}
+```
+
 ## Research Tools
 
 When available, use these tools to enrich discovery:

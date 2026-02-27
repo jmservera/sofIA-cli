@@ -434,4 +434,110 @@ describe('ConversationLoop', () => {
       expect(result.turns![3].content).toContain('No more responses');
     });
   });
+
+  // ── T073: Auto-start behavior ──────────────────────────────────────────
+
+  describe('auto-start with initialMessage (T073)', () => {
+    it('sends initialMessage to LLM before readInput()', async () => {
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Welcome to the Discover phase!' },
+        { role: 'assistant', content: 'Great, thanks for that info.' },
+      ]);
+
+      const readInputCalls: string[] = [];
+      const io = makeIO(['user says hello']);
+      const origReadInput = io.readInput.bind(io);
+      io.readInput = async (prompt?: string) => {
+        readInputCalls.push(prompt ?? '');
+        return origReadInput(prompt);
+      };
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Introduce the Discover phase and ask the first question.',
+      });
+
+      const result = await loop.run();
+
+      // Initial message turn + user turn = 4 turns total
+      expect(result.turns).toHaveLength(4);
+      // First turn pair: system initial message → LLM greeting
+      expect(result.turns![0].role).toBe('user');
+      expect(result.turns![0].content).toBe('Introduce the Discover phase and ask the first question.');
+      expect(result.turns![1].role).toBe('assistant');
+      expect(result.turns![1].content).toBe('Welcome to the Discover phase!');
+    });
+
+    it('streams the greeting response to output', async () => {
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Hello! Welcome to sofIA.' },
+      ]);
+
+      const io = makeIO([], { tty: true, json: false });
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Start the phase.',
+      });
+
+      await loop.run();
+
+      const ioTyped = io as LoopIO & { _written: string[] };
+      const allOutput = ioTyped._written.join('');
+      expect(allOutput).toContain('Hello! Welcome to sofIA.');
+    });
+
+    it('records initial exchange in turn history', async () => {
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Phase intro response' },
+      ]);
+
+      const io = makeIO([]);
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Auto-start message',
+      });
+
+      const result = await loop.run();
+
+      expect(result.turns).toHaveLength(2);
+      expect(result.turns![0].role).toBe('user');
+      expect(result.turns![0].content).toBe('Auto-start message');
+      expect(result.turns![1].role).toBe('assistant');
+      expect(result.turns![1].content).toBe('Phase intro response');
+    });
+
+    it('does NOT auto-start when initialMessage is not provided', async () => {
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Response' },
+      ]);
+
+      const io = makeIO(['user input']);
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        // No initialMessage
+      });
+
+      const result = await loop.run();
+
+      // Only user + assistant turns, no initial message turn
+      expect(result.turns).toHaveLength(2);
+      expect(result.turns![0].role).toBe('user');
+      expect(result.turns![0].content).toBe('user input');
+    });
+  });
 });

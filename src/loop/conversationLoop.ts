@@ -58,6 +58,8 @@ export interface PhaseHandler {
   extractResult(session: WorkshopSession, response: string): Partial<WorkshopSession>;
   /** Optional: determine if the phase is complete based on conversation. */
   isComplete?(session: WorkshopSession, response: string): boolean;
+  /** Generate the initial message to send to the LLM at phase start. */
+  getInitialMessage?(session: WorkshopSession): string;
 }
 
 export interface ConversationLoopOptions {
@@ -67,6 +69,8 @@ export interface ConversationLoopOptions {
   phaseHandler: PhaseHandler;
   onEvent?: (event: SofiaEvent) => void;
   onSessionUpdate?: (session: WorkshopSession) => Promise<void>;
+  /** If provided, send this message to the LLM before waiting for user input (auto-start). */
+  initialMessage?: string;
 }
 
 // ── ConversationLoop ─────────────────────────────────────────────────────────
@@ -79,6 +83,7 @@ export class ConversationLoop {
   private readonly handler: PhaseHandler;
   private readonly onEvent: (event: SofiaEvent) => void;
   private readonly onSessionUpdate: (session: WorkshopSession) => Promise<void>;
+  private readonly initialMessage?: string;
 
   constructor(options: ConversationLoopOptions) {
     this.client = options.client;
@@ -87,6 +92,7 @@ export class ConversationLoop {
     this.handler = options.phaseHandler;
     this.onEvent = options.onEvent ?? (() => {});
     this.onSessionUpdate = options.onSessionUpdate ?? (async () => {});
+    this.initialMessage = options.initialMessage;
   }
 
   /** Run the conversation loop for the current phase. */
@@ -100,6 +106,43 @@ export class ConversationLoop {
     const conversationSession = await this.client.createSession(sessionOpts);
 
     this.emitEvent(createActivityEvent(`Starting ${this.handler.phase} phase`));
+
+    // Auto-start: send initial message to LLM before waiting for user input
+    if (this.initialMessage) {
+      const response = await this.streamResponse(conversationSession, {
+        role: 'user',
+        content: this.initialMessage,
+      });
+
+      const now = new Date().toISOString();
+      const turns = this.session.turns ?? [];
+      turns.push(
+        {
+          phase: this.handler.phase,
+          sequence: turns.length + 1,
+          role: 'user',
+          content: this.initialMessage,
+          timestamp: now,
+        },
+        {
+          phase: this.handler.phase,
+          sequence: turns.length + 2,
+          role: 'assistant',
+          content: response,
+          timestamp: now,
+        },
+      );
+
+      const updates = this.handler.extractResult(this.session, response);
+      this.session = {
+        ...this.session,
+        ...updates,
+        turns,
+        updatedAt: now,
+      };
+
+      await this.onSessionUpdate(this.session);
+    }
 
     // Main conversation loop
     while (!this.aborted) {

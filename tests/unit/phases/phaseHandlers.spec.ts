@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 
 import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../../../src/phases/phaseHandlers.js';
 import { backtrackSession } from '../../../src/sessions/sessionManager.js';
-import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
+import type { WorkshopSession, PhaseValue } from '../../../src/shared/schemas/session.js';
 
 function makeSession(overrides?: Partial<WorkshopSession>): WorkshopSession {
   return {
@@ -104,6 +104,32 @@ describe('phaseHandlers', () => {
         },
       });
       expect(handler.isComplete!(session, '')).toBe(true);
+    });
+
+    // T063 — session naming via extractResult
+    it('extractResult sets session.name when sessionName is present in LLM response', () => {
+      const handler = createPhaseHandler('Discover');
+      const session = makeSession();
+      const response = '```json\n{"businessDescription": "Logistics Co", "challenges": ["Routing"], "sessionName": "Logistics AI Routing"}\n```';
+      const result = handler.extractResult!(session, response);
+      expect(result.name).toBe('Logistics AI Routing');
+    });
+
+    it('extractResult does not set session.name when sessionName is absent from LLM response', () => {
+      const handler = createPhaseHandler('Discover');
+      const session = makeSession();
+      const response = '```json\n{"businessDescription": "Tech Co", "challenges": ["Scale"]}\n```';
+      const result = handler.extractResult!(session, response);
+      expect(result.name).toBeUndefined();
+    });
+
+    it('extractResult does not overwrite existing session.name (first-write-wins)', () => {
+      const handler = createPhaseHandler('Discover');
+      const session = makeSession({ name: 'Original Name' } as Partial<WorkshopSession>);
+      const response = '```json\n{"businessDescription": "Retail Co", "challenges": ["Growth"], "sessionName": "New Name"}\n```';
+      const result = handler.extractResult!(session, response);
+      // Should NOT include name in updates since session already has one
+      expect(result.name).toBeUndefined();
     });
   });
 
@@ -318,6 +344,63 @@ describe('phaseHandlers', () => {
       const result = handler.extractResult!(backtracked, freshResponse);
       expect(result.ideas).toHaveLength(1);
       expect(result.ideas![0].id).toBe('new1');
+    });
+  });
+
+  // ── T074: getInitialMessage() ──────────────────────────────────────────
+
+  describe('getInitialMessage (T074)', () => {
+    const phases: PhaseValue[] = ['Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop'];
+
+    it('generates phase introduction for new sessions (no turns)', () => {
+      for (const phase of phases) {
+        const handler = createPhaseHandler(phase);
+        const session = makeSession({ phase, turns: [] });
+        const msg = handler.getInitialMessage!(session);
+        expect(msg).toBeDefined();
+        expect(typeof msg).toBe('string');
+        expect(msg!.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('generates progress summary for resumed sessions (existing turns)', () => {
+      for (const phase of phases) {
+        const handler = createPhaseHandler(phase);
+        const session = makeSession({
+          phase,
+          turns: [
+            { phase, sequence: 1, role: 'user', content: 'Previous input', timestamp: '2025-01-01T00:00:00Z' },
+            { phase, sequence: 2, role: 'assistant', content: 'Previous response', timestamp: '2025-01-01T00:00:00Z' },
+          ],
+        });
+        const msg = handler.getInitialMessage!(session);
+        expect(msg).toBeDefined();
+        expect(typeof msg).toBe('string');
+        expect(msg!.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('returns different messages for new vs resumed sessions', () => {
+      const handler = createPhaseHandler('Discover');
+      const newSession = makeSession({ phase: 'Discover', turns: [] });
+      const resumedSession = makeSession({
+        phase: 'Discover',
+        turns: [
+          { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: '2025-01-01T00:00:00Z' },
+          { phase: 'Discover', sequence: 2, role: 'assistant', content: 'hi', timestamp: '2025-01-01T00:00:00Z' },
+        ],
+      });
+
+      const newMsg = handler.getInitialMessage!(newSession);
+      const resumedMsg = handler.getInitialMessage!(resumedSession);
+      expect(newMsg).not.toBe(resumedMsg);
+    });
+
+    it('getInitialMessage exists on all 6 phase handlers', () => {
+      for (const phase of phases) {
+        const handler = createPhaseHandler(phase);
+        expect(typeof handler.getInitialMessage).toBe('function');
+      }
     });
   });
 });

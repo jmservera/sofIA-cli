@@ -146,6 +146,19 @@ export function extractPlan(response: string): ImplementationPlan | null {
 }
 
 /**
+ * Extract a sessionName string from an LLM response JSON block.
+ * Returns the trimmed name, or null if not present/empty.
+ */
+export function extractSessionName(response: string): string | null {
+  const json = extractJsonBlock(response);
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+  const obj = json as Record<string, unknown>;
+  if (typeof obj.sessionName !== 'string') return null;
+  const trimmed = obj.sessionName.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
  * Extract PocDevelopmentState from an LLM response.
  */
 export function extractPocState(response: string): PocDevelopmentState | null {

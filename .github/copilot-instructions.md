@@ -180,6 +180,26 @@ Each agent phase should:
   - Knowledge sources and suggested prompts
   - Uploaded reference files (workshop materials, card decks)
 
+### Import Ordering & Linting
+
+The project uses ESLint with `eslint-plugin-import` and the `import/order` rule set to `warn`. Imports **must** be separated into groups with a blank line between each group:
+
+1. **Built-in / External** — Node.js built-ins and `node_modules` packages (e.g., `commander`, `vitest`, `pino`)
+2. **Internal / Parent / Sibling** — Project-relative imports (e.g., `../shared/schemas/session.js`)
+
+```typescript
+// ✅ Correct — blank line between groups
+import { Command } from 'commander';
+
+import type { PhaseValue } from '../shared/schemas/session.js';
+
+// ❌ Wrong — no blank line between external and internal
+import { Command } from 'commander';
+import type { PhaseValue } from '../shared/schemas/session.js';
+```
+
+Always run `npm run lint` before finishing a task. If the linter reports `import/order` warnings, add blank lines between the import groups.
+
 ## MCP Server Configuration
 
 The project uses Model Context Protocol servers for external integrations. Configuration is in:

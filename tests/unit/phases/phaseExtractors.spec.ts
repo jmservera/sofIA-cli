@@ -15,6 +15,7 @@ import {
   extractSelection,
   extractPlan,
   extractPocState,
+  extractSessionName,
 } from '../../../src/phases/phaseExtractors.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
@@ -262,6 +263,64 @@ describe('extractPocState', () => {
 
   it('returns null when no PoC data', () => {
     const result = extractPocState('Just text here');
+    expect(result).toBeNull();
+  });
+});
+
+// ── T062: extractSessionName ─────────────────────────────────────────────────
+
+describe('extractSessionName', () => {
+  it('extracts sessionName from JSON block in response', () => {
+    const response = `Here's the summary:
+
+\`\`\`json
+{
+  "businessDescription": "A logistics company",
+  "challenges": ["Slow routing"],
+  "sessionName": "Logistics AI Routing"
+}
+\`\`\``;
+    const result = extractSessionName(response);
+    expect(result).toBe('Logistics AI Routing');
+  });
+
+  it('returns null when sessionName is missing from JSON block', () => {
+    const response = `\`\`\`json
+{
+  "businessDescription": "A company",
+  "challenges": ["Growth"]
+}
+\`\`\``;
+    const result = extractSessionName(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when no JSON block is present', () => {
+    const result = extractSessionName('Just a plain text response with no JSON.');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when sessionName is not a string', () => {
+    const response = `\`\`\`json
+{ "sessionName": 42 }
+\`\`\``;
+    const result = extractSessionName(response);
+    expect(result).toBeNull();
+  });
+
+  it('trims whitespace from sessionName', () => {
+    const response = `\`\`\`json
+{ "sessionName": "  Retail AI Onboarding  " }
+\`\`\``;
+    const result = extractSessionName(response);
+    expect(result).toBe('Retail AI Onboarding');
+  });
+
+  it('returns null for empty string sessionName', () => {
+    const response = `\`\`\`json
+{ "sessionName": "" }
+\`\`\``;
+    const result = extractSessionName(response);
     expect(result).toBeNull();
   });
 });

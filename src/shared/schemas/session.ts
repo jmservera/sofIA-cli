@@ -230,6 +230,7 @@ export const workshopSessionSchema = z
     schemaVersion: z.string(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    name: z.string().optional(),
     phase: phaseSchema,
     status: sessionStatusSchema,
     participants: z.array(participantSchema),

@@ -289,6 +289,26 @@ describe('workshopSessionSchema', () => {
     expect(result.cards?.selectedCards).toHaveLength(1);
   });
 
+  // ── T061: name field tests ─────────────────────────────────────────────────
+
+  it('accepts optional name field as string', () => {
+    const result = workshopSessionSchema.parse(
+      validSession({ name: 'Logistics AI Routing' }),
+    );
+    expect((result as Record<string, unknown>).name).toBe('Logistics AI Routing');
+  });
+
+  it('omits name field gracefully when not provided', () => {
+    const result = workshopSessionSchema.parse(validSession());
+    expect((result as Record<string, unknown>).name).toBeUndefined();
+  });
+
+  it('rejects non-string name field', () => {
+    expect(() =>
+      workshopSessionSchema.parse(validSession({ name: 42 })),
+    ).toThrow();
+  });
+
   it('validates ErrorRecord array', () => {
     const result = workshopSessionSchema.parse(
       validSession({

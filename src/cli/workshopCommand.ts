@@ -24,6 +24,7 @@ export interface WorkshopCommandOptions {
   nonInteractive?: boolean;
   newSession?: boolean;
   phase?: string;
+  retry?: number;
 }
 
 /**
@@ -41,6 +42,16 @@ function generateSessionId(): string {
     pad(d.getMinutes()),
     pad(d.getSeconds()),
   ].join('');
+}
+
+/**
+ * Format a session identifier for display.
+ * Shows "name (id)" when a name exists, otherwise just the id.
+ */
+function sessionDisplayName(session: { sessionId: string; name?: string }): string {
+  return session.name
+    ? `${session.name} (${session.sessionId})`
+    : session.sessionId;
 }
 
 /**
@@ -124,6 +135,9 @@ async function runWorkshop(
     const handler = createPhaseHandler(phase);
     await handler._preload();
 
+    // Generate initial message for auto-start
+    const initialMessage = handler.getInitialMessage?.(session);
+
     const events: SofiaEvent[] = [];
 
     const loop = new ConversationLoop({
@@ -131,6 +145,7 @@ async function runWorkshop(
       io,
       session,
       phaseHandler: handler,
+      initialMessage,
       onEvent: (e) => {
         events.push(e);
         if (options.debug && e.type === 'Activity') {
@@ -181,7 +196,7 @@ async function runWorkshop(
         session.status = 'Paused';
         session.updatedAt = new Date().toISOString();
         await store.save(session);
-        io.write(renderMarkdown(`\nSession **${session.sessionId}** paused. Resume later with \`sofia workshop --session ${session.sessionId}\`.\n`, { isTTY: io.isTTY }));
+        io.write(renderMarkdown(`\nSession **${sessionDisplayName(session)}** paused. Resume later with \`sofia workshop --session ${session.sessionId}\`.\n`, { isTTY: io.isTTY }));
         return;
     }
   }
@@ -212,6 +227,7 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
   if (opts.session) {
     if (await store.exists(opts.session)) {
       const session = await store.load(opts.session);
+      io.write(renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, { isTTY: io.isTTY }));
       await runWorkshop(session, client, io, store, opts);
     } else {
       const msg = `Session "${opts.session}" not found.`;
@@ -276,6 +292,7 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
       const idx = parseInt(answer.trim(), 10) - 1;
       if (idx >= 0 && idx < sessions.length) {
         const session = await store.load(sessions[idx]);
+        io.write(renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, { isTTY: io.isTTY }));
         await runWorkshop(session, client, io, store, opts);
       } else {
         io.write('Invalid selection.\n');

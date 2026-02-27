@@ -18,7 +18,42 @@ import {
   extractSelection,
   extractPlan,
   extractPocState,
+  extractSessionName,
 } from './phaseExtractors.js';
+
+// ── Initial message helper ──────────────────────────────────────────────────
+
+const PHASE_INTROS: Record<PhaseValue, string> = {
+  Discover: 'Introduce the Discover phase. Ask about the business, its challenges, and what area to focus on.',
+  Ideate: 'Introduce the Ideate phase. Review the business context and workflow, then brainstorm AI-powered ideas.',
+  Design: 'Introduce the Design phase. Review the generated ideas and help evaluate them using a feasibility-value matrix.',
+  Select: 'Introduce the Select phase. Present the top-ranked ideas and help the user choose the best one to implement.',
+  Plan: 'Introduce the Plan phase. Create an implementation plan with milestones for the selected idea.',
+  Develop: 'Introduce the Develop phase. Generate proof-of-concept code for the planned implementation.',
+  Complete: 'The workshop is complete. Summarize the results.',
+};
+
+const PHASE_RESUMES: Record<PhaseValue, string> = {
+  Discover: 'We are resuming the Discover phase. Summarize what was discussed so far and ask the next question.',
+  Ideate: 'We are resuming the Ideate phase. Summarize the ideas generated so far and continue brainstorming.',
+  Design: 'We are resuming the Design phase. Summarize the evaluation progress and continue with the next step.',
+  Select: 'We are resuming the Select phase. Summarize the selection process so far and continue.',
+  Plan: 'We are resuming the Plan phase. Summarize the plan progress and continue with the next milestone.',
+  Develop: 'We are resuming the Develop phase. Summarize the PoC development progress and continue.',
+  Complete: 'The workshop is complete. Summarize the results.',
+};
+
+/**
+ * Generate the initial message for a phase based on session state.
+ * New sessions get an introduction; resumed sessions get a progress summary prompt.
+ */
+function buildInitialMessage(phase: PhaseValue, session: WorkshopSession): string {
+  const phaseTurns = (session.turns ?? []).filter((t) => t.phase === phase);
+  if (phaseTurns.length > 0) {
+    return PHASE_RESUMES[phase];
+  }
+  return PHASE_INTROS[phase];
+}
 
 // ── Discover Phase ──────────────────────────────────────────────────────────
 
@@ -45,12 +80,21 @@ function createDiscoverHandler(): PhaseHandler {
       if (bc) updates.businessContext = bc;
       const wf = extractWorkflow(response);
       if (wf) updates.workflow = wf;
+      // First-write-wins: only set name if session doesn't already have one
+      if (!session.name) {
+        const sessionName = extractSessionName(response);
+        if (sessionName) updates.name = sessionName;
+      }
       return updates;
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
       // Discover is complete when we have business context and workflow
       return !!(session.businessContext && session.workflow);
+    },
+
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Discover', session);
     },
 
     // Extension: allows pre-loading async prompts
@@ -98,6 +142,10 @@ function createIdeateHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return !!(session.ideas && session.ideas.length > 0);
     },
 
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Ideate', session);
+    },
+
     async _preload() {
       cachedPrompt = await buildSystemPrompt('Ideate');
       cachedRefs = await getPhaseReferences('Ideate');
@@ -133,6 +181,10 @@ function createDesignHandler(): PhaseHandler & { _preload(): Promise<void> } {
 
     isComplete(session: WorkshopSession, _response: string): boolean {
       return !!(session.evaluation);
+    },
+
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Design', session);
     },
 
     async _preload() {
@@ -172,6 +224,10 @@ function createSelectHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return !!(session.selection?.confirmedByUser);
     },
 
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Select', session);
+    },
+
     async _preload() {
       cachedPrompt = await buildSystemPrompt('Select');
       cachedRefs = await getPhaseReferences('Select');
@@ -209,6 +265,10 @@ function createPlanHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return !!(session.plan?.milestones?.length);
     },
 
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Plan', session);
+    },
+
     async _preload() {
       cachedPrompt = await buildSystemPrompt('Plan');
       cachedRefs = await getPhaseReferences('Plan');
@@ -244,6 +304,10 @@ function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
 
     isComplete(session: WorkshopSession, _response: string): boolean {
       return !!(session.poc);
+    },
+
+    getInitialMessage(session: WorkshopSession): string {
+      return buildInitialMessage('Develop', session);
     },
 
     async _preload() {

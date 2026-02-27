@@ -40,6 +40,7 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
           const s = await store.load(id);
           statuses.push({
             sessionId: s.sessionId,
+            name: s.name,
             phase: s.phase,
             status: s.status,
             updatedAt: s.updatedAt,
@@ -54,13 +55,13 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
       for (const id of sessions) {
         try {
           const s = await store.load(id);
-          rows.push([s.sessionId.slice(0, 8), s.phase, s.status, s.updatedAt]);
+          rows.push([s.sessionId.slice(0, 8), s.name ?? '', s.phase, s.status, s.updatedAt]);
         } catch {
-          rows.push([id.slice(0, 8), '?', 'Error', '?']);
+          rows.push([id.slice(0, 8), '', '?', 'Error', '?']);
         }
       }
       console.log(renderTable({
-        head: ['Session', 'Phase', 'Status', 'Updated'],
+        head: ['Session', 'Name', 'Phase', 'Status', 'Updated'],
         rows,
       }));
     }
@@ -82,7 +83,7 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
   const session = await store.load(opts.session);
 
   if (opts.json) {
-    const status = {
+    const status: Record<string, unknown> = {
       sessionId: session.sessionId,
       phase: session.phase,
       status: session.status,
@@ -97,10 +98,14 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
       hasSelection: !!session.selection,
       hasPlan: !!session.plan,
     };
+    if (session.name) status.name = session.name;
     process.stdout.write(JSON.stringify(status) + '\n');
   } else {
     const next = getNextPhase(session.phase);
     console.log(`\nSession: ${session.sessionId}`);
+    if (session.name) {
+      console.log(`Name:    ${session.name}`);
+    }
     console.log(`Phase:   ${session.phase}`);
     console.log(`Status:  ${session.status}`);
     console.log(`Turns:   ${session.turns?.length ?? 0}`);

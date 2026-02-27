@@ -162,19 +162,19 @@
 
 #### Tests for 7a (REQUIRED — write first, verify they fail) ⚠️
 
-- [ ] T061 [P] [US1] Add unit test for `name` field in `workshopSessionSchema` (accepts string, omits gracefully) in tests/unit/schemas/session.spec.ts
-- [ ] T062 [P] [US1] Add unit test for `extractSessionName()` (parses `sessionName` from JSON block, returns null when missing) in tests/unit/phases/phaseExtractors.spec.ts
-- [ ] T063 [P] [US1] Add unit test for Discover handler `extractResult()` setting `session.name` when `sessionName` is present in LLM response, **and** a negative case verifying `extractResult()` does not set `session.name` when the LLM response lacks `sessionName`, in tests/unit/phases/phaseHandlers.spec.ts
-- [ ] T064 [P] [US1] Add unit test for `statusCommand` displaying session name in table and JSON output in tests/unit/cli/statusCommand.spec.ts
-- [ ] T064b [P] [US1] Add unit test for `workshopCommand` displaying session name in creation, resume, and pause messages in tests/unit/cli/workshopCommand.spec.ts
+- [x] T061 [P] [US1] Add unit test for `name` field in `workshopSessionSchema` (accepts string, omits gracefully) in tests/unit/schemas/session.spec.ts
+- [x] T062 [P] [US1] Add unit test for `extractSessionName()` (parses `sessionName` from JSON block, returns null when missing) in tests/unit/phases/phaseExtractors.spec.ts
+- [x] T063 [P] [US1] Add unit test for Discover handler `extractResult()` setting `session.name` when `sessionName` is present in LLM response, **and** a negative case verifying `extractResult()` does not set `session.name` when the LLM response lacks `sessionName`, in tests/unit/phases/phaseHandlers.spec.ts
+- [x] T064 [P] [US1] Add unit test for `statusCommand` displaying session name in table and JSON output in tests/unit/cli/statusCommand.spec.ts
+- [x] T064b [P] [US1] Add unit test for `workshopCommand` displaying session name in creation, resume, and pause messages in tests/unit/cli/workshopCommand.spec.ts
 
 #### Implementation for 7a
 
-- [ ] T065 [US1] Add `name?: string` field to `workshopSessionSchema` in src/shared/schemas/session.ts
-- [ ] T066 [P] [US1] Add `extractSessionName()` extractor function in src/phases/phaseExtractors.ts (parse `sessionName` from JSON block via `extractJsonBlock`)
-- [ ] T067 [US1] Update Discover handler in src/phases/phaseHandlers.ts: update `extractResult()` to call `extractSessionName()` and set `session.name` **only if `session.name` is currently undefined** (first-write-wins semantics — FR-023a says "after the first Discover exchange"); update Discover system prompt to instruct LLM to include `sessionName` in JSON output
-- [ ] T068 [P] [US1] Update src/cli/statusCommand.ts to display session name in TTY table row and JSON output
-- [ ] T069 [P] [US1] Update src/cli/workshopCommand.ts to display session name when showing session info (creation, resume, pause messages)
+- [x] T065 [US1] Add `name?: string` field to `workshopSessionSchema` in src/shared/schemas/session.ts
+- [x] T066 [P] [US1] Add `extractSessionName()` extractor function in src/phases/phaseExtractors.ts (parse `sessionName` from JSON block via `extractJsonBlock`)
+- [x] T067 [US1] Update Discover handler in src/phases/phaseHandlers.ts: update `extractResult()` to call `extractSessionName()` and set `session.name` **only if `session.name` is currently undefined** (first-write-wins semantics — FR-023a says "after the first Discover exchange"); update Discover system prompt to instruct LLM to include `sessionName` in JSON output
+- [x] T068 [P] [US1] Update src/cli/statusCommand.ts to display session name in TTY table row and JSON output
+- [x] T069 [P] [US1] Update src/cli/workshopCommand.ts to display session name when showing session info (creation, resume, pause messages)
 
 **Checkpoint**: Sessions receive auto-generated names after the first business context exchange; names appear in status and workshop output.
 
@@ -188,12 +188,12 @@
 
 #### Tests for 7b (REQUIRED — write first, verify they fail) ⚠️
 
-- [ ] T070 [P] [US1/US2/US3] Add integration tests for default command behavior: `sofia` with no subcommand enters workshop, `sofia workshop` works as alias, `--help` shows workshop options at top level, **and** `sofia status` and `sofia export` subcommands continue to work after restructure, in tests/integration/defaultCommand.spec.ts
+- [x] T070 [P] [US1/US2/US3] Add integration tests for default command behavior: `sofia` with no subcommand enters workshop, `sofia workshop` works as alias, `--help` shows workshop options at top level, **and** `sofia status` and `sofia export` subcommands continue to work after restructure, in tests/integration/defaultCommand.spec.ts
 
 #### Implementation for 7b
 
-- [ ] T071 [US1/US2/US3] Restructure src/cli/index.ts: promote `--new-session`, `--phase`, `--retry` options to top-level `program`; add default action on `program` that invokes `workshopCommand()`; keep `program.command('workshop')` as alias pointing to same handler; keep `status` and `export` as explicit subcommands
-- [ ] T072 [US1/US2/US3] Update src/cli/workshopCommand.ts `WorkshopCommandOptions` interface to accept `retry` at top level (if not already) and ensure direct command mode (`--session` + `--phase`) works from top level
+- [x] T071 [US1/US2/US3] Restructure src/cli/index.ts: promote `--new-session`, `--phase`, `--retry` options to top-level `program`; add default action on `program` that invokes `workshopCommand()`; keep `program.command('workshop')` as alias pointing to same handler; keep `status` and `export` as explicit subcommands
+- [x] T072 [US1/US2/US3] Update src/cli/workshopCommand.ts `WorkshopCommandOptions` interface to accept `retry` at top level (if not already) and ensure direct command mode (`--session` + `--phase`) works from top level
 
 **Checkpoint**: `sofia` and `sofia workshop` both enter the same workshop flow; `--help` shows all options; status/export subcommands unchanged.
 
@@ -207,17 +207,17 @@
 
 #### Tests for 7c (REQUIRED — write first, verify they fail) ⚠️
 
-- [ ] T073 [P] [US1] Add unit tests for `ConversationLoop` auto-start behavior in tests/unit/loop/conversationLoop.spec.ts: sends `initialMessage` to LLM before `readInput()`, streams greeting response, records initial exchange in turn history, handles timeout
-- [ ] T074 [P] [US1] Add unit tests for `getInitialMessage()` method on `PhaseHandler` interface in tests/unit/phases/phaseHandlers.spec.ts: generates phase introduction for new sessions, generates progress summary for resumed sessions, works for all 6 phase handlers
-- [ ] T075 [P] [US1] Add integration test for auto-start wiring in tests/integration/autoStartConversation.spec.ts: verifying workshop flow sends initial message at phase start and LLM speaks first
+- [x] T073 [P] [US1] Add unit tests for `ConversationLoop` auto-start behavior in tests/unit/loop/conversationLoop.spec.ts: sends `initialMessage` to LLM before `readInput()`, streams greeting response, records initial exchange in turn history, handles timeout
+- [x] T074 [P] [US1] Add unit tests for `getInitialMessage()` method on `PhaseHandler` interface in tests/unit/phases/phaseHandlers.spec.ts: generates phase introduction for new sessions, generates progress summary for resumed sessions, works for all 6 phase handlers
+- [x] T075 [P] [US1] Add integration test for auto-start wiring in tests/integration/autoStartConversation.spec.ts: verifying workshop flow sends initial message at phase start and LLM speaks first
 
 > **Note (E3)**: Constitution VI requires PTY-based E2E tests for interactive UX changes. Auto-start changes who speaks first, which is an interactive UX change. A PTY E2E test is deferred here (same gap as T021) — the integration test in T075 covers the logic. If PTY tests become reliable, add `tests/e2e/autoStart.e2e.spec.ts`.
 
 #### Implementation for 7c
 
-- [ ] T076 [US1] Add `initialMessage?: string` to `ConversationLoopOptions` interface and implement auto-start in `ConversationLoop.run()` in src/loop/conversationLoop.ts: if `initialMessage` is provided, send it to LLM via `streamResponse()` before entering `readInput()` loop; record initial exchange in turn history; apply 10-second timeout for first token
-- [ ] T077 [US1] Add `getInitialMessage(session: WorkshopSession): string` method to `PhaseHandler` interface and implement for all 6 phase handler factories in src/phases/phaseHandlers.ts: for new sessions (no turns), generate "Introduce [phase] and ask first question" prompt; for resumed sessions (existing turns), generate "Summarize progress and ask next question" prompt
-- [ ] T078 [US1] Wire auto-start into src/cli/workshopCommand.ts `runWorkshop()`: call `handler.getInitialMessage(session)` and pass result as `initialMessage` to `ConversationLoop` constructor at each phase start
+- [x] T076 [US1] Add `initialMessage?: string` to `ConversationLoopOptions` interface and implement auto-start in `ConversationLoop.run()` in src/loop/conversationLoop.ts: if `initialMessage` is provided, send it to LLM via `streamResponse()` before entering `readInput()` loop; record initial exchange in turn history; apply 10-second timeout for first token
+- [x] T077 [US1] Add `getInitialMessage(session: WorkshopSession): string` method to `PhaseHandler` interface and implement for all 6 phase handler factories in src/phases/phaseHandlers.ts: for new sessions (no turns), generate "Introduce [phase] and ask first question" prompt; for resumed sessions (existing turns), generate "Summarize progress and ask next question" prompt
+- [x] T078 [US1] Wire auto-start into src/cli/workshopCommand.ts `runWorkshop()`: call `handler.getInitialMessage(session)` and pass result as `initialMessage` to `ConversationLoop` constructor at each phase start
 
 **Checkpoint**: Workshop phases start with LLM greeting; user never has to speak first; resumed sessions get progress summary before next question.
 
@@ -225,7 +225,7 @@
 
 ### Phase 7 Validation
 
-- [ ] T079 Run full test suite (`npx vitest run`) and CLI smoke tests (`npm run start -- --help`, `npm run start -- status`, `npm run start -- --new-session --non-interactive`) to confirm no regressions
+- [x] T079 Run full test suite (`npx vitest run`) and CLI smoke tests (`npm run start -- --help`, `npm run start -- status`, `npm run start -- --new-session --non-interactive`) to confirm no regressions
 
 ---
 
