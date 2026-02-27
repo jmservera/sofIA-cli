@@ -40,19 +40,25 @@ interface RalphLoopResult {
 
 ```
 1. Validate session (selection + plan present)
-2. Scaffold PoC (iteration 0 / "scaffold")
+2. Scaffold PoC (iteration 1 / outcome: "scaffold")
    └─ Create project structure, README, package.json, initial tests
-3. For iteration = 2..maxIterations:
+3. Install dependencies (npm install in outputDir)
+4. For iteration = 2..maxIterations:
    a. Run tests
    b. If all pass → terminate (tests-passing)
    c. Parse test failures
    d. Build LLM prompt with: plan context + current code + test failures
    e. Send to LLM via ConversationLoop (auto-completing, single turn)
    f. Apply generated code changes to filesystem
-   g. Persist iteration to session
-   h. Check user abort (Ctrl+C) → terminate (user-stopped)
-4. If maxIterations reached → terminate (max-iterations)
+   g. If new dependencies added to package.json → re-run npm install
+   h. Persist iteration to session
+   i. Check user abort (Ctrl+C) → terminate (user-stopped)
+5. If maxIterations reached → terminate (max-iterations)
 ```
+
+> **Note**: Scaffold is always iteration 1 (`outcome: "scaffold"`). LLM-driven refinement
+> iterations start at 2. This aligns with the data model where `PocIteration.iteration`
+> is 1-indexed and the first entry always has `outcome: "scaffold"`.
 
 ## Iteration prompt contract
 

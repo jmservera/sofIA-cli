@@ -28,7 +28,7 @@ Implement the **Develop** phase for sofIA: transform a completed workshop sessio
 - **Outcome-first discovery**: ✅ PoC generation is the culminating deliverable of the workshop — directly tied to the user's selected AI idea and business goals.
 - **Secure-by-default**: ✅ No secrets in logs/prompts; PoC scaffolds use secure defaults; GitHub MCP requests respect organization policies.
 - **Node.js + TypeScript**: ✅ Extends the existing sofIA CLI codebase with the same stack.
-- **MCP-first**: ✅ GitHub MCP for repo creation when available; local fallback is explicit and auditable.
+- **MCP-first**: ✅ GitHub MCP for repo creation when available; Context7 for library documentation; Microsoft Docs/Azure MCP for cloud guidance; web.search for implementation research; local fallback is explicit and auditable.
 - **Test-first (NON-NEGOTIABLE)**: ✅ Ralph loop is inherently test-driven — each iteration starts from a failing test. Implementation follows Red → Green → Review.
 - **CLI transparency**: ✅ Spinner shows iteration progress; streaming output during code generation; clear failure messages with recovery options.
 
@@ -60,6 +60,7 @@ src/
 │   ├── pocScaffolder.ts         # PoC repo scaffold generation
 │   ├── testRunner.ts            # Test execution and result parsing
 │   ├── codeGenerator.ts         # LLM-driven code generation per iteration
+│   ├── mcpContextEnricher.ts    # MCP-driven context enrichment (Context7, Azure MCP, web.search)
 │   └── githubMcpAdapter.ts      # GitHub MCP repo creation adapter
 ├── phases/
 │   └── phaseHandlers.ts         # MODIFIED: replace boundary handler with real Develop handler
@@ -78,7 +79,9 @@ tests/
 │   │   ├── ralphLoop.spec.ts
 │   │   ├── pocScaffolder.spec.ts
 │   │   ├── testRunner.spec.ts
-│   │   └── codeGenerator.spec.ts
+│   │   ├── codeGenerator.spec.ts
+│   │   ├── mcpContextEnricher.spec.ts
+│   │   └── githubMcpAdapter.spec.ts
 │   └── cli/
 │       └── developCommand.spec.ts
 ├── integration/
@@ -97,7 +100,7 @@ tests/
 - **Outcome-first discovery**: ✅ Contracts explicitly link PoC output back to the workshop session and selected idea via `.sofia-metadata.json`.
 - **Secure-by-default**: ✅ Local-first output; GitHub MCP is opt-in; no PII in metadata; scaffold templates use secure TS defaults.
 - **Node.js + TypeScript**: ✅ All contracts specify TypeScript, ESM, Vitest; scaffold generates strict `tsconfig.json`.
-- **MCP-first**: ✅ GitHub MCP for repo creation when available; graceful local fallback with no error; no ad-hoc HTTP calls.
+- **MCP-first**: ✅ GitHub MCP for repo creation when available; graceful local fallback with no error; Context7 for PoC dependency docs; Azure MCP for cloud architecture guidance; web.search for stuck-iteration research; no ad-hoc HTTP calls.
 - **Test-first (NON-NEGOTIABLE)**: ✅ Ralph loop contract is inherently test-driven — every iteration starts from test failures. Generated PoCs always include test files.
 - **CLI transparency**: ✅ Spinner/progress during iterations; clear termination reasons; structured error messages with recovery guidance.
 

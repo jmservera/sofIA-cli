@@ -113,9 +113,9 @@ Describes a PoC scaffold template. Templates are defined programmatically (no ex
 A single file in a scaffold template.
 
 **Fields**
-- `relativePath: string` — path relative to PoC root
+- `path: string` — path relative to PoC root
 - `content: string` — file content (may contain `{{placeholder}}` tokens)
-- `overwrite: boolean` — whether to overwrite if file exists (default: false)
+- `skipIfExists: boolean` — whether to skip writing if file already exists (default: true)
 
 ## State Machine Extensions
 

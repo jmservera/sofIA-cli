@@ -6,6 +6,7 @@ Defines the structure and content of the generated proof-of-concept repository.
 
 ```
 <outputDir>/                     # Default: ./poc/<sessionId>/
+├── .gitignore                   # Generated: node_modules/, dist/, coverage/
 ├── README.md                    # Generated: what the PoC does, how to run it
 ├── package.json                 # Generated: name, scripts (test, start, build)
 ├── tsconfig.json                # Generated: strict TS configuration
@@ -18,6 +19,17 @@ Defines the structure and content of the generated proof-of-concept repository.
 ```
 
 ## Required files
+
+### .gitignore
+
+```gitignore
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+```
+
+Always generated to prevent accidental commits of build artifacts, especially when pushing to GitHub via MCP.
 
 ### README.md
 
@@ -101,6 +113,11 @@ Dependencies vary per PoC; `typescript` and `vitest` are always present.
 
 The scaffolder produces the initial file set before the first Ralph loop iteration. Templates are programmatic (TypeScript functions returning file content), not file-based.
 
+> **v1 Scope**: The initial implementation targets **TypeScript + Vitest** PoCs only
+> (template id: `node-ts-vitest`). Support for additional languages/frameworks
+> (e.g., Python/FastAPI) is deferred to a future feature. The `ScaffoldTemplate`
+> abstraction is designed to accommodate additional templates without refactoring.
+
 ```typescript
 interface ScaffoldTemplate {
   id: string;                    // e.g., "node-ts-vitest"
@@ -135,6 +152,7 @@ After the Ralph loop completes, the following checks are applied before declarin
 | At least 1 `.ts` file in `src/` | Yes | Main implementation |
 | At least 1 `.test.ts` file in `tests/` | Yes | Tests for the PoC |
 | `.sofia-metadata.json` exists | Yes | Links back to session |
+| `.gitignore` exists | Yes | Excludes `node_modules/`, `dist/`, `coverage/` |
 | `npm test` exits 0 | Only for `success` status | Tests pass |
 
 ## GitHub MCP integration (optional)
