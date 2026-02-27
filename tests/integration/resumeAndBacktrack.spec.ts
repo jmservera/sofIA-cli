@@ -136,7 +136,8 @@ describe('Resume and Backtrack Flow', () => {
     });
 
     const result = await loop.run();
-    expect(result.turns.length).toBeGreaterThan(0);
+    expect(result.turns).toBeDefined();
+    expect(result.turns!.length).toBeGreaterThan(0);
   });
 
   it('backtracks from Design to Ideate and clears downstream data', async () => {

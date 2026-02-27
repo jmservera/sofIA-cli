@@ -24,7 +24,7 @@ function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSessio
     updatedAt: now,
     phase: 'Complete',
     status: 'Completed',
-    participants: [{ name: 'Alice', role: 'facilitator' }],
+    participants: [{ id: 'p1', displayName: 'Alice', role: 'Facilitator' }],
     artifacts: { generatedFiles: [] },
     turns: [
       { phase: 'Discover', sequence: 1, role: 'user', content: 'We sell rockets', timestamp: now },
@@ -41,7 +41,7 @@ function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSessio
         { id: 'a1', name: 'Order Processing' },
         { id: 'a2', name: 'Delivery Tracking' },
       ],
-      edges: [{ from: 'a1', to: 'a2' }],
+      edges: [{ fromStepId: 'a1', toStepId: 'a2' }],
     },
     ideas: [
       {
@@ -65,8 +65,8 @@ function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSessio
     },
     plan: {
       milestones: [
-        { title: 'Data Pipeline Setup', description: 'Set up delivery data pipeline' },
-        { title: 'Model Training', description: 'Train prediction model' },
+        { id: 'm1', title: 'Data Pipeline Setup', items: ['Set up delivery data pipeline'] },
+        { id: 'm2', title: 'Model Training', items: ['Train prediction model'] },
       ],
     },
     ...overrides,

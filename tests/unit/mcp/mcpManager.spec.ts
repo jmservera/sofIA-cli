@@ -10,6 +10,7 @@ import {
   McpManager,
   loadMcpConfig,
   classifyMcpError,
+  type StdioServerConfig,
 } from '../../../src/mcp/mcpManager.js';
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ describe('McpManager', () => {
       const manager = new McpManager(config);
       const sc = manager.getServerConfig('myServer');
       expect(sc).toBeDefined();
-      expect(sc!.command).toBe('npx');
+      expect((sc as StdioServerConfig).command).toBe('npx');
     });
 
     it('getServerConfig returns undefined for unknown server', () => {

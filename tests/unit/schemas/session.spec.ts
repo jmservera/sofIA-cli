@@ -72,13 +72,13 @@ describe('workshopSessionSchema', () => {
 
   it('rejects invalid phase value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ phase: 'InvalidPhase' as Phase[number] })),
+      workshopSessionSchema.parse(validSession({ phase: 'InvalidPhase' as never })),
     ).toThrow();
   });
 
   it('rejects invalid status value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ status: 'Nope' as SessionStatus[number] })),
+      workshopSessionSchema.parse(validSession({ status: 'Nope' as never })),
     ).toThrow();
   });
 
@@ -97,7 +97,7 @@ describe('workshopSessionSchema', () => {
   });
 
   it('preserves unknown extra fields (forward compat)', () => {
-    const raw = { ...validSession(), futureField: 'hello' } as Record<string, unknown>;
+    const raw = { ...(validSession() as Record<string, unknown>), futureField: 'hello' };
     const result = workshopSessionSchema.parse(raw);
     // Zod passthrough should keep the extra field
     expect((result as Record<string, unknown>).futureField).toBe('hello');
@@ -146,7 +146,7 @@ describe('workshopSessionSchema', () => {
     expect(() =>
       workshopSessionSchema.parse(
         validSession({
-          participants: [{ id: 'p1', displayName: 'Alice', role: 'Admin' }],
+          participants: [{ id: 'p1', displayName: 'Alice', role: 'Admin' as never }],
         }),
       ),
     ).toThrow();

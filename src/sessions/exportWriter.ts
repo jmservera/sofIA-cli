@@ -57,7 +57,7 @@ function generateDiscoverMarkdown(session: WorkshopSession): string | null {
     if (session.workflow.edges.length > 0) {
       lines.push('### Connections\n');
       for (const edge of session.workflow.edges) {
-        lines.push(`- ${edge.from} → ${edge.to}`);
+        lines.push(`- ${edge.fromStepId} → ${edge.toStepId}`);
       }
       lines.push('');
     }
@@ -136,7 +136,12 @@ function generatePlanMarkdown(session: WorkshopSession): string | null {
   lines.push('## Milestones\n');
   for (const m of session.plan.milestones) {
     lines.push(`### ${m.title}\n`);
-    lines.push(`${m.description}\n`);
+    if (m.items.length > 0) {
+      for (const item of m.items) {
+        lines.push(`- ${item}`);
+      }
+      lines.push('');
+    }
   }
 
   return lines.join('\n');
@@ -147,11 +152,11 @@ function generateDevelopMarkdown(session: WorkshopSession): string | null {
 
   const lines: string[] = ['# Develop Phase\n'];
   lines.push('## PoC Requirements\n');
-  if (session.poc.repoUrl) {
-    lines.push(`**Repository**: ${session.poc.repoUrl}\n`);
+  if (session.poc.repoPath) {
+    lines.push(`**Repository**: ${session.poc.repoPath}\n`);
   }
-  if (session.poc.status) {
-    lines.push(`**Status**: ${session.poc.status}\n`);
+  if (session.poc.finalStatus) {
+    lines.push(`**Status**: ${session.poc.finalStatus}\n`);
   }
 
   return lines.join('\n');

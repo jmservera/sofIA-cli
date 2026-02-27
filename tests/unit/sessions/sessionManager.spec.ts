@@ -45,7 +45,7 @@ function createPopulatedSession(): WorkshopSession {
       { id: 'i1', title: 'Idea 1', description: 'First idea', workflowStepIds: ['a1'] },
     ],
     evaluation: {
-      method: 'BXT',
+      method: 'feasibility-value-matrix',
       ideas: [{ ideaId: 'i1', feasibility: 8, value: 9 }],
     },
     selection: {
@@ -56,7 +56,7 @@ function createPopulatedSession(): WorkshopSession {
     },
     plan: {
       milestones: [
-        { title: 'M1', description: 'First milestone' },
+        { id: 'm1', title: 'M1', items: ['First milestone'] },
       ],
     },
   };
