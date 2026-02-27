@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "rootDir": "./",
+    "outDir": "dist",
+    "baseUrl": "./",
+    "types": ["node", "vitest"],
+    "paths": {
+      "zod": ["src/vendor/zod"],
+      "pino": ["src/vendor/pino"],
+      "chalk": ["src/vendor/chalk"],
+      "cli-table3": ["src/vendor/cli-table3"],
+      "commander": ["src/vendor/commander"],
+      "marked": ["src/vendor/marked"],
+      "marked-terminal": ["src/vendor/marked-terminal"],
+      "ora": ["src/vendor/ora"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*"]
+}

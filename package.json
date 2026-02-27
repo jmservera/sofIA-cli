@@ -1,0 +1,52 @@
+{
+  "name": "sofia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/cli/index.ts",
+    "clean": "rimraf dist coverage .nyc_output",
+    "lint": "eslint --ext .ts src tests",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e",
+    "sofia": "node --enable-source-maps dist/cli/index.js"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.3.0",
+    "chalk": "^5.2.0",
+    "cli-table3": "^0.6.3",
+    "commander": "^11.1.0",
+    "marked": "^11.0.0",
+    "marked-terminal": "^6.2.0",
+    "ora": "^7.0.1",
+    "pino": "^8.17.2",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@github/copilot-sdk": "0.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "node-pty": "^1.0.0",
+    "prettier": "^3.2.4",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.18"
+  }
+}

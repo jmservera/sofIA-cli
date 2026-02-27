@@ -1,5 +1,6 @@
 # sofIA session data
-.sofIA/
+.sofia/
+exports/
 
 # Logs
 logs

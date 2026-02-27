@@ -1,7 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { z } from "zod";
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { z } from '../../vendor/zod';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -25,8 +25,8 @@ const cardsDatasetSchema = z.object({
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type CardCategory = string;
-export type DiscoveryCardData = z.infer<typeof discoveryCardSchema>;
-export type CardsDataset = z.infer<typeof cardsDatasetSchema>;
+export type DiscoveryCardData = ReturnType<typeof discoveryCardSchema.parse>;
+export type CardsDataset = ReturnType<typeof cardsDatasetSchema.parse>;
 
 // ── Loader ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ export async function loadCardsDataset(): Promise<CardsDataset> {
  */
 export async function getCardsByCategory(category: string): Promise<DiscoveryCardData[]> {
   const dataset = await loadCardsDataset();
-  return dataset.cards.filter((c) => c.category === category);
+  return dataset.cards.filter((c: DiscoveryCardData) => c.category === category);
 }
 
 /**
@@ -61,9 +61,9 @@ export async function searchCards(query: string): Promise<DiscoveryCardData[]> {
   const dataset = await loadCardsDataset();
   const lowerQuery = query.toLowerCase();
   return dataset.cards.filter(
-    (c) =>
+    (c: DiscoveryCardData) =>
       c.title.toLowerCase().includes(lowerQuery) ||
       c.description.toLowerCase().includes(lowerQuery) ||
-      c.typicalScenarios.some((s) => s.toLowerCase().includes(lowerQuery)),
+      c.typicalScenarios.some((s: string) => s.toLowerCase().includes(lowerQuery)),
   );
 }
