@@ -105,10 +105,15 @@ npm run start -- export --session <id> --output ./my-export/
 | `0` | Success |
 | `1` | General error (invalid input, session not found, etc.) |
 
-In JSON mode, errors are emitted as JSON objects:
+In JSON mode, errors are emitted as JSON objects with a consistent envelope:
 
 ```json
-{ "error": "Session \"abc\" not found." }
+{
+  "error": {
+    "code": "SESSION_NOT_FOUND",
+    "message": "Session \"abc\" not found."
+  }
+}
 ```
 
 ## Examples
