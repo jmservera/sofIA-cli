@@ -8,11 +8,11 @@
  * - Supports MCP, network, auth, and session errors
  */
 import { describe, it, expect } from 'vitest';
+
 import {
   classifyError,
   toUserMessage,
   type ErrorClassification,
-  type ErrorCategory,
 } from '../../../src/shared/errorClassifier.js';
 
 describe('errorClassifier', () => {

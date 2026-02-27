@@ -8,6 +8,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import type { PhaseValue } from '../shared/schemas/session.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

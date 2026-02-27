@@ -4,10 +4,10 @@
  * The McpManager loads .vscode/mcp.json, manages connections to MCP servers,
  * lists available tools, and classifies errors.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+
 import {
   McpManager,
-  type McpServerConfig,
   loadMcpConfig,
   classifyMcpError,
 } from '../../../src/mcp/mcpManager.js';
@@ -116,19 +116,19 @@ describe('McpManager', () => {
   describe('classifyMcpError', () => {
     it('classifies ECONNREFUSED as connection-refused', () => {
       const err = new Error('connect ECONNREFUSED 127.0.0.1:3000');
-      (err as any).code = 'ECONNREFUSED';
+      (err as Error & { code?: string }).code = 'ECONNREFUSED';
       expect(classifyMcpError(err)).toBe('connection-refused');
     });
 
     it('classifies ENOTFOUND as dns-failure', () => {
       const err = new Error('getaddrinfo ENOTFOUND example.com');
-      (err as any).code = 'ENOTFOUND';
+      (err as Error & { code?: string }).code = 'ENOTFOUND';
       expect(classifyMcpError(err)).toBe('dns-failure');
     });
 
     it('classifies ETIMEDOUT as timeout', () => {
       const err = new Error('connect ETIMEDOUT');
-      (err as any).code = 'ETIMEDOUT';
+      (err as Error & { code?: string }).code = 'ETIMEDOUT';
       expect(classifyMcpError(err)).toBe('timeout');
     });
 

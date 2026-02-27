@@ -6,6 +6,7 @@
  * Drives phase-by-phase conversation with decision gates.
  */
 import { randomUUID } from 'node:crypto';
+
 import { ConversationLoop } from '../loop/conversationLoop.js';
 import { createFakeCopilotClient, createCopilotClient } from '../shared/copilotClient.js';
 import type { CopilotClient } from '../shared/copilotClient.js';

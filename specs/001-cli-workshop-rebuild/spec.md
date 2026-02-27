@@ -15,6 +15,14 @@
 - Q: What is the default Export output format/location? → A: Write a folder to `./exports/<sessionId>/` containing Markdown artifacts + a `summary.json`.
 - Q: When should the session be persisted? → A: After every user input (each turn).
 
+### Session 2026-02-27
+
+- Q: How should the session name be populated? → A: LLM auto-generates a short name after the first Discover exchange based on the business context, without requiring user confirmation.
+- Q: How should the CLI behave when invoked with no subcommand? → A: Running `sofia` with no args starts the workshop flow (main menu: New/Resume/Status/Export). Workshop options (`--new-session`, `--phase`, `--retry`) promoted to top level. `sofia workshop` kept as alias. `status` and `export` remain explicit subcommands. `--help` shows all options at the top level.
+- Q: What should the auto-start greeting include when starting a new session? → A: LLM briefly introduces the current phase purpose and immediately asks the first question (concise, action-oriented). On resume, provides a summary of progress so far and asks the next question.
+- Q: What is the acceptable timeout for the initial auto-start LLM greeting? → A: 10 seconds. If no first token arrives within 10s, treat as a transient failure and apply retry logic.
+- Q: How should the session name be extracted from the LLM response? → A: LLM includes `sessionName` in the structured JSON block (same extraction path as businessContext). Deterministic, testable, consistent with existing extractors.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run a new governed workshop session (Priority: P1)
@@ -87,7 +95,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 
 **User Modes & CLI UX**
 
-- **FR-004**: System MUST provide interactive mode with a main menu containing: New Session, Resume Session, Status, Export.
+- **FR-004**: System MUST provide interactive mode with a main menu containing: New Session, Resume Session, Status, Export. Running `sofia` with no subcommand MUST start the workshop flow (default command). Workshop-specific options (`--new-session`, `--phase`, `--retry`) MUST be available at the top level. `sofia workshop` MUST be kept as an alias. `--help` MUST show all workshop options at the top level.
 - **FR-005**: System MUST provide direct command mode that continues a session by id.
 - **FR-006**: In direct command mode with TTY available, system MUST prompt for missing required inputs.
 - **FR-007**: In direct command mode without TTY, system MUST fail fast with a non-zero exit and an actionable error when required inputs are missing.
@@ -102,6 +110,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 - **FR-013**: System MUST extract and render human-readable content from SDK events; raw event JSON MUST NOT be rendered to users.
 - **FR-014**: System MUST gracefully handle Ctrl+C in all execution states.
 - **FR-015**: System MUST implement a single conversation orchestration abstraction (ConversationLoop or equivalent) and MUST NOT introduce duplicate inline multi-turn loops.
+- **FR-015a**: When a conversation phase starts (new or resumed), the ConversationLoop MUST send an initial auto-start message to the LLM before waiting for user input. For new sessions, the LLM MUST briefly introduce the current phase purpose and ask the first question. For resumed sessions, the LLM MUST summarize progress so far and ask the next question. The user MUST NOT be required to speak first. If no first token arrives within 10 seconds, the system MUST treat this as a transient failure and apply retry logic.
 
 **Governed Progression & Decision Gates**
 
@@ -115,7 +124,8 @@ As an operator or automation pipeline, I want to continue a session non-interact
 - **FR-020**: Discover MUST use WorkIQ when available to enrich and validate business context.
 - **FR-021**: Discover MUST use web research to better understand the company and context when possible.
 - **FR-022**: Discover MUST degrade gracefully to conversational + web research when WorkIQ is unavailable.
-- **FR-023**: Discover MUST enter interview mode when `contextSummary` is empty.
+- **FR-023**: Discover MUST enter interview mode when `businessContext` is empty.
+- **FR-023a**: After the first Discover exchange that yields a `businessContext`, the system MUST auto-generate a short session `name` from the LLM response and persist it without requiring user confirmation. The LLM system prompt MUST instruct the model to include a `sessionName` field in the structured JSON output alongside `businessContext`. The extractor MUST parse it from the same JSON block.
 
 **Ideate Phase**
 
@@ -196,7 +206,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 
 ### Key Entities *(include if feature involves data)*
 
-- **WorkshopSession**: id, name, currentPhase, completedPhases, contextSummary, journeyMap, ideas, bxtEvaluations, selectedIdeaId, plan, poc (PocDevelopmentState), turns, timestamps.
+- **WorkshopSession**: id, name (auto-generated after first Discover exchange), currentPhase, completedPhases, businessContext, journeyMap, ideas, bxtEvaluations, selectedIdeaId, plan, poc (PocDevelopmentState), turns, timestamps.
 - **ConversationTurn**: phase, sequence, role, content, timestamp, metadata.
 - **IdeaCard**: title, summary, mappedJourneySteps, dataRequirements, architecture, services, risks.
 - **BxtEvaluation**: businessScore, experienceScore, technicalScore, rationale, classification.

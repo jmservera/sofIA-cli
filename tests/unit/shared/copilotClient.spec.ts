@@ -4,9 +4,6 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  CopilotClient,
-  type ConversationSession,
-  type CopilotMessage,
   createFakeCopilotClient,
 } from '../../../src/shared/copilotClient.js';
 

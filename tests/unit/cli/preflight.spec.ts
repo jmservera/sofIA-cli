@@ -7,11 +7,10 @@
  * - Environment variable requirements
  * - Graceful degradation when services unavailable
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+
 import {
   runPreflightChecks,
-  type PreflightResult,
-  type PreflightCheck,
 } from '../../../src/cli/preflight.js';
 
 describe('preflight checks', () => {

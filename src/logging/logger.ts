@@ -8,7 +8,6 @@
  */
 import pino from 'pino';
 import type { Logger } from 'pino';
-import { createWriteStream } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 

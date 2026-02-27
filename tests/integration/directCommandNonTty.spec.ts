@@ -22,7 +22,6 @@ import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/sessi
 import { SessionStore } from '../../src/sessions/sessionStore.js';
 import {
   runDirectCommand,
-  type DirectCommandOptions,
 } from '../../src/cli/directCommands.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -128,7 +127,7 @@ describe('Direct command non-TTY mode', () => {
       { role: 'assistant', content: '{"businessContext": {"company": "Test Corp"}}' },
     ]);
 
-    const result = await runDirectCommand({
+    await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Discover',
       store,
@@ -215,7 +214,7 @@ describe('Direct command non-TTY mode', () => {
       null,          // ends the successful loop iteration
     ]);
 
-    const result = await runDirectCommand({
+    await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Discover',
       store,

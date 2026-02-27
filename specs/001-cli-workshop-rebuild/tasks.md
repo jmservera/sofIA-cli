@@ -148,6 +148,84 @@
 
 ---
 
+## Phase 7: New Capabilities — Session Naming, Default Command, Auto-Start (FR-004, FR-015a, FR-023a)
+
+**Purpose**: Implement three new requirements from Session 2026-02-27 clarifications: auto-generated session names, workshop as default command, and auto-start conversations.
+
+**Prerequisites**: All Phase 1–6 tasks complete (T001–T058 except T021 optional).
+
+### 7a. Session Naming (FR-023a)
+
+**Goal**: Auto-generate a short session name after the first Discover exchange that yields `businessContext`. The LLM includes `sessionName` in its structured JSON block. The name is extracted, persisted, and displayed in status output.
+
+**Independent Test**: Unit tests verify schema accepts `name`, extractor parses `sessionName` from JSON, Discover handler sets `session.name`, and status command displays it.
+
+#### Tests for 7a (REQUIRED — write first, verify they fail) ⚠️
+
+- [ ] T061 [P] [US1] Add unit test for `name` field in `workshopSessionSchema` (accepts string, omits gracefully) in tests/unit/schemas/session.spec.ts
+- [ ] T062 [P] [US1] Add unit test for `extractSessionName()` (parses `sessionName` from JSON block, returns null when missing) in tests/unit/phases/phaseExtractors.spec.ts
+- [ ] T063 [P] [US1] Add unit test for Discover handler `extractResult()` setting `session.name` when `sessionName` is present in LLM response in tests/unit/phases/phaseHandlers.spec.ts
+- [ ] T064 [P] [US1] Add unit test for `statusCommand` displaying session name in table and JSON output in tests/unit/cli/statusCommand.spec.ts
+
+#### Implementation for 7a
+
+- [ ] T065 [US1] Add `name?: string` field to `workshopSessionSchema` in src/shared/schemas/session.ts
+- [ ] T066 [P] [US1] Add `extractSessionName()` extractor function in src/phases/phaseExtractors.ts (parse `sessionName` from JSON block via `extractJsonBlock`)
+- [ ] T067 [US1] Update Discover handler in src/phases/phaseHandlers.ts: update `extractResult()` to call `extractSessionName()` and set `session.name`; update Discover system prompt to instruct LLM to include `sessionName` in JSON output
+- [ ] T068 [P] [US1] Update src/cli/statusCommand.ts to display session name in TTY table row and JSON output
+- [ ] T069 [P] [US1] Update src/cli/workshopCommand.ts to display session name when showing session info (creation, resume, pause messages)
+
+**Checkpoint**: Sessions receive auto-generated names after the first business context exchange; names appear in status and workshop output.
+
+---
+
+### 7b. Default Workshop Command (FR-004 updated)
+
+**Goal**: Running `sofia` with no subcommand starts the workshop flow (main menu). Workshop options (`--new-session`, `--phase`, `--retry`) promoted to top level. `sofia workshop` kept as alias. `status`/`export` remain explicit subcommands. `--help` shows all options at the top level.
+
+**Independent Test**: Integration tests verify that `sofia` (no subcommand) enters the workshop flow, `sofia workshop` still works as alias, `sofia status` and `sofia export` still work, and `--help` shows workshop options at top level.
+
+#### Tests for 7b (REQUIRED — write first, verify they fail) ⚠️
+
+- [ ] T070 [P] [US1] Add integration tests for default command behavior: `sofia` with no subcommand enters workshop, `sofia workshop` works as alias, `--help` shows workshop options at top level in tests/integration/defaultCommand.spec.ts
+
+#### Implementation for 7b
+
+- [ ] T071 [US1] Restructure src/cli/index.ts: promote `--new-session`, `--phase`, `--retry` options to top-level `program`; add default action on `program` that invokes `workshopCommand()`; keep `program.command('workshop')` as alias pointing to same handler; keep `status` and `export` as explicit subcommands
+- [ ] T072 [US1] Update src/cli/workshopCommand.ts `WorkshopCommandOptions` interface to accept `retry` at top level (if not already) and ensure direct command mode (`--session` + `--phase`) works from top level
+
+**Checkpoint**: `sofia` and `sofia workshop` both enter the same workshop flow; `--help` shows all options; status/export subcommands unchanged.
+
+---
+
+### 7c. Auto-Start Conversation (FR-015a)
+
+**Goal**: When a conversation phase starts (new or resumed), the ConversationLoop sends an initial message to the LLM before waiting for user input. The LLM introduces the phase and asks the first question. On resume, it summarizes progress and asks the next question. 10-second timeout for first token.
+
+**Independent Test**: Unit tests verify ConversationLoop sends initial message before `readInput()`, streams the greeting, records it in turns, and handles 10s timeout. Integration tests verify end-to-end auto-start in workshop flow.
+
+#### Tests for 7c (REQUIRED — write first, verify they fail) ⚠️
+
+- [ ] T073 [P] [US1] Add unit tests for `ConversationLoop` auto-start behavior in tests/unit/loop/conversationLoop.spec.ts: sends `initialMessage` to LLM before `readInput()`, streams greeting response, records initial exchange in turn history, handles timeout
+- [ ] T074 [P] [US1] Add unit tests for `getInitialMessage()` method on `PhaseHandler` interface in tests/unit/phases/phaseHandlers.spec.ts: generates phase introduction for new sessions, generates progress summary for resumed sessions, works for all 6 phase handlers
+- [ ] T075 [P] [US1] Add integration test for auto-start wiring in tests/integration/autoStartConversation.spec.ts: verifying workshop flow sends initial message at phase start and LLM speaks first
+
+#### Implementation for 7c
+
+- [ ] T076 [US1] Add `initialMessage?: string` to `ConversationLoopOptions` interface and implement auto-start in `ConversationLoop.run()` in src/loop/conversationLoop.ts: if `initialMessage` is provided, send it to LLM via `streamResponse()` before entering `readInput()` loop; record initial exchange in turn history; apply 10-second timeout for first token
+- [ ] T077 [US1] Add `getInitialMessage(session: WorkshopSession): string` method to `PhaseHandler` interface and implement for all 6 phase handler factories in src/phases/phaseHandlers.ts: for new sessions (no turns), generate "Introduce [phase] and ask first question" prompt; for resumed sessions (existing turns), generate "Summarize progress and ask next question" prompt
+- [ ] T078 [US1] Wire auto-start into src/cli/workshopCommand.ts `runWorkshop()`: call `handler.getInitialMessage(session)` and pass result as `initialMessage` to `ConversationLoop` constructor at each phase start
+
+**Checkpoint**: Workshop phases start with LLM greeting; user never has to speak first; resumed sessions get progress summary before next question.
+
+---
+
+### Phase 7 Validation
+
+- [ ] T079 Run full test suite (`npx vitest run`) and CLI smoke tests (`npm run start -- --help`, `npm run start -- status`, `npm run start -- --new-session --non-interactive`) to confirm no regressions
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -157,6 +235,10 @@
 - **User Stories (Phase 3–5)**: All depend on Foundational phase completion.
   - User stories can then proceed in parallel (if staffed) but are ordered by priority: US1 (P1) → US2 (P2) → US3 (P3).
 - **Polish (Phase 6)**: Depends on all desired user stories being complete.
+- **New Capabilities (Phase 7)**: Depends on Phase 6 completion (all existing behavior stable).
+  - **7a (Session Naming)**, **7b (Default Command)**, and **7c (Auto-Start)** can proceed in parallel — they touch different files.
+  - Within each sub-phase: test tasks run first (must fail), then implementation tasks.
+  - **T079** (validation) runs last after all Phase 7 tasks complete.
 
 ### User Story Dependencies
 
@@ -177,6 +259,48 @@
 - After Foundational completion, different user stories (US1, US2, US3) can be worked on by different developers in parallel.
 - Within each story, test tasks marked [P] and helper implementations in different files can proceed in parallel.
 
+### Phase 7 Parallel Opportunities
+
+Within Phase 7, the three sub-phases touch different files and can be parallelized:
+
+```bash
+# 7a tests (all [P] — different test files):
+T061: tests/unit/schemas/session.spec.ts
+T062: tests/unit/phases/phaseExtractors.spec.ts
+T063: tests/unit/phases/phaseHandlers.spec.ts
+T064: tests/unit/cli/statusCommand.spec.ts
+
+# 7b tests:
+T070: tests/integration/defaultCommand.spec.ts
+
+# 7c tests (all [P] — different test files):
+T073: tests/unit/loop/conversationLoop.spec.ts
+T074: tests/unit/phases/phaseHandlers.spec.ts  (same file as T063 — cannot parallel with T063)
+T075: tests/integration/autoStartConversation.spec.ts
+
+# 7a implementation — after 7a tests fail:
+T065: src/shared/schemas/session.ts           (schema change — do first)
+T066: src/phases/phaseExtractors.ts           [P] (different file)
+T068: src/cli/statusCommand.ts                [P] (different file)
+T069: src/cli/workshopCommand.ts              [P] (different file, display only)
+T067: src/phases/phaseHandlers.ts             (depends on T065, T066)
+
+# 7b implementation — after 7b tests fail:
+T071: src/cli/index.ts                        (main restructure)
+T072: src/cli/workshopCommand.ts              (depends on T071)
+
+# 7c implementation — after 7c tests fail:
+T076: src/loop/conversationLoop.ts            (core auto-start)
+T077: src/phases/phaseHandlers.ts             (depends on T076 interface)
+T078: src/cli/workshopCommand.ts              (depends on T076, T077)
+```
+
+**Recommended serial order** (single developer):
+1. 7a tests → 7a implementation → verify tests pass
+2. 7b tests → 7b implementation → verify tests pass
+3. 7c tests → 7c implementation → verify tests pass
+4. T079 full validation
+
 ---
 
 ## Implementation Strategy
@@ -195,6 +319,7 @@
 2. Add User Story 2 (resume, backtrack, export) and validate independently.
 3. Add User Story 3 (direct command/automation) and validate independently.
 4. Apply Phase 6 polish and cross-cutting improvements.
+5. Add Phase 7 new capabilities (session naming → default command → auto-start) and validate with full regression suite.
 
 ### Relation to Feature 002 (PoC Generation & Ralph Loop)
 

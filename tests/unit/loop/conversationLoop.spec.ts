@@ -5,11 +5,11 @@
  * event dispatching, phase handling, and shutdown behavior.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import {
   ConversationLoop,
   type LoopIO,
   type PhaseHandler,
-  type ConversationLoopOptions,
 } from '../../../src/loop/conversationLoop.js';
 import { createFakeCopilotClient } from '../../../src/shared/copilotClient.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
@@ -67,7 +67,7 @@ function makePhaseHandler(overrides?: Partial<PhaseHandler>): PhaseHandler {
   return {
     phase: 'Discover',
     buildSystemPrompt: () => 'You are a workshop facilitator.',
-    extractResult: (session) => ({}),
+    extractResult: (_session) => ({}),
     ...overrides,
   };
 }
@@ -235,7 +235,7 @@ describe('ConversationLoop', () => {
 
       const io = makeIO(['Our business sells widgets']);
       const handler = makePhaseHandler({
-        extractResult: (_session, response) => ({
+        extractResult: (_session, _response) => ({
           businessContext: {
             businessDescription: 'Widget seller',
             challenges: ['Growth'],

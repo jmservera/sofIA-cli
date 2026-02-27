@@ -181,11 +181,72 @@ The agent set is derived from the existing personas/prompts and covers the works
   - Data source: `src/shared/data/cards.json` via `cardsLoader.ts`
   - Responsibilities: present cards, support scoring, map cards to workflow steps, seed ideation prompts with relevant cards.
 
+## Phase 7: New Capabilities (Session Naming, Default Command, Auto-Start)
+
+These additions address three new requirements clarified in Session 2026-02-27 (see spec.md Clarifications).
+
+### 7a. Session Naming (FR-023a)
+
+**Goal**: Auto-generate a short, human-readable session name after the first Discover exchange when `businessContext` is first captured.
+
+**Design**:
+
+- Add optional `name?: string` field to `workshopSessionSchema` in `src/shared/schemas/session.ts`.
+- Update Discover phase system prompt to instruct the LLM to include a `sessionName` field in its structured JSON output alongside `businessContext`.
+- Add `extractSessionName(response: string): string | null` extractor in `src/phases/phaseExtractors.ts`, parsing `sessionName` from the same JSON block used by `extractBusinessContext`.
+- Update Discover handler's `extractResult()` to call `extractSessionName()` and set `session.name` when a name is found.
+- Update `statusCommand.ts` to display the session name in table and JSON output.
+- Update `workshopCommand.ts` to display the session name in menu/resume flows.
+
+**Constraints**: Name is auto-generated; no user confirmation required. If the LLM omits `sessionName`, the session continues unnamed (no error).
+
+### 7b. Default Workshop Command (FR-004 updated)
+
+**Goal**: Running `sofia` with no subcommand starts the workshop flow (main menu). Workshop options (`--new-session`, `--phase`, `--retry`) promoted to top-level. `sofia workshop` kept as alias. `status` and `export` remain explicit subcommands.
+
+**Design**:
+
+- Restructure `src/cli/index.ts`:
+  - Move workshop options (`--new-session`, `--phase`, `--retry`) to `program` (top-level).
+  - Set a default action on `program` that invokes the workshop flow when no subcommand is given.
+  - Keep `program.command('workshop')` as an alias (same handler).
+  - `status` and `export` remain explicit subcommands.
+  - `--help` shows all workshop options at the top level.
+
+**Constraints**: Must not break existing `sofia workshop`, `sofia status`, or `sofia export` commands. Direct command mode (`--session` + `--phase`) must continue working at top level.
+
+### 7c. Auto-Start Conversation (FR-015a)
+
+**Goal**: When a conversation phase starts (new or resumed), the ConversationLoop sends an initial message to the LLM before waiting for user input. The LLM introduces the phase and asks the first question. On resume, it summarizes progress and asks the next question.
+
+**Design**:
+
+- Add `initialMessage?: string` option to `ConversationLoopOptions`.
+- Modify `ConversationLoop.run()`:
+  - If `initialMessage` is provided, send it as a system/user message to the LLM before entering the `readInput()` loop.
+  - Stream and render the LLM response as the opening greeting.
+  - Record the initial exchange in turn history.
+  - If no first token arrives within 10 seconds, treat as transient failure and apply retry logic.
+- Add `getInitialMessage(session: WorkshopSession): string` method to the `PhaseHandler` interface.
+  - For new sessions: generates a prompt like "Introduce the [phase] phase and ask the first question."
+  - For resumed sessions: generates a prompt like "Summarize progress so far and ask the next question."
+- Wire `getInitialMessage()` into `workshopCommand.ts` so it's passed to `ConversationLoop` at phase start.
+- All phase handler factories must implement `getInitialMessage()`.
+
+**Timeout**: 10 seconds for first token of auto-start greeting (per clarification).
+
 ## Post-Design Constitution Re-check (Phase 1)
 
 - User-visible transparency is provided via rationale summaries + intermediate artifacts + activity/telemetry (not raw hidden chain-of-thought).
 - Interactive mode never auto-advances phases; explicit decision gate required.
 - Testability is a first-class deliverable: unit + integration + PTY E2E harness.
+
+## Post-Design Constitution Re-check (Phase 7 additions)
+
+- **Outcome-first**: Session naming improves facilitator UX (identify sessions at a glance). Default command reduces friction. Auto-start eliminates dead air.
+- **Secure-by-default**: No new secrets introduced; session name is derived from business context already in the session.
+- **Test-first**: All new behavior requires failing tests before implementation (TDD).
+- **CLI transparency**: Auto-start greeting makes the system proactive and informative.
 
 ## Complexity Tracking
 

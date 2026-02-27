@@ -11,11 +11,10 @@
  * - Response format (title, url, snippet, sources)
  * - Tool definition shape for Copilot SDK registration
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
 import {
   createWebSearchTool,
-  type WebSearchResult,
-  type WebSearchConfig,
   isWebSearchConfigured,
   WEB_SEARCH_TOOL_DEFINITION,
 } from '../../../src/mcp/webSearch.js';

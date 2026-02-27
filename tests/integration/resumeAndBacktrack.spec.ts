@@ -18,9 +18,8 @@ import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop
 import { createFakeCopilotClient } from '../../src/shared/copilotClient.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { SessionStore } from '../../src/sessions/sessionStore.js';
-import { createPhaseHandler, getPhaseOrder } from '../../src/phases/phaseHandlers.js';
+import { createPhaseHandler } from '../../src/phases/phaseHandlers.js';
 import { backtrackSession } from '../../src/sessions/sessionManager.js';
-import type { SofiaEvent } from '../../src/shared/events.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

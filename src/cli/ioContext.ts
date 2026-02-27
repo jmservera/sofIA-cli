@@ -5,6 +5,7 @@
  * implementation for the ConversationLoop based on CLI options.
  */
 import * as readline from 'node:readline';
+
 import type { LoopIO, DecisionGateResult, DecisionGateChoice } from '../loop/conversationLoop.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
@@ -113,6 +114,6 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
 /**
  * Close any open readline interfaces.
  */
-export function closeIO(io: LoopIO): void {
+export function closeIO(_io: LoopIO): void {
   // The IO might hold a readline interface — no-op if not applicable
 }

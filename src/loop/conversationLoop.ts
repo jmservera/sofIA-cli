@@ -13,10 +13,10 @@
  */
 import type { ConversationSession, CopilotClient, CopilotMessage, SessionOptions } from '../shared/copilotClient.js';
 import type { SofiaEvent } from '../shared/events.js';
-import { createPhaseChangedEvent, createActivityEvent, createErrorEvent } from '../shared/events.js';
+import { createActivityEvent } from '../shared/events.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
-import { renderMarkdown } from '../shared/markdownRenderer.js';
+
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

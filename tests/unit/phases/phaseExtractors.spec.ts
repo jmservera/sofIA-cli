@@ -4,7 +4,8 @@
  * Tests for extractResult() implementations that parse structured JSON
  * blocks from LLM responses and map them to WorkshopSession fields.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+
 import {
   extractJsonBlock,
   extractBusinessContext,
@@ -17,7 +18,7 @@ import {
 } from '../../../src/phases/phaseExtractors.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
-function emptySession(): WorkshopSession {
+function _emptySession(): WorkshopSession {
   return {
     sessionId: 'test-1',
     schemaVersion: '1.0.0',

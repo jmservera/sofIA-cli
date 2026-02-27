@@ -29,13 +29,13 @@ function createDiscoverHandler(): PhaseHandler {
   return {
     phase: 'Discover',
 
-    buildSystemPrompt(session: WorkshopSession): string {
+    buildSystemPrompt(_session: WorkshopSession): string {
       // Lazy-loaded in run() but we need sync return.
       // The prompt is pre-loaded before the loop starts.
       return cachedPrompt ?? 'You are an AI Discovery Workshop facilitator helping with the Discover phase.';
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 
@@ -78,7 +78,7 @@ function createIdeateHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return (cachedPrompt ?? 'You are facilitating the Ideate phase.') + context;
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 
@@ -121,7 +121,7 @@ function createDesignHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return (cachedPrompt ?? 'You are facilitating the Design phase.') + ideasCtx;
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 
@@ -158,7 +158,7 @@ function createSelectHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return (cachedPrompt ?? 'You are facilitating the Select phase.') + evalCtx;
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 
@@ -195,7 +195,7 @@ function createPlanHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return (cachedPrompt ?? 'You are facilitating the Plan phase.') + selCtx;
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 
@@ -232,7 +232,7 @@ function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
       return (cachedPrompt ?? 'You are facilitating the Develop boundary phase.') + planCtx;
     },
 
-    getReferences(session: WorkshopSession): string[] {
+    getReferences(_session: WorkshopSession): string[] {
       return cachedRefs ?? [];
     },
 

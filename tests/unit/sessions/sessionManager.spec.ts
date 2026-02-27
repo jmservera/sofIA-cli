@@ -8,7 +8,8 @@
  * - Cannot backtrack to a phase after the current one
  */
 import { describe, it, expect } from 'vitest';
-import { backtrackSession, type BacktrackResult } from '../../../src/sessions/sessionManager.js';
+
+import { backtrackSession } from '../../../src/sessions/sessionManager.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
 function createPopulatedSession(): WorkshopSession {

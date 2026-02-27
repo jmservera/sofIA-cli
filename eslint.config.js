@@ -15,6 +15,14 @@ export default tseslint.config(
       import: pluginImport,
     },
     rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       'import/order': [
         'warn',
         {

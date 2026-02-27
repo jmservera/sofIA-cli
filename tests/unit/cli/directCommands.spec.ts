@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Readable, Writable } from 'node:stream';
 
 import type { LoopIO, DecisionGateResult } from '../../../src/loop/conversationLoop.js';
 import { createFakeCopilotClient } from '../../../src/shared/copilotClient.js';
@@ -20,7 +21,6 @@ import type { WorkshopSession, PhaseValue } from '../../../src/shared/schemas/se
 import { SessionStore } from '../../../src/sessions/sessionStore.js';
 import { runDirectCommand } from '../../../src/cli/directCommands.js';
 import { createLoopIO } from '../../../src/cli/ioContext.js';
-import { Readable, Writable } from 'node:stream';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -222,7 +222,7 @@ describe('directCommands JSON output', () => {
 describe('ioContext', () => {
   it('creates TTY IO when input stream has isTTY', () => {
     const input = new Readable({ read() {} }) as NodeJS.ReadableStream & { isTTY?: boolean };
-    (input as any).isTTY = true;
+    (input as NodeJS.ReadableStream & { isTTY?: boolean }).isTTY = true;
     const output = new Writable({ write(_c, _e, cb) { cb(); } });
 
     const io = createLoopIO({ input, output });
@@ -232,7 +232,7 @@ describe('ioContext', () => {
 
   it('creates non-TTY IO when nonInteractive is true', () => {
     const input = new Readable({ read() {} }) as NodeJS.ReadableStream & { isTTY?: boolean };
-    (input as any).isTTY = true;
+    (input as NodeJS.ReadableStream & { isTTY?: boolean }).isTTY = true;
     const output = new Writable({ write(_c, _e, cb) { cb(); } });
 
     const io = createLoopIO({ input, output, nonInteractive: true });

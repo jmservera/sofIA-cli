@@ -16,15 +16,12 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { ConversationLoop } from '../../src/loop/conversationLoop.js';
 import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop.js';
 import { createFakeCopilotClient } from '../../src/shared/copilotClient.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { SessionStore } from '../../src/sessions/sessionStore.js';
-import { createPhaseHandler, getPhaseOrder } from '../../src/phases/phaseHandlers.js';
 import {
   runDirectCommand,
-  type DirectCommandOptions,
 } from '../../src/cli/directCommands.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

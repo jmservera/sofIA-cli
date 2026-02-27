@@ -8,6 +8,7 @@
  * - Caches the dataset after first load
  */
 import { describe, it, expect } from 'vitest';
+
 import { loadCardsDataset, getCardsByCategory, searchCards } from '../../../src/shared/data/cardsLoader.js';
 
 describe('cardsLoader', () => {

@@ -5,6 +5,7 @@
  * that reference documents are correctly mapped to phases.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import {
   buildSystemPrompt,
   getPhaseReferences,

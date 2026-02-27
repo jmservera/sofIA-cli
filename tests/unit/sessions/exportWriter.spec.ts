@@ -12,7 +12,7 @@ import { mkdtemp, rm, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { exportSession, type ExportResult } from '../../../src/sessions/exportWriter.js';
+import { exportSession } from '../../../src/sessions/exportWriter.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
 function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSession {

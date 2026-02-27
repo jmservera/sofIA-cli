@@ -8,7 +8,8 @@
  */
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { WorkshopSession, PhaseValue } from '../shared/schemas/session.js';
+
+import type { WorkshopSession } from '../shared/schemas/session.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

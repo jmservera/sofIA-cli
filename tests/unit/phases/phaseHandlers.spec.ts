@@ -8,6 +8,7 @@
  * - Provides extractResult and isComplete logic
  */
 import { describe, it, expect } from 'vitest';
+
 import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../../../src/phases/phaseHandlers.js';
 import { backtrackSession } from '../../../src/sessions/sessionManager.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
