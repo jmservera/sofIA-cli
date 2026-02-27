@@ -207,6 +207,15 @@ WorkIQ requires Microsoft 365 tenant access and admin consent. On first use:
 2. Sign in when prompted - admin consent may be required
 3. See [WorkIQ Admin Instructions](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md) for tenant setup
 
+## Terminal Command Safety
+
+The CLI solution may hang or get stuck during development (e.g., interactive prompts waiting for input, infinite loops, watch modes). To avoid blocking the agent:
+
+- **Always use a timeout** when running `npm test`, `npm run build`, `npm run dev`, or any command that could hang. Use the `timeout` parameter on terminal calls (e.g., 30000ms for tests, 60000ms for builds).
+- **Never run `npm run dev` without a timeout** — it starts a watch process that never exits on its own.
+- **Prefer targeted test runs** (`npm test -- <specific-file>`) over full suite runs when iterating on a single module.
+- **If a command hangs**, kill it and investigate the root cause rather than waiting indefinitely.
+
 ## Security Considerations
 
 - Never log or expose user tokens
