@@ -1,0 +1,224 @@
+/**
+ * `sofia dev` command handler.
+ *
+ * Runs the Develop phase for a completed workshop session:
+ * - Validates the session has selection + plan
+ * - Creates a RalphLoop and runs it
+ * - Displays results (repo URL/path, final status)
+ *
+ * Contract: specs/002-poc-generation/tasks.md (T019, T029, T038)
+ */
+import { join } from 'node:path';
+
+import type { WorkshopSession } from '../shared/schemas/session.js';
+import { createNoOpSpinner } from '../shared/activitySpinner.js';
+import { RalphLoop } from '../develop/ralphLoop.js';
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface DevelopCommandOptions {
+  /** Session ID to develop */
+  session?: string;
+  /** Maximum Ralph loop iterations */
+  maxIterations?: number;
+  /** Output directory for the PoC */
+  output?: string;
+  /** Force overwrite of existing output directory */
+  force?: boolean;
+  /** Emit machine-readable JSON only */
+  json?: boolean;
+  /** Enable debug output */
+  debug?: boolean;
+}
+
+export interface DevelopCommandDeps {
+  store: {
+    load(sessionId: string): Promise<WorkshopSession | null>;
+    save(session: WorkshopSession): Promise<void>;
+    list(): Promise<string[]>;
+  };
+  io: import('../loop/conversationLoop.js').LoopIO;
+  client: import('../shared/copilotClient.js').CopilotClient;
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+
+/**
+ * Validate that a session is ready for the Develop phase.
+ *
+ * Returns null if valid, or an error message if not.
+ */
+export function validateSessionForDevelop(session: WorkshopSession): string | null {
+  if (!session.selection) {
+    return [
+      'Session is missing an idea selection.',
+      'Run the Select phase first: sofia workshop --session ' + session.sessionId,
+    ].join('\n');
+  }
+
+  if (!session.plan) {
+    return [
+      'Session is missing an implementation plan.',
+      'Run the Plan phase first: sofia workshop --session ' + session.sessionId,
+    ].join('\n');
+  }
+
+  return null;
+}
+
+// ── Command handler ───────────────────────────────────────────────────────────
+
+/**
+ * Main handler for the `sofia dev` command.
+ */
+export async function developCommand(
+  opts: DevelopCommandOptions,
+  deps: DevelopCommandDeps,
+): Promise<void> {
+  const { store, io, client } = deps;
+  const json = opts.json ?? false;
+
+  // ── Resolve session ──────────────────────────────────────────────────────
+  let sessionId = opts.session;
+
+  if (!sessionId) {
+    // Try to find the most recent session
+    const sessions = await store.list();
+    if (sessions.length === 0) {
+      const msg = 'No sessions found. Start a workshop first: sofia workshop';
+      if (json) {
+        process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+      } else {
+        io.writeActivity(msg);
+      }
+      process.exitCode = 1;
+      return;
+    }
+    sessionId = sessions[sessions.length - 1];
+    io.writeActivity(`Using most recent session: ${sessionId}`);
+  }
+
+  // ── Load session ─────────────────────────────────────────────────────────
+  const session = await store.load(sessionId);
+
+  if (!session) {
+    const msg = `Session not found: ${sessionId}`;
+    if (json) {
+      process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+    } else {
+      io.writeActivity(msg);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  // ── Validate session ─────────────────────────────────────────────────────
+  const validationError = validateSessionForDevelop(session);
+  if (validationError) {
+    if (json) {
+      process.stdout.write(JSON.stringify({ error: validationError }) + '\n');
+    } else {
+      process.stderr.write(`Error: ${validationError}\n`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  // ── Determine output directory ───────────────────────────────────────────
+  const outputDir = opts.output
+    ? join(process.cwd(), opts.output)
+    : join(process.cwd(), 'poc', sessionId);
+
+  // ── Create RalphLoop ─────────────────────────────────────────────────────
+  const spinner = createNoOpSpinner();
+
+  const ralph = new RalphLoop({
+    client,
+    io,
+    session,
+    spinner,
+    maxIterations: opts.maxIterations ?? 10,
+    outputDir,
+    onSessionUpdate: async (updated) => {
+      await store.save(updated);
+    },
+    onEvent: (event) => {
+      if (opts.debug) {
+        io.writeActivity(`[event] ${event.type}: ${JSON.stringify(event)}`);
+      }
+    },
+  });
+
+  // ── Run the loop ─────────────────────────────────────────────────────────
+  if (!json) {
+    io.writeActivity(
+      `Starting PoC generation for session: ${sessionId}\n` +
+        `Output: ${outputDir}\n` +
+        `Max iterations: ${opts.maxIterations ?? 10}`,
+    );
+  }
+
+  let result;
+  try {
+    result = await ralph.run();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (json) {
+      process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+    } else {
+      process.stderr.write(`Error: ${msg}\n`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  // ── Display results ──────────────────────────────────────────────────────
+  if (json) {
+    const output = {
+      sessionId,
+      finalStatus: result.finalStatus,
+      terminationReason: result.terminationReason,
+      iterationsCompleted: result.iterationsCompleted,
+      repoSource: result.session.poc?.repoSource ?? 'local',
+      repoUrl: result.session.poc?.repoUrl,
+      repoPath: result.session.poc?.repoPath ?? outputDir,
+      outputDir: result.outputDir,
+    };
+    process.stdout.write(JSON.stringify(output) + '\n');
+  } else {
+    const repoInfo =
+      result.session.poc?.repoUrl
+        ? `Repository URL: ${result.session.poc.repoUrl}`
+        : `Repository Path: ${result.session.poc?.repoPath ?? outputDir}`;
+
+    io.write(
+      [
+        '',
+        `PoC Generation Complete`,
+        `──────────────────────`,
+        `Status: ${result.finalStatus}`,
+        `Reason: ${result.terminationReason}`,
+        `Iterations: ${result.iterationsCompleted}`,
+        repoInfo,
+        '',
+      ].join('\n'),
+    );
+
+    if (result.finalStatus !== 'success') {
+      io.write(
+        [
+          'Recovery options:',
+          `  • Resume: sofia dev --session ${sessionId}`,
+          `  • More iterations: sofia dev --session ${sessionId} --max-iterations 20`,
+          `  • Start fresh: sofia dev --session ${sessionId} --force`,
+          '',
+        ].join('\n'),
+      );
+    }
+  }
+
+  // Exit code based on final status
+  if (result.finalStatus === 'failed') {
+    process.exitCode = 1;
+  }
+}

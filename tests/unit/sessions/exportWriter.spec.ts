@@ -209,3 +209,225 @@ describe('exportWriter', () => {
     }
   });
 });
+
+// ── T010: Tests for enriched generateDevelopMarkdown (Feature 002) ───────────
+
+describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-develop-md-test-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  function createSessionWithPoc(overrides?: Partial<WorkshopSession>): WorkshopSession {
+    const base = createFullSession();
+    return {
+      ...base,
+      poc: {
+        repoSource: 'local',
+        repoPath: './poc/test-session',
+        iterations: [],
+        ...((overrides?.poc ?? {}) as object),
+      },
+      ...overrides,
+    };
+  }
+
+  it('generates develop.md when poc is present', async () => {
+    const session = createSessionWithPoc();
+    const result = await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).toContain('develop.md');
+    const fileEntry = result.files.find(f => f.path === 'develop.md');
+    expect(fileEntry).toBeDefined();
+  });
+
+  it('does not generate develop.md when poc is absent', async () => {
+    const session = createFullSession();
+    // no poc field
+    await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).not.toContain('develop.md');
+  });
+
+  it('includes repo path when repoSource is local', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        repoPath: './poc/test-session-001',
+        iterations: [],
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('./poc/test-session-001');
+    expect(content).toContain('local');
+  });
+
+  it('includes repo URL when repoSource is github-mcp', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'github-mcp',
+        repoUrl: 'https://github.com/acme/poc-route-optimizer',
+        iterations: [],
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('https://github.com/acme/poc-route-optimizer');
+    expect(content).toContain('github-mcp');
+  });
+
+  it('includes tech stack summary', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [],
+        techStack: {
+          language: 'TypeScript',
+          framework: 'Express',
+          testRunner: 'npm test',
+          buildCommand: 'npm run build',
+          runtime: 'Node.js 20',
+        },
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('TypeScript');
+    expect(content).toContain('Express');
+    expect(content).toContain('Node.js 20');
+  });
+
+  it('includes iteration timeline with outcomes', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: '2026-01-15T10:00:00Z',
+            endedAt: '2026-01-15T10:01:00Z',
+            outcome: 'scaffold',
+            filesChanged: ['package.json', 'src/index.ts'],
+            changesSummary: 'Initial scaffold generated',
+          },
+          {
+            iteration: 2,
+            startedAt: '2026-01-15T10:01:00Z',
+            endedAt: '2026-01-15T10:02:00Z',
+            outcome: 'tests-passing',
+            filesChanged: ['src/optimizer.ts'],
+            testResults: {
+              passed: 3,
+              failed: 0,
+              skipped: 0,
+              total: 3,
+              durationMs: 450,
+              failures: [],
+            },
+          },
+        ],
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('Iteration 1');
+    expect(content).toContain('scaffold');
+    expect(content).toContain('Iteration 2');
+    expect(content).toContain('tests-passing');
+    expect(content).toContain('package.json');
+    expect(content).toContain('3 passed');
+  });
+
+  it('includes final test results', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [],
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        totalDurationMs: 60000,
+        finalTestResults: {
+          passed: 5,
+          failed: 0,
+          skipped: 1,
+          total: 6,
+          durationMs: 800,
+          failures: [],
+        },
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('success');
+    expect(content).toContain('tests-passing');
+    expect(content).toContain('5');  // passed count
+    expect(content).toContain('60.0s'); // total duration
+  });
+
+  it('includes failure details in final test results', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [],
+        finalStatus: 'failed',
+        terminationReason: 'max-iterations',
+        finalTestResults: {
+          passed: 0,
+          failed: 1,
+          skipped: 0,
+          total: 1,
+          durationMs: 500,
+          failures: [
+            { testName: 'route optimizer test', message: 'Expected 3 but got 5' },
+          ],
+        },
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('route optimizer test');
+    expect(content).toContain('Expected 3 but got 5');
+  });
+
+  it('includes termination reason', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [],
+        finalStatus: 'partial',
+        terminationReason: 'max-iterations',
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('partial');
+    expect(content).toContain('max-iterations');
+  });
+
+  it('handles error iteration with errorMessage', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 2,
+            startedAt: '2026-01-15T10:01:00Z',
+            outcome: 'error',
+            filesChanged: [],
+            errorMessage: 'npm install failed: ENOTFOUND registry.npmjs.org',
+          },
+        ],
+      },
+    });
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
+    expect(content).toContain('error');
+    expect(content).toContain('npm install failed');
+  });
+});

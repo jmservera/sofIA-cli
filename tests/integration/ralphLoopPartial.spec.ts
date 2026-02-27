@@ -1,0 +1,305 @@
+/**
+ * T024: Integration test for partial/failed outcomes.
+ *
+ * Tests:
+ * - max-iterations with some tests passing (partial status)
+ * - max-iterations with no tests passing (failed status)
+ * - LLM error mid-loop (error outcome on iteration, loop continues)
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
+
+import { RalphLoop } from '../../src/develop/ralphLoop.js';
+import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
+import { TestRunner } from '../../src/develop/testRunner.js';
+import type { WorkshopSession } from '../../src/shared/schemas/session.js';
+import type { LoopIO } from '../../src/loop/conversationLoop.js';
+import type { CopilotClient } from '../../src/shared/copilotClient.js';
+import type { TestResults } from '../../src/shared/schemas/session.js';
+
+// Mock npm install
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    spawn: vi.fn((cmd: string, args: string[]) => {
+      if (cmd === 'npm' && args.includes('install')) {
+        return {
+          stdout: { on: vi.fn() },
+          stderr: { on: vi.fn() },
+          on: vi.fn((event: string, cb: (code: number) => void) => {
+            if (event === 'close') cb(0);
+          }),
+          kill: vi.fn(),
+          killed: false,
+        };
+      }
+      return actual.spawn(cmd, args);
+    }),
+  };
+});
+
+const require = createRequire(import.meta.url);
+const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+
+function makeIo(): LoopIO {
+  return {
+    write: vi.fn(),
+    writeActivity: vi.fn(),
+    writeToolSummary: vi.fn(),
+    readInput: vi.fn().mockResolvedValue(null),
+    showDecisionGate: vi.fn(),
+    isJsonMode: false,
+    isTTY: false,
+  };
+}
+
+function makeFakeScaffolder(outputDir: string): PocScaffolder {
+  return {
+    scaffold: vi.fn().mockImplementation(async () => {
+      const { writeFile, mkdir } = await import('node:fs/promises');
+      await mkdir(join(outputDir, 'src'), { recursive: true });
+      await writeFile(join(outputDir, 'package.json'), JSON.stringify({
+        name: 'test-poc',
+        scripts: { test: 'vitest run' },
+        dependencies: {},
+        devDependencies: {},
+      }), 'utf-8');
+      await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
+      return {
+        createdFiles: ['package.json', 'src/index.ts'],
+        skippedFiles: [],
+        context: {
+          projectName: 'test-poc',
+          ideaTitle: 'Test',
+          ideaDescription: 'Test',
+          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
+          planSummary: 'Test',
+          sessionId: fixtureSession.sessionId,
+          outputDir,
+        },
+      };
+    }),
+    getTemplateFiles: () => [],
+  } as unknown as PocScaffolder;
+}
+
+function makeClient(): CopilotClient {
+  return {
+    createSession: vi.fn().mockResolvedValue({
+      send: vi.fn().mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            type: 'TextDelta',
+            text: '```typescript file=src/index.ts\nexport function main() { return 1; }\n```\n',
+            timestamp: '',
+          };
+        },
+      }),
+      getHistory: () => [],
+    }),
+  };
+}
+
+describe('RalphLoop integration — partial/failed outcomes', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-ralph-partial-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+    vi.clearAllMocks();
+  });
+
+  it('sets finalStatus=partial when some tests pass at max-iterations', async () => {
+    const io = makeIo();
+    const client = makeClient();
+    const scaffolder = makeFakeScaffolder(tmpDir);
+
+    const testRunner: TestRunner = {
+      run: vi.fn().mockResolvedValue({
+        passed: 1,
+        failed: 1,
+        skipped: 0,
+        total: 2,
+        durationMs: 400,
+        failures: [{ testName: 'suite > test B', message: 'fails always' }],
+        rawOutput: '',
+      } satisfies TestResults),
+    } as unknown as TestRunner;
+
+    const ralph = new RalphLoop({
+      client,
+      io,
+      session: fixtureSession,
+      outputDir: tmpDir,
+      maxIterations: 2,
+      testRunner,
+      scaffolder,
+    });
+
+    const result = await ralph.run();
+
+    expect(result.terminationReason).toBe('max-iterations');
+    expect(result.finalStatus).toBe('partial');
+    expect(result.session.poc?.terminationReason).toBe('max-iterations');
+    expect(result.session.poc?.finalStatus).toBe('partial');
+  });
+
+  it('sets finalStatus=failed when no tests pass at max-iterations', async () => {
+    const io = makeIo();
+    const client = makeClient();
+    const scaffolder = makeFakeScaffolder(tmpDir);
+
+    const testRunner: TestRunner = {
+      run: vi.fn().mockResolvedValue({
+        passed: 0,
+        failed: 2,
+        skipped: 0,
+        total: 2,
+        durationMs: 400,
+        failures: [
+          { testName: 'test A', message: 'always fails' },
+          { testName: 'test B', message: 'always fails too' },
+        ],
+        rawOutput: '',
+      } satisfies TestResults),
+    } as unknown as TestRunner;
+
+    const ralph = new RalphLoop({
+      client,
+      io,
+      session: fixtureSession,
+      outputDir: tmpDir,
+      maxIterations: 2,
+      testRunner,
+      scaffolder,
+    });
+
+    const result = await ralph.run();
+
+    expect(result.terminationReason).toBe('max-iterations');
+    expect(result.finalStatus).toBe('failed');
+  });
+
+  it('records error iteration when LLM returns empty response, continues loop', async () => {
+    const io = makeIo();
+    const scaffolder = makeFakeScaffolder(tmpDir);
+
+    let testCallCount = 0;
+    const testRunner: TestRunner = {
+      run: vi.fn().mockImplementation(async (): Promise<TestResults> => {
+        testCallCount++;
+        if (testCallCount >= 2) {
+          // After error iteration, tests pass
+          return {
+            passed: 1,
+            failed: 0,
+            skipped: 0,
+            total: 1,
+            durationMs: 300,
+            failures: [],
+            rawOutput: '',
+          };
+        }
+        return {
+          passed: 0,
+          failed: 1,
+          skipped: 0,
+          total: 1,
+          durationMs: 400,
+          failures: [{ testName: 'test A', message: 'fails' }],
+          rawOutput: '',
+        };
+      }),
+    } as unknown as TestRunner;
+
+    let llmCallCount = 0;
+    const client: CopilotClient = {
+      createSession: vi.fn().mockResolvedValue({
+        send: vi.fn().mockImplementation(() => {
+          llmCallCount++;
+          if (llmCallCount === 1) {
+            // First LLM call: returns empty response (simulating error)
+            return {
+              async *[Symbol.asyncIterator]() {
+                // Empty - no TextDelta events
+              },
+            };
+          }
+          // Subsequent calls: return a fix
+          return {
+            async *[Symbol.asyncIterator]() {
+              yield {
+                type: 'TextDelta',
+                text: '```typescript file=src/index.ts\nexport function main() { return 1; }\n```\n',
+                timestamp: '',
+              };
+            },
+          };
+        }),
+        getHistory: () => [],
+      }),
+    };
+
+    const ralph = new RalphLoop({
+      client,
+      io,
+      session: fixtureSession,
+      outputDir: tmpDir,
+      maxIterations: 5,
+      testRunner,
+      scaffolder,
+    });
+
+    const result = await ralph.run();
+
+    // Loop should continue after LLM error and eventually succeed or hit max
+    expect(['success', 'failed', 'partial', 'max-iterations']).toContain(result.finalStatus);
+
+    // Check that error iterations are recorded
+    const poc = result.session.poc!;
+    const hasErrorIter = poc.iterations.some((i) => i.outcome === 'error');
+    // With empty LLM response, we should have an error iteration
+    expect(hasErrorIter).toBe(true);
+  });
+
+  it('records terminationReason in session poc state', async () => {
+    const io = makeIo();
+    const client = makeClient();
+    const scaffolder = makeFakeScaffolder(tmpDir);
+
+    const testRunner: TestRunner = {
+      run: vi.fn().mockResolvedValue({
+        passed: 0,
+        failed: 1,
+        skipped: 0,
+        total: 1,
+        durationMs: 400,
+        failures: [{ testName: 'test', message: 'fails' }],
+        rawOutput: '',
+      } satisfies TestResults),
+    } as unknown as TestRunner;
+
+    const ralph = new RalphLoop({
+      client,
+      io,
+      session: fixtureSession,
+      outputDir: tmpDir,
+      maxIterations: 2,
+      testRunner,
+      scaffolder,
+    });
+
+    const result = await ralph.run();
+
+    expect(result.session.poc?.terminationReason).toBeDefined();
+    expect(result.session.poc?.finalStatus).toBeDefined();
+    expect(result.session.poc?.iterations.length).toBeGreaterThan(0);
+  });
+});

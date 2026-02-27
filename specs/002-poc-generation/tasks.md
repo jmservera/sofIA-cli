@@ -19,10 +19,10 @@
 
 **Purpose**: Create the `src/develop/` module directory, develop prompt, test fixture session, and any new dependencies.
 
-- [ ] T001 Create `src/develop/` directory structure with placeholder barrel file `src/develop/index.ts`
-- [ ] T002 [P] Create Develop phase system prompt in `src/prompts/develop.md` (code-generation instructions, fenced-code-block output format, iteration context template, conditional MCP tool-use instructions: use Context7 for up-to-date library docs when generating code with external dependencies, use web.search when stuck on implementation patterns, use Microsoft Docs/Azure MCP when plan references Azure services)
-- [ ] T003 [P] Create a fixture session JSON file in `tests/fixtures/completedSession.json` with populated `selection`, `plan`, and `businessContext` fields for use by all Develop tests
-- [ ] T004 [P] Add any new devDependencies needed for test runner child_process spawning (none expected — verify `child_process` and `fs/promises` available without extra packages)
+- [x] T001 Create `src/develop/` directory structure with placeholder barrel file `src/develop/index.ts`
+- [x] T002 [P] Create Develop phase system prompt in `src/prompts/develop.md` (code-generation instructions, fenced-code-block output format, iteration context template, conditional MCP tool-use instructions: use Context7 for up-to-date library docs when generating code with external dependencies, use web.search when stuck on implementation patterns, use Microsoft Docs/Azure MCP when plan references Azure services)
+- [x] T003 [P] Create a fixture session JSON file in `tests/fixtures/completedSession.json` with populated `selection`, `plan`, and `businessContext` fields for use by all Develop tests
+- [x] T004 [P] Add any new devDependencies needed for test runner child_process spawning (none expected — verify `child_process` and `fs/promises` available without extra packages)
 
 ---
 
@@ -32,12 +32,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Extend `pocIterationSchema` in `src/shared/schemas/session.ts` with new fields: `outcome` (enum: tests-passing | tests-failing | error | scaffold), `filesChanged` (string[]), `testResults` (optional TestResults), `errorMessage` (optional string), `llmPromptContext` (optional string); mark old `testsRun` field as deprecated (keep as `.optional()` for backward compatibility with existing session files)
-- [ ] T006 Extend `pocDevelopmentStateSchema` in `src/shared/schemas/session.ts` with new fields: `repoUrl` (optional string), `repoSource` (enum: local | github-mcp), `techStack` (optional TechStack), `terminationReason` (optional enum: tests-passing | max-iterations | user-stopped | error), `totalDurationMs` (optional number), `finalTestResults` (optional TestResults); extend `finalStatus` enum with `"partial"`
-- [ ] T007 [P] Add new Zod schemas for `TechStack`, `TestResults`, `TestFailure` in `src/shared/schemas/session.ts` per data-model.md entities
-- [ ] T008 [P] Add unit tests for the new/extended schemas (validation rules, enum constraints, total===passed+failed+skipped) in `tests/unit/schemas/pocSchemas.spec.ts`
-- [ ] T009 Update `generateDevelopMarkdown()` in `src/sessions/exportWriter.ts` to render: repo location (path or URL), repoSource, techStack summary, iteration timeline with outcomes, final test results, termination reason
-- [ ] T010 [P] Add unit tests for enriched `generateDevelopMarkdown()` in `tests/unit/sessions/exportWriter.spec.ts`
+- [x] T005 Extend `pocIterationSchema` in `src/shared/schemas/session.ts` with new fields: `outcome` (enum: tests-passing | tests-failing | error | scaffold), `filesChanged` (string[]), `testResults` (optional TestResults), `errorMessage` (optional string), `llmPromptContext` (optional string); mark old `testsRun` field as deprecated (keep as `.optional()` for backward compatibility with existing session files)
+- [x] T006 Extend `pocDevelopmentStateSchema` in `src/shared/schemas/session.ts` with new fields: `repoUrl` (optional string), `repoSource` (enum: local | github-mcp), `techStack` (optional TechStack), `terminationReason` (optional enum: tests-passing | max-iterations | user-stopped | error), `totalDurationMs` (optional number), `finalTestResults` (optional TestResults); extend `finalStatus` enum with `"partial"`
+- [x] T007 [P] Add new Zod schemas for `TechStack`, `TestResults`, `TestFailure` in `src/shared/schemas/session.ts` per data-model.md entities
+- [x] T008 [P] Add unit tests for the new/extended schemas (validation rules, enum constraints, total===passed+failed+skipped) in `tests/unit/schemas/pocSchemas.spec.ts`
+- [x] T009 Update `generateDevelopMarkdown()` in `src/sessions/exportWriter.ts` to render: repo location (path or URL), repoSource, techStack summary, iteration timeline with outcomes, final test results, termination reason
+- [x] T010 [P] Add unit tests for enriched `generateDevelopMarkdown()` in `tests/unit/sessions/exportWriter.spec.ts`
 
 **Checkpoint**: Schemas extended, export writer enriched — user story implementation can now begin.
 
@@ -51,22 +51,22 @@
 
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
-- [ ] T011 [P] [US1] Add unit tests for `PocScaffolder` in `tests/unit/develop/pocScaffolder.spec.ts`: verify scaffold creates all required files (.gitignore, README.md, package.json, tsconfig.json, src/index.ts, tests/*.test.ts, .sofia-metadata.json); verify skip-if-exists behavior; verify ScaffoldContext population from session
-- [ ] T012 [P] [US1] Add unit tests for `TestRunner` in `tests/unit/develop/testRunner.spec.ts`: verify spawns `npm test` with `--reporter=json`, parses JSON output into `TestResults` schema, handles timeout (60s), handles non-zero exit code, truncates `rawOutput` to 2000 chars
-- [ ] T013 [P] [US1] Add unit tests for `CodeGenerator` in `tests/unit/develop/codeGenerator.spec.ts`: verify parses fenced code blocks with `file=path` from LLM response, writes files to outputDir, handles empty response gracefully, builds iteration prompt with test failures context
-- [ ] T014 [P] [US1] Add unit tests for `developCommand` in `tests/unit/cli/developCommand.spec.ts`: verify session validation (rejects sessions without selection/plan), verify `--session`, `--max-iterations`, `--output` option parsing, verify error messages for invalid sessions
-- [ ] T015 [P] [US1] Add integration test for scaffold-only flow in `tests/integration/pocScaffold.spec.ts`: run scaffolder with fixture session → verify output directory structure matches poc-output contract → verify package.json has test script → verify .sofia-metadata.json links to session
-- [ ] T047 [P] [US1] Add unit tests for `McpContextEnricher` in `tests/unit/develop/mcpContextEnricher.spec.ts`: verify queries Context7 for library docs when dependencies listed in plan; verify queries Microsoft Docs/Azure MCP when plan mentions Azure services; verify calls web.search when `stuckIterations > 0`; verify falls back gracefully (returns empty context) when MCP services unavailable; verify returns structured context string suitable for prompt injection
+- [x] T011 [P] [US1] Add unit tests for `PocScaffolder` in `tests/unit/develop/pocScaffolder.spec.ts`: verify scaffold creates all required files (.gitignore, README.md, package.json, tsconfig.json, src/index.ts, tests/*.test.ts, .sofia-metadata.json); verify skip-if-exists behavior; verify ScaffoldContext population from session
+- [x] T012 [P] [US1] Add unit tests for `TestRunner` in `tests/unit/develop/testRunner.spec.ts`: verify spawns `npm test` with `--reporter=json`, parses JSON output into `TestResults` schema, handles timeout (60s), handles non-zero exit code, truncates `rawOutput` to 2000 chars
+- [x] T013 [P] [US1] Add unit tests for `CodeGenerator` in `tests/unit/develop/codeGenerator.spec.ts`: verify parses fenced code blocks with `file=path` from LLM response, writes files to outputDir, handles empty response gracefully, builds iteration prompt with test failures context
+- [x] T014 [P] [US1] Add unit tests for `developCommand` in `tests/unit/cli/developCommand.spec.ts`: verify session validation (rejects sessions without selection/plan), verify `--session`, `--max-iterations`, `--output` option parsing, verify error messages for invalid sessions
+- [x] T015 [P] [US1] Add integration test for scaffold-only flow in `tests/integration/pocScaffold.spec.ts`: run scaffolder with fixture session → verify output directory structure matches poc-output contract → verify package.json has test script → verify .sofia-metadata.json links to session
+- [x] T047 [P] [US1] Add unit tests for `McpContextEnricher` in `tests/unit/develop/mcpContextEnricher.spec.ts`: verify queries Context7 for library docs when dependencies listed in plan; verify queries Microsoft Docs/Azure MCP when plan mentions Azure services; verify calls web.search when `stuckIterations > 0`; verify falls back gracefully (returns empty context) when MCP services unavailable; verify returns structured context string suitable for prompt injection
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement `PocScaffolder` class in `src/develop/pocScaffolder.ts`: accepts `ScaffoldContext`, generates files from `node-ts-vitest` template, respects `skipIfExists`, creates directory structure, returns list of created files
-- [ ] T017 [US1] Implement `TestRunner` class in `src/develop/testRunner.ts`: spawns `npm test -- --reporter=json` via `child_process.spawn` in outputDir, parses Vitest JSON reporter output into `TestResults`, enforces 60s timeout, truncates rawOutput
-- [ ] T018 [US1] Implement `CodeGenerator` class in `src/develop/codeGenerator.ts`: builds iteration prompt per ralph-loop contract template, parses LLM response for fenced code blocks with `file=` paths, writes parsed files to outputDir, detects new dependencies in package.json
-- [ ] T048 [US1] Implement `McpContextEnricher` in `src/develop/mcpContextEnricher.ts`: accepts plan/techStack/iteration context; conditionally queries Context7 (library docs for PoC dependencies, gated by `McpManager.isAvailable('context7')`), Microsoft Docs/Azure MCP (when plan references Azure services, gated by `McpManager.isAvailable('azure')`), web.search (when stuck iterations detected, gated by `isWebSearchConfigured()`); returns enriched context strings for prompt injection; graceful degradation when services unavailable
-- [ ] T019 [US1] Implement `developCommand` handler in `src/cli/developCommand.ts`: parses `--session <id>`, `--max-iterations <n>`, `--output <dir>`, `--force` options; validates session has `selection` and `plan`; fails fast with guidance if missing; detects existing outputDir and warns (default: resume from last iteration; `--force`: overwrite and start fresh); wires to RalphLoop (Phase 4)
-- [ ] T020 [US1] Register `dev` command in `src/cli/index.ts` as a subcommand pointing to `developCommand` handler
-- [ ] T021 [US1] Prepare `createDevelopHandler()` in `src/phases/phaseHandlers.ts` as a stub that accepts RalphLoop integration (actual wiring completed in T029, Phase 4); keep `develop-boundary.md` prompt for backward compat
+- [x] T016 [US1] Implement `PocScaffolder` class in `src/develop/pocScaffolder.ts`: accepts `ScaffoldContext`, generates files from `node-ts-vitest` template, respects `skipIfExists`, creates directory structure, returns list of created files
+- [x] T017 [US1] Implement `TestRunner` class in `src/develop/testRunner.ts`: spawns `npm test -- --reporter=json` via `child_process.spawn` in outputDir, parses Vitest JSON reporter output into `TestResults`, enforces 60s timeout, truncates rawOutput
+- [x] T018 [US1] Implement `CodeGenerator` class in `src/develop/codeGenerator.ts`: builds iteration prompt per ralph-loop contract template, parses LLM response for fenced code blocks with `file=` paths, writes parsed files to outputDir, detects new dependencies in package.json
+- [x] T048 [US1] Implement `McpContextEnricher` in `src/develop/mcpContextEnricher.ts`: accepts plan/techStack/iteration context; conditionally queries Context7 (library docs for PoC dependencies, gated by `McpManager.isAvailable('context7')`), Microsoft Docs/Azure MCP (when plan references Azure services, gated by `McpManager.isAvailable('azure')`), web.search (when stuck iterations detected, gated by `isWebSearchConfigured()`); returns enriched context strings for prompt injection; graceful degradation when services unavailable
+- [x] T019 [US1] Implement `developCommand` handler in `src/cli/developCommand.ts`: parses `--session <id>`, `--max-iterations <n>`, `--output <dir>`, `--force` options; validates session has `selection` and `plan`; fails fast with guidance if missing; detects existing outputDir and warns (default: resume from last iteration; `--force`: overwrite and start fresh); wires to RalphLoop (Phase 4)
+- [x] T020 [US1] Register `dev` command in `src/cli/index.ts` as a subcommand pointing to `developCommand` handler
+- [x] T021 [US1] Prepare `createDevelopHandler()` in `src/phases/phaseHandlers.ts` as a stub that accepts RalphLoop integration (actual wiring completed in T029, Phase 4); keep `develop-boundary.md` prompt for backward compat
 
 **Checkpoint**: User Story 1 scaffolding works — `sofia dev --session <id>` creates a valid PoC project structure locally.
 
@@ -80,20 +80,20 @@
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T022 [P] [US2] Add unit tests for `RalphLoop` orchestrator in `tests/unit/develop/ralphLoop.spec.ts`: verify lifecycle (validate → scaffold → install → iterate); verify termination on tests-passing; verify termination on max-iterations; verify iteration count tracking; verify session persistence callback called after each iteration; verify Ctrl+C handling sets user-stopped
-- [ ] T023 [P] [US2] Add integration test for Ralph loop with fakes in `tests/integration/ralphLoopFlow.spec.ts`: use a fake CopilotClient and fake test runner; scaffold → fail tests → LLM generates fix → tests pass → loop terminates with `success`; verify at least one iteration where failing test guides a fix (SC-002-003)
-- [ ] T024 [P] [US2] Add integration test for partial/failed outcomes in `tests/integration/ralphLoopPartial.spec.ts`: test max-iterations with some tests passing (partial status); test max-iterations with no tests passing (failed status); test LLM error mid-loop (error outcome on iteration, loop continues)
+- [x] T022 [P] [US2] Add unit tests for `RalphLoop` orchestrator in `tests/unit/develop/ralphLoop.spec.ts`: verify lifecycle (validate → scaffold → install → iterate); verify termination on tests-passing; verify termination on max-iterations; verify iteration count tracking; verify session persistence callback called after each iteration; verify Ctrl+C handling sets user-stopped
+- [x] T023 [P] [US2] Add integration test for Ralph loop with fakes in `tests/integration/ralphLoopFlow.spec.ts`: use a fake CopilotClient and fake test runner; scaffold → fail tests → LLM generates fix → tests pass → loop terminates with `success`; verify at least one iteration where failing test guides a fix (SC-002-003)
+- [x] T024 [P] [US2] Add integration test for partial/failed outcomes in `tests/integration/ralphLoopPartial.spec.ts`: test max-iterations with some tests passing (partial status); test max-iterations with no tests passing (failed status); test LLM error mid-loop (error outcome on iteration, loop continues)
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement `RalphLoop` orchestrator in `src/develop/ralphLoop.ts`: accepts `RalphLoopOptions` per contract; lifecycle: validate session → scaffold (iteration 1) → npm install → iterate (2..max: run tests → check pass → build prompt → LLM turn → apply code → persist); returns `RalphLoopResult` with finalStatus and terminationReason
-- [ ] T026 [US2] Implement auto-completing `LoopIO` adapter for Ralph loop LLM turns in `src/develop/ralphLoop.ts`: creates `ConversationLoop` per iteration with `readInput: async () => null` (single-turn, no user input); passes iteration prompt as `initialMessage`
-- [ ] T027 [US2] Implement npm install step in `RalphLoop`: run `npm install` after scaffold; detect package.json dependency changes between iterations and re-run `npm install` if needed; on install failure after scaffold, terminate with `terminationReason: "error"` and clear error message; on install failure during iteration, set iteration `outcome: "error"` with `errorMessage`, log the npm error, and continue to next iteration (LLM may fix the dependency issue)
-- [ ] T028 [US2] Implement Ctrl+C / SIGINT handling in `RalphLoop`: on signal, set `terminationReason: "user-stopped"`, persist current session state, exit loop gracefully
-- [ ] T029 [US2] Wire `RalphLoop` into `developCommand` in `src/cli/developCommand.ts`: create `RalphLoopOptions` from CLI args and session; create `ActivitySpinner` for visual feedback; call `ralphLoop.run()` and display results
-- [ ] T030 [US2] Implement iteration event logging via `onEvent` callback: emit `SofiaEvent` for each iteration start, test results, code generation, and loop termination (D-005 auditability)
-- [ ] T031 [US2] Add `llmPromptContext` summary generation (truncated context of what was sent to LLM) in `CodeGenerator` for auditability — not full prompt, just key context (iteration number, failure count, files listed)
-- [ ] T049 [US2] Integrate `McpContextEnricher` into `RalphLoop` iteration cycle in `src/develop/ralphLoop.ts`: call enricher before CodeGenerator on each iteration to fetch relevant library docs (Context7) and architecture guidance (Azure MCP); pass enriched context into the iteration prompt; invoke web.search enrichment when 2+ consecutive stuck iterations detected (same failures repeating)
+- [x] T025 [US2] Implement `RalphLoop` orchestrator in `src/develop/ralphLoop.ts`: accepts `RalphLoopOptions` per contract; lifecycle: validate session → scaffold (iteration 1) → npm install → iterate (2..max: run tests → check pass → build prompt → LLM turn → apply code → persist); returns `RalphLoopResult` with finalStatus and terminationReason
+- [x] T026 [US2] Implement auto-completing `LoopIO` adapter for Ralph loop LLM turns in `src/develop/ralphLoop.ts`: creates `ConversationLoop` per iteration with `readInput: async () => null` (single-turn, no user input); passes iteration prompt as `initialMessage`
+- [x] T027 [US2] Implement npm install step in `RalphLoop`: run `npm install` after scaffold; detect package.json dependency changes between iterations and re-run `npm install` if needed; on install failure after scaffold, terminate with `terminationReason: "error"` and clear error message; on install failure during iteration, set iteration `outcome: "error"` with `errorMessage`, log the npm error, and continue to next iteration (LLM may fix the dependency issue)
+- [x] T028 [US2] Implement Ctrl+C / SIGINT handling in `RalphLoop`: on signal, set `terminationReason: "user-stopped"`, persist current session state, exit loop gracefully
+- [x] T029 [US2] Wire `RalphLoop` into `developCommand` in `src/cli/developCommand.ts`: create `RalphLoopOptions` from CLI args and session; create `ActivitySpinner` for visual feedback; call `ralphLoop.run()` and display results
+- [x] T030 [US2] Implement iteration event logging via `onEvent` callback: emit `SofiaEvent` for each iteration start, test results, code generation, and loop termination (D-005 auditability)
+- [x] T031 [US2] Add `llmPromptContext` summary generation (truncated context of what was sent to LLM) in `CodeGenerator` for auditability — not full prompt, just key context (iteration number, failure count, files listed)
+- [x] T049 [US2] Integrate `McpContextEnricher` into `RalphLoop` iteration cycle in `src/develop/ralphLoop.ts`: call enricher before CodeGenerator on each iteration to fetch relevant library docs (Context7) and architecture guidance (Azure MCP); pass enriched context into the iteration prompt; invoke web.search enrichment when 2+ consecutive stuck iterations detected (same failures repeating)
 
 **Checkpoint**: Full Ralph loop works end-to-end with fakes — scaffold, iterate, terminate. SC-002-003 validated.
 
@@ -107,16 +107,16 @@
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T032 [P] [US3] Add unit tests for `GitHubMcpAdapter` in `tests/unit/develop/githubMcpAdapter.spec.ts`: verify `isAvailable()` checks `McpManager.isAvailable('github')`; verify `createRepository()` calls MCP tool; verify `pushFiles()` commits and pushes; verify graceful fallback returns `{ available: false }` when MCP unavailable
-- [ ] T033 [P] [US3] Add integration test for local fallback flow in `tests/integration/pocLocalFallback.spec.ts`: mock McpManager to report GitHub unavailable; run Ralph loop; verify `repoSource: "local"`, `repoPath` set, no `repoUrl`; verify log message explains fallback
-- [ ] T034 [P] [US3] Add integration test for GitHub MCP flow in `tests/integration/pocGithubMcp.spec.ts`: mock McpManager to report GitHub available; mock MCP tool calls; run Ralph loop; verify `repoSource: "github-mcp"`, `repoUrl` set; verify push after each iteration
+- [x] T032 [P] [US3] Add unit tests for `GitHubMcpAdapter` in `tests/unit/develop/githubMcpAdapter.spec.ts`: verify `isAvailable()` checks `McpManager.isAvailable('github')`; verify `createRepository()` calls MCP tool; verify `pushFiles()` commits and pushes; verify graceful fallback returns `{ available: false }` when MCP unavailable
+- [x] T033 [P] [US3] Add integration test for local fallback flow in `tests/integration/pocLocalFallback.spec.ts`: mock McpManager to report GitHub unavailable; run Ralph loop; verify `repoSource: "local"`, `repoPath` set, no `repoUrl`; verify log message explains fallback
+- [x] T034 [P] [US3] Add integration test for GitHub MCP flow in `tests/integration/pocGithubMcp.spec.ts`: mock McpManager to report GitHub available; mock MCP tool calls; run Ralph loop; verify `repoSource: "github-mcp"`, `repoUrl` set; verify push after each iteration
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Implement `GitHubMcpAdapter` in `src/develop/githubMcpAdapter.ts`: `isAvailable()` checks McpManager; `createRepository(name, description)` creates repo via MCP tool call; `pushFiles(repoUrl, files, message)` commits and pushes; `getRepoUrl()` returns URL; all methods return typed results with error handling
-- [ ] T036 [US3] Integrate `GitHubMcpAdapter` into `RalphLoop` in `src/develop/ralphLoop.ts`: after scaffold, check adapter availability; if available, create repo and push scaffold; after each successful iteration, push updated files; on completion, final push; set `repoSource` and `repoUrl` in session
-- [ ] T037 [US3] Implement local fallback path in `RalphLoop`: when `GitHubMcpAdapter.isAvailable()` returns false, set `repoSource: "local"`, log clear fallback message via `io.writeActivity()`, continue with local-only output
-- [ ] T038 [US3] Update `developCommand` in `src/cli/developCommand.ts`: display repo URL or local path on completion; in `--json` mode, include `repoSource` and `repoUrl`/`repoPath` in output
+- [x] T035 [US3] Implement `GitHubMcpAdapter` in `src/develop/githubMcpAdapter.ts`: `isAvailable()` checks McpManager; `createRepository(name, description)` creates repo via MCP tool call; `pushFiles(repoUrl, files, message)` commits and pushes; `getRepoUrl()` returns URL; all methods return typed results with error handling
+- [x] T036 [US3] Integrate `GitHubMcpAdapter` into `RalphLoop` in `src/develop/ralphLoop.ts`: after scaffold, check adapter availability; if available, create repo and push scaffold; after each successful iteration, push updated files; on completion, final push; set `repoSource` and `repoUrl` in session
+- [x] T037 [US3] Implement local fallback path in `RalphLoop`: when `GitHubMcpAdapter.isAvailable()` returns false, set `repoSource: "local"`, log clear fallback message via `io.writeActivity()`, continue with local-only output
+- [x] T038 [US3] Update `developCommand` in `src/cli/developCommand.ts`: display repo URL or local path on completion; in `--json` mode, include `repoSource` and `repoUrl`/`repoPath` in output
 
 **Checkpoint**: `sofia dev` works in both MCP-available and MCP-unavailable environments. SC-002-002 validated.
 
@@ -126,15 +126,15 @@
 
 **Purpose**: End-to-end validation, documentation updates, output validation, and hardening.
 
-- [ ] T039 [P] Implement PoC output validator in `src/develop/pocScaffolder.ts` (or separate `src/develop/outputValidator.ts`): check all required files exist per poc-output contract validation table; report missing files; return structured validation result
-- [ ] T040 [P] Add unit tests for output validator in `tests/unit/develop/outputValidator.spec.ts`: test all 8 validation checks from poc-output contract
-- [ ] T041 Add E2E happy-path test in `tests/e2e/developE2e.spec.ts`: run `sofia dev --session <fixtureId>` as subprocess; verify exit code 0; verify output directory has required files; verify session JSON updated with poc state
-- [ ] T050 Add E2E failure/recovery test in `tests/e2e/developFailureE2e.spec.ts`: run `sofia dev --session <fixtureId> --max-iterations 1` with a session whose plan produces deliberately failing tests; verify graceful termination; verify `finalStatus` is `"failed"` or `"partial"` in session JSON; verify `terminationReason: "max-iterations"`; verify user-facing output includes recovery guidance (Constitution VI compliance)
-- [ ] T042 [P] Update documentation in `docs/` to cover `sofia dev` command: usage, options, output structure, GitHub MCP integration, troubleshooting
-- [ ] T043 [P] Update `docs/export-format.md` to document enriched Develop section in exports
-- [ ] T044 Run `quickstart.md` validation: execute all commands from `specs/002-poc-generation/quickstart.md` and verify they work or update the quickstart
-- [ ] T045 Review logs for Develop phase: ensure no secrets/PII in iteration logs, verify `llmPromptContext` contains only summary data, verify `rawOutput` truncation works
-- [ ] T046 Run full test suite (`npx vitest run`) and lint/typecheck (`npm run lint && npm run typecheck`) to confirm no regressions
+- [x] T039 [P] Implement PoC output validator in `src/develop/pocScaffolder.ts` (or separate `src/develop/outputValidator.ts`): check all required files exist per poc-output contract validation table; report missing files; return structured validation result
+- [x] T040 [P] Add unit tests for output validator in `tests/unit/develop/outputValidator.spec.ts`: test all 8 validation checks from poc-output contract
+- [x] T041 Add E2E happy-path test in `tests/e2e/developE2e.spec.ts`: run `sofia dev --session <fixtureId>` as subprocess; verify exit code 0; verify output directory has required files; verify session JSON updated with poc state
+- [x] T050 Add E2E failure/recovery test in `tests/e2e/developFailureE2e.spec.ts`: run `sofia dev --session <fixtureId> --max-iterations 1` with a session whose plan produces deliberately failing tests; verify graceful termination; verify `finalStatus` is `"failed"` or `"partial"` in session JSON; verify `terminationReason: "max-iterations"`; verify user-facing output includes recovery guidance (Constitution VI compliance)
+- [x] T042 [P] Update documentation in `docs/` to cover `sofia dev` command: usage, options, output structure, GitHub MCP integration, troubleshooting
+- [x] T043 [P] Update `docs/export-format.md` to document enriched Develop section in exports
+- [x] T044 Run `quickstart.md` validation: execute all commands from `specs/002-poc-generation/quickstart.md` and verify they work or update the quickstart
+- [x] T045 Review logs for Develop phase: ensure no secrets/PII in iteration logs, verify `llmPromptContext` contains only summary data, verify `rawOutput` truncation works
+- [x] T046 Run full test suite (`npx vitest run`) and lint/typecheck (`npm run lint && npm run typecheck`) to confirm no regressions
 
 ---
 
