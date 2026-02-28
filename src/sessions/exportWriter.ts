@@ -148,13 +148,89 @@ function generatePlanMarkdown(session: WorkshopSession): string | null {
 function generateDevelopMarkdown(session: WorkshopSession): string | null {
   if (!session.poc) return null;
 
+  const poc = session.poc;
   const lines: string[] = ['# Develop Phase\n'];
-  lines.push('## PoC Requirements\n');
-  if (session.poc.repoPath) {
-    lines.push(`**Repository**: ${session.poc.repoPath}\n`);
+
+  // Repository location
+  lines.push('## PoC Repository\n');
+  if (poc.repoUrl) {
+    lines.push(`**Repository URL**: ${poc.repoUrl}\n`);
+  } else if (poc.repoPath) {
+    lines.push(`**Repository Path**: ${poc.repoPath}\n`);
   }
-  if (session.poc.finalStatus) {
-    lines.push(`**Status**: ${session.poc.finalStatus}\n`);
+  if (poc.repoSource) {
+    lines.push(`**Source**: ${poc.repoSource}\n`);
+  }
+
+  // Technology stack
+  if (poc.techStack) {
+    lines.push('## Technology Stack\n');
+    lines.push(`- **Language**: ${poc.techStack.language}`);
+    lines.push(`- **Runtime**: ${poc.techStack.runtime}`);
+    lines.push(`- **Test Runner**: ${poc.techStack.testRunner}`);
+    if (poc.techStack.framework) {
+      lines.push(`- **Framework**: ${poc.techStack.framework}`);
+    }
+    if (poc.techStack.buildCommand) {
+      lines.push(`- **Build Command**: ${poc.techStack.buildCommand}`);
+    }
+    lines.push('');
+  }
+
+  // Final status and termination
+  if (poc.finalStatus) {
+    lines.push('## Result\n');
+    lines.push(`**Status**: ${poc.finalStatus}\n`);
+    if (poc.terminationReason) {
+      lines.push(`**Termination Reason**: ${poc.terminationReason}\n`);
+    }
+    if (poc.totalDurationMs !== undefined) {
+      lines.push(`**Total Duration**: ${(poc.totalDurationMs / 1000).toFixed(1)}s\n`);
+    }
+  }
+
+  // Final test results
+  if (poc.finalTestResults) {
+    const tr = poc.finalTestResults;
+    lines.push('## Final Test Results\n');
+    lines.push(`- **Passed**: ${tr.passed}`);
+    lines.push(`- **Failed**: ${tr.failed}`);
+    lines.push(`- **Skipped**: ${tr.skipped}`);
+    lines.push(`- **Total**: ${tr.total}`);
+    lines.push(`- **Duration**: ${tr.durationMs}ms`);
+    if (tr.failures.length > 0) {
+      lines.push('\n### Failures\n');
+      for (const f of tr.failures) {
+        lines.push(`#### ${f.testName}`);
+        lines.push(`\`\`\`\n${f.message}\n\`\`\`\n`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Iteration timeline
+  if (poc.iterations.length > 0) {
+    lines.push('## Iteration Timeline\n');
+    for (const iter of poc.iterations) {
+      const duration =
+        iter.endedAt
+          ? `${((new Date(iter.endedAt).getTime() - new Date(iter.startedAt).getTime()) / 1000).toFixed(1)}s`
+          : 'in progress';
+      lines.push(`### Iteration ${iter.iteration} — ${iter.outcome} (${duration})\n`);
+      if (iter.changesSummary) {
+        lines.push(`${iter.changesSummary}\n`);
+      }
+      if (iter.filesChanged.length > 0) {
+        lines.push(`**Files changed**: ${iter.filesChanged.join(', ')}\n`);
+      }
+      if (iter.testResults) {
+        const tr = iter.testResults;
+        lines.push(`**Tests**: ${tr.passed} passed, ${tr.failed} failed, ${tr.skipped} skipped (${tr.durationMs}ms)\n`);
+      }
+      if (iter.errorMessage) {
+        lines.push(`**Error**: ${iter.errorMessage}\n`);
+      }
+    }
   }
 
   return lines.join('\n');

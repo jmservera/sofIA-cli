@@ -84,10 +84,13 @@ function createFullSession(): WorkshopSession {
       dependencies: ['Azure subscription', 'Historical delivery data'],
     },
     poc: {
+      repoSource: 'local' as const,
       iterations: [
         {
           iteration: 1,
           startedAt: '2025-06-15T11:30:00Z',
+          outcome: 'scaffold' as const,
+          filesChanged: ['package.json', 'src/index.ts'],
           changesSummary: 'Initial scaffold with simple greedy routing',
         },
       ],

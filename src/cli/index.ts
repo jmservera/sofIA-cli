@@ -148,6 +148,53 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
       await exportCommand({ ...globalOpts, ...opts });
     });
 
+  // ── Dev command ───────────────────────────────────────────────────────
+
+  program
+    .command('dev')
+    .description('Generate a proof-of-concept repository for a completed workshop session')
+    .option('--max-iterations <n>', 'Maximum Ralph loop iterations (default: 10)', parseInt)
+    .option('--output <dir>', 'Output directory for the PoC (default: ./poc/<sessionId>/)')
+    .option('--force', 'Overwrite existing output directory and start fresh')
+    .action(async (opts) => {
+      const { developCommand } = await import('./developCommand.js');
+      const { createDefaultStore } = await import('../sessions/sessionStore.js');
+      const { createLoopIO } = await import('./ioContext.js');
+      const { createCopilotClient } = await import('../shared/copilotClient.js');
+      const { getLogger } = await import('../logging/logger.js');
+
+      const globalOpts = program.opts();
+      const merged = { ...globalOpts, ...opts };
+
+      const store = createDefaultStore();
+      const io = createLoopIO({
+        json: merged.json as boolean,
+        nonInteractive: merged.nonInteractive as boolean,
+      });
+
+      let client;
+      try {
+        client = await createCopilotClient();
+      } catch (err: unknown) {
+        const logger = getLogger();
+        logger.error({ err }, 'Failed to create Copilot client');
+        const msg = err instanceof Error ? err.message : 'Unknown error creating Copilot client';
+        if (merged.json) {
+          process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+        } else {
+          process.stderr.write(`Error: ${msg}\n`);
+        }
+        process.exitCode = 1;
+        return;
+      }
+
+      await developCommand(merged as Parameters<typeof developCommand>[0], {
+        store,
+        io,
+        client,
+      });
+    });
+
   return program;
 }
 
