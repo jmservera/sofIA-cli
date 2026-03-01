@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ChildProcess } from 'node:child_process';
-import { EventEmitter, Readable } from 'node:stream';
+import { EventEmitter, PassThrough } from 'node:stream';
 
 import {
   HttpMcpTransport,
@@ -377,7 +377,6 @@ describe('StdioMcpTransport', () => {
     _stdout: import('node:stream').PassThrough;
     _stdin: { write: ReturnType<typeof vi.fn> };
   } {
-    const { PassThrough } = require('node:stream') as typeof import('node:stream');
     const stdout = new PassThrough();
     const stdin = { write: vi.fn(), end: vi.fn() };
     const stderr = new PassThrough();

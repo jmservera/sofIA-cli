@@ -7,7 +7,7 @@
  * T007: Tests for callTool() real dispatch (lazy transport, retry, normalization)
  * T049: Tests for toSdkMcpServers() conversion
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import {
   McpManager,

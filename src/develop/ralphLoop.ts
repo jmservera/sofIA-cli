@@ -827,7 +827,13 @@ export class RalphLoop {
         'You are a TypeScript code generator. Output complete files in fenced code blocks with file= paths.';
     }
 
-    const conversationSession = await client.createSession({ systemPrompt });
+    const conversationSession = await client.createSession({
+      systemPrompt,
+      infiniteSessions: {
+        backgroundCompactionThreshold: 0.7,
+        bufferExhaustionThreshold: 0.9,
+      },
+    });
 
     let response = '';
     const stream = conversationSession.send({ role: 'user', content: prompt });

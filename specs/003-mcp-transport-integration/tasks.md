@@ -162,23 +162,23 @@ The following items are already implemented and do not require new tasks:
 ### Tests for SDK mcpServers wiring (REQUIRED — write FIRST)
 
 - [x] T049 [P] [US5] Add failing tests to `tests/unit/mcp/mcpManager.spec.ts` for `toSdkMcpServers()`: verify it converts `StdioServerConfig` to `{ type: 'stdio', command, args, env?, cwd?, tools?, timeout? }` format; verify it converts `HttpServerConfig` to `{ type: 'http', url, headers?, tools?, timeout? }` format; verify it returns empty object for empty `McpConfig.servers`
-- [ ] T050 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for `SessionOptions.mcpServers`: verify that when `mcpServers` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `mcpServers` is omitted or empty, it is NOT passed to the SDK
+- [x] T050 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for `SessionOptions.mcpServers`: verify that when `mcpServers` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `mcpServers` is omitted or empty, it is NOT passed to the SDK
 
 ### Implementation for SDK mcpServers wiring
 
-- [ ] T051 [US5] Wire `loadMcpConfig()` → `toSdkMcpServers()` → `createSession({ mcpServers })` in the application entry point: load `.vscode/mcp.json` via `loadMcpConfig()`, convert via `toSdkMcpServers()`, and pass the result through `SessionOptions.mcpServers` so the Copilot SDK manages MCP server lifecycle for LLM-initiated tool calls (depends on T049, T050)
+- [x] T051 [US5] Wire `loadMcpConfig()` → `toSdkMcpServers()` → `createSession({ mcpServers })` in the application entry point: load `.vscode/mcp.json` via `loadMcpConfig()`, convert via `toSdkMcpServers()`, and pass the result through `SessionOptions.mcpServers` so the Copilot SDK manages MCP server lifecycle for LLM-initiated tool calls (depends on T049, T050)
 
 ### Tests for SDK hooks and transparency (REQUIRED — write FIRST)
 
-- [ ] T052 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for SDK hooks integration: verify that `SessionOptions` accepts a `hooks` object with `onPreToolUse` and `onPostToolUse` callbacks; verify that when `hooks` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `hooks` is omitted, no hooks are passed to the SDK
+- [x] T052 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for SDK hooks integration: verify that `SessionOptions` accepts a `hooks` object with `onPreToolUse` and `onPostToolUse` callbacks; verify that when `hooks` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `hooks` is omitted, no hooks are passed to the SDK
 
 ### Implementation for SDK hooks, infiniteSessions, and events
 
-- [ ] T053 [US5] Wire SDK `onPreToolUse`/`onPostToolUse` hooks in `src/shared/copilotClient.ts`: add `hooks?: { onPreToolUse?: (toolName: string, toolArgs: Record<string, unknown>) => void; onPostToolUse?: (toolName: string, result: unknown, durationMs: number) => void; onErrorOccurred?: (error: Error) => void }` to `SessionOptions`; forward hooks to SDK `createSession({ hooks })` so tool-call activity (tool name, start/end, duration) is emitted to the CLI spinner via the existing activity event system in `src/shared/events.ts`; wire `onErrorOccurred` to log SDK-path errors at `warn` level (FR-021, FR-022) (depends on T052)
-- [ ] T054 [P] [US5] Wire `infiniteSessions` config to Ralph Loop `createSession()` calls in `src/develop/ralphLoop.ts`: pass `infiniteSessions: { backgroundCompactionThreshold: 0.7, bufferExhaustionThreshold: 0.9 }` to prevent context window exhaustion during extended multi-iteration conversations (FR-023); add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying the config is forwarded
-- [ ] T055 [P] [US5] Subscribe to SDK `assistant.usage` event in the conversation loop (`src/loop/conversationLoop.ts`): log token usage (input/output tokens) at `debug` level via pino logger; optionally emit cumulative usage as an activity event for the CLI spinner (FR-024); add unit test in `tests/unit/loop/conversationLoop.spec.ts` verifying event subscription
+- [x] T053 [US5] Wire SDK `onPreToolUse`/`onPostToolUse` hooks in `src/shared/copilotClient.ts`: add `hooks?: { onPreToolUse?: (toolName: string, toolArgs: Record<string, unknown>) => void; onPostToolUse?: (toolName: string, result: unknown, durationMs: number) => void; onErrorOccurred?: (error: Error) => void }` to `SessionOptions`; forward hooks to SDK `createSession({ hooks })` so tool-call activity (tool name, start/end, duration) is emitted to the CLI spinner via the existing activity event system in `src/shared/events.ts`; wire `onErrorOccurred` to log SDK-path errors at `warn` level (FR-021, FR-022) (depends on T052)
+- [x] T054 [P] [US5] Wire `infiniteSessions` config to Ralph Loop `createSession()` calls in `src/develop/ralphLoop.ts`: pass `infiniteSessions: { backgroundCompactionThreshold: 0.7, bufferExhaustionThreshold: 0.9 }` to prevent context window exhaustion during extended multi-iteration conversations (FR-023); add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying the config is forwarded
+- [x] T055 [P] [US5] Subscribe to SDK `assistant.usage` event in the conversation loop (`src/loop/conversationLoop.ts`): log token usage (input/output tokens) at `debug` level via pino logger; optionally emit cumulative usage as an activity event for the CLI spinner (FR-024); add unit test in `tests/unit/loop/conversationLoop.spec.ts` verifying event subscription
 
-- [ ] T038 Confirm no regressions from US1 and US5 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager, copilotClient, hooks, and adapter updates
+- [x] T038 Confirm no regressions from US1 and US5 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager, copilotClient, hooks, and adapter updates
 
 ---
 
@@ -186,15 +186,15 @@ The following items are already implemented and do not require new tasks:
 
 **Purpose**: Live smoke tests, linting, and typecheck pass — feature is production-ready.
 
-- [ ] T039 [P] Create `tests/e2e/mcpLive.spec.ts` with live MCP smoke tests gated behind `SOFIA_LIVE_MCP_TESTS=true`: GitHub MCP creates and deletes a test repository; Context7 resolves `express` library ID; Azure MCP returns documentation for a simple query; web search returns results for a test query — each test uses `describe.skipIf(!LIVE)` pattern per quickstart.md Section 8
-- [ ] T040 Validation task: satisfy SC-003-004 by running one controlled Ralph Loop scenario twice (same plan + failing tests), once with enrichment disabled and once with enrichment enabled, and compare iteration counts to green; record the comparison in test output or quickstart notes
-- [ ] T041 Validation task: satisfy SC-003-005 by running discovery web-search enrichment for 5 test company descriptions and confirming at least 3/5 have keyword-relevant results; record outcomes in quickstart notes
-- [ ] T043 [P] Live validation task: satisfy SC-003-006 by running WorkIQ enrichment in a configured environment and asserting the tool call completes within 10 seconds and persists `session.discovery.enrichment.workiqInsights` (gate behind `SOFIA_LIVE_MCP_TESTS=true`)
-- [ ] T044 [P] Add a timeout validation test for SC-003-007: force a short `timeoutMs` on an MCP call (HTTP and stdio) and assert a classified `timeout` error is returned/thrown and handled gracefully by adapters
-- [ ] T045 Run `npm run lint` and fix any `import/order` warnings introduced in Feature 003 files (blank line between external and internal import groups)
-- [ ] T046 Run `npm run typecheck` (`tsc --noEmit`) and fix all type errors — ensure `DiscoveryEnrichment` Zod schema types are correctly inferred and used throughout `discoveryEnricher.ts` and `phaseHandlers.ts`
-- [ ] T047 Run full `npm test` suite and confirm all unit, integration tests pass; e2e tests skipped in CI (not gated by `SOFIA_LIVE_MCP_TESTS=true`)
-- [ ] T048 Run `npm run test` with `SOFIA_LIVE_MCP_TESTS=true` in a configured environment to validate live MCP smoke tests (requires `GITHUB_TOKEN`, `AZURE_SUBSCRIPTION_ID`, and MCP servers accessible)
+- [x] T039 [P] Create `tests/e2e/mcpLive.spec.ts` with live MCP smoke tests gated behind `SOFIA_LIVE_MCP_TESTS=true`: GitHub MCP creates and deletes a test repository; Context7 resolves `express` library ID; Azure MCP returns documentation for a simple query; web search returns results for a test query — each test uses `describe.skipIf(!LIVE)` pattern per quickstart.md Section 8
+- [x] T040 Validation task: satisfy SC-003-004 by running one controlled Ralph Loop scenario twice (same plan + failing tests), once with enrichment disabled and once with enrichment enabled, and compare iteration counts to green; record the comparison in test output or quickstart notes
+- [x] T041 Validation task: satisfy SC-003-005 by running discovery web-search enrichment for 5 test company descriptions and confirming at least 3/5 have keyword-relevant results; record outcomes in quickstart notes
+- [x] T043 [P] Live validation task: satisfy SC-003-006 by running WorkIQ enrichment in a configured environment and asserting the tool call completes within 10 seconds and persists `session.discovery.enrichment.workiqInsights` (gate behind `SOFIA_LIVE_MCP_TESTS=true`)
+- [x] T044 [P] Add a timeout validation test for SC-003-007: force a short `timeoutMs` on an MCP call (HTTP and stdio) and assert a classified `timeout` error is returned/thrown and handled gracefully by adapters
+- [x] T045 Run `npm run lint` and fix any `import/order` warnings introduced in Feature 003 files (blank line between external and internal import groups)
+- [x] T046 Run `npm run typecheck` (`tsc --noEmit`) and fix all type errors — ensure `DiscoveryEnrichment` Zod schema types are correctly inferred and used throughout `discoveryEnricher.ts` and `phaseHandlers.ts`
+- [x] T047 Run full `npm test` suite and confirm all unit, integration tests pass; e2e tests skipped in CI (not gated by `SOFIA_LIVE_MCP_TESTS=true`)
+- [x] T048 Run `npm run test` with `SOFIA_LIVE_MCP_TESTS=true` in a configured environment to validate live MCP smoke tests (requires `GITHUB_TOKEN`, `AZURE_SUBSCRIPTION_ID`, and MCP servers accessible)
 
 ---
 

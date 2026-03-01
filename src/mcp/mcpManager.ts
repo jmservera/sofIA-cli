@@ -6,7 +6,6 @@
  * via the transport layer.
  */
 import { readFile } from 'node:fs/promises';
-
 import type { Logger } from 'pino';
 
 import { createTransport, StdioMcpTransport } from './mcpTransport.js';
@@ -70,6 +69,14 @@ export function classifyMcpError(err: unknown): McpErrorClass {
     const code = (err as NodeJS.ErrnoException).code;
     if (code && code in ERROR_CODE_MAP) {
       return ERROR_CODE_MAP[code];
+    }
+    // AbortError from AbortController / fetch timeouts
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return 'timeout';
+    }
+    // Message-based timeout detection
+    if (/timed?\s*out/i.test(err.message)) {
+      return 'timeout';
     }
     if (err.message.includes('401') || err.message.includes('403')) {
       return 'auth-failure';

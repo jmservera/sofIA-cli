@@ -71,6 +71,31 @@ export interface SessionOptions {
       invocation: { sessionId: string },
     ) => Promise<void> | void;
   };
+  /**
+   * Infinite session configuration for persistent workspaces and automatic
+   * context compaction. When enabled, sessions automatically manage context
+   * limits and persist state. Passed through to SDK `createSession()`.
+   *
+   * Recommended for Ralph Loop sessions to prevent context window exhaustion
+   * during extended multi-iteration conversations (FR-023).
+   */
+  infiniteSessions?: {
+    enabled?: boolean;
+    backgroundCompactionThreshold?: number;
+    bufferExhaustionThreshold?: number;
+  };
+  /**
+   * Callback invoked when the SDK emits `assistant.usage` events (FR-024).
+   * Called with token usage data from each model interaction.
+   * Consumers can use this for debug logging or cumulative tracking.
+   */
+  onUsage?: (usage: {
+    model: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+  }) => void;
 }
 
 /**
@@ -202,9 +227,30 @@ export async function createCopilotClient(): Promise<CopilotClient> {
           : {}),
         // Forward SDK hooks for tool-call visibility (FR-021, FR-022).
         ...(options.hooks ? { hooks: options.hooks } : {}),
+        // Forward infinite sessions config for context management (FR-023).
+        ...(options.infiniteSessions ? { infiniteSessions: options.infiniteSessions } : {}),
       };
 
       const sdkSession = await sdkClient.createSession(sessionConfig);
+
+      // Subscribe to assistant.usage events for token usage tracking (FR-024).
+      if (options.onUsage) {
+        const usageCb = options.onUsage;
+        sdkSession.on(
+          'assistant.usage',
+          (event: {
+            data: {
+              model: string;
+              inputTokens?: number;
+              outputTokens?: number;
+              cacheReadTokens?: number;
+              cacheWriteTokens?: number;
+            };
+          }) => {
+            usageCb(event.data);
+          },
+        );
+      }
 
       const history: CopilotMessage[] = [];
 

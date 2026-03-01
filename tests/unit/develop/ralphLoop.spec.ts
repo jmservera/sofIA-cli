@@ -947,4 +947,49 @@ describe('RalphLoop', () => {
       expect(firstPush).toBeLessThan(firstTest);
     });
   });
+
+  // ── T054: infiniteSessions config forwarding ──────────────────────────────
+
+  describe('infiniteSessions config (T054)', () => {
+    it('passes infiniteSessions config to createSession for context management', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
+
+      await ralph.run();
+
+      expect(createSessionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          infiniteSessions: {
+            backgroundCompactionThreshold: 0.7,
+            bufferExhaustionThreshold: 0.9,
+          },
+        }),
+      );
+    });
+  });
 });
