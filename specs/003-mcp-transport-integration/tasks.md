@@ -18,18 +18,18 @@
 
 The following items are already implemented and do not require new tasks:
 
-| Component                  | File                                                                         | Status                                                   |
-| -------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Project setup              | `package.json`, `tsconfig.json`, `eslint.config.js`                          | ✅ Complete                                              |
-| MCP config loader          | `src/mcp/mcpManager.ts` (`loadMcpConfig`, `McpManager` struct)               | ✅ Complete                                              |
-| Web search bridge          | `src/mcp/webSearch.ts`                                                       | ✅ Complete (no changes needed)                          |
-| GitHub adapter structure   | `src/develop/githubMcpAdapter.ts` (calls `callTool()` correctly)             | ✅ Complete (minor contract updates needed)              |
-| Context enricher structure | `src/develop/mcpContextEnricher.ts` (calls `callTool()` correctly)           | ✅ Complete (minor contract updates needed)              |
-| Ralph Loop core            | `src/develop/ralphLoop.ts` (per-iteration push reads file content correctly) | ✅ Complete (post-scaffold push is missing)              |
-| Adapter unit tests (basic) | `tests/unit/develop/githubMcpAdapter.spec.ts`, `mcpContextEnricher.spec.ts`  | ✅ Complete (new contract cases needed)                  |
-| Ralph Loop unit tests      | `tests/unit/develop/ralphLoop.spec.ts`                                       | ✅ Complete (post-scaffold push test missing)            |
-| McpManager basic tests     | `tests/unit/mcp/mcpManager.spec.ts`                                          | ✅ Complete (`callTool()` real dispatch tests missing)   |
-| FR-020 SDK Alignment       | `specs/003-mcp-transport-integration/research.md` (Topic 7)                  | ✅ No code needed — current SDK usage is already aligned |
+| Component                  | File                                                                         | Status                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Project setup              | `package.json`, `tsconfig.json`, `eslint.config.js`                          | ✅ Complete                                                                |
+| MCP config loader          | `src/mcp/mcpManager.ts` (`loadMcpConfig`, `McpManager` struct)               | ✅ Complete                                                                |
+| Web search bridge          | `src/mcp/webSearch.ts`                                                       | ✅ Complete (no changes needed)                                            |
+| GitHub adapter structure   | `src/develop/githubMcpAdapter.ts` (calls `callTool()` correctly)             | ✅ Complete (minor contract updates needed)                                |
+| Context enricher structure | `src/develop/mcpContextEnricher.ts` (calls `callTool()` correctly)           | ✅ Complete (minor contract updates needed)                                |
+| Ralph Loop core            | `src/develop/ralphLoop.ts` (per-iteration push reads file content correctly) | ✅ Complete (post-scaffold push is missing)                                |
+| Adapter unit tests (basic) | `tests/unit/develop/githubMcpAdapter.spec.ts`, `mcpContextEnricher.spec.ts`  | ✅ Complete (new contract cases needed)                                    |
+| Ralph Loop unit tests      | `tests/unit/develop/ralphLoop.spec.ts`                                       | ✅ Complete (post-scaffold push test missing)                              |
+| McpManager basic tests     | `tests/unit/mcp/mcpManager.spec.ts`                                          | ✅ Complete (`callTool()` real dispatch tests missing)                     |
+| FR-020 SDK Alignment       | `specs/003-mcp-transport-integration/research.md` (Topic 7)                  | ✅ Agent architecture aligned — SDK `mcpServers` wiring added in T049–T051 |
 
 ---
 
@@ -157,9 +157,18 @@ The following items are already implemented and do not require new tasks:
 
 ## Phase 7: User Story 5 — Copilot SDK Agent Architecture Alignment (Priority: P2)
 
-**Status: ALREADY FULFILLED** — `research.md` Topic 7 documents that the current `src/` agent definitions are already aligned with Copilot SDK v0.1.28 conventions (one session per phase turn via `CopilotClient.createSession()`, `ToolDefinition[]` for capability declaration, conversation loop for event dispatch). No code refactoring is required; FR-020 is satisfied by the research documentation.
+**Status: PARTIALLY FULFILLED** — `research.md` Topic 7 documents that the current `src/` agent definitions are already aligned with Copilot SDK v0.1.28 conventions. **However**, the SDK's native `mcpServers` support (discovered during SDK compliance review) requires wiring `.vscode/mcp.json` config through `createSession()` so the LLM can invoke MCP tools during conversation turns.
 
-- [ ] T038 Confirm no regressions from US1 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager and adapter updates
+### Tests for SDK mcpServers wiring (REQUIRED — write FIRST)
+
+- [ ] T049 [P] [US5] Add failing tests to `tests/unit/mcp/mcpManager.spec.ts` for `toSdkMcpServers()`: verify it converts `StdioServerConfig` to `{ type: 'stdio', command, args, env?, cwd?, tools?, timeout? }` format; verify it converts `HttpServerConfig` to `{ type: 'http', url, headers?, tools?, timeout? }` format; verify it returns empty object for empty `McpConfig.servers`
+- [ ] T050 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for `SessionOptions.mcpServers`: verify that when `mcpServers` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `mcpServers` is omitted or empty, it is NOT passed to the SDK
+
+### Implementation for SDK mcpServers wiring
+
+- [ ] T051 [US5] Wire `loadMcpConfig()` → `toSdkMcpServers()` → `createSession({ mcpServers })` in the application entry point: load `.vscode/mcp.json` via `loadMcpConfig()`, convert via `toSdkMcpServers()`, and pass the result through `SessionOptions.mcpServers` so the Copilot SDK manages MCP server lifecycle for LLM-initiated tool calls (depends on T049, T050)
+
+- [ ] T038 Confirm no regressions from US1 and US5 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager, copilotClient, and adapter updates
 
 ---
 
@@ -200,7 +209,7 @@ The following items are already implemented and do not require new tasks:
 - **US2 (P1)**: Independent — can start immediately after T001 in parallel with US1
 - **US3 (P2)**: Independent — can start after T001 in parallel with US1 and US2
 - **US4 (P3)**: Depends on US3 (T032 — DiscoveryEnricher class must exist)
-- **US5 (P2)**: No code needed — T038 verification after US1
+- **US5 (P2)**: T049–T050 tests can start after T001 (types exist in mcpManager.ts); T051 wiring depends on T049, T050; T038 verification after US1 and US5 implementation
 
 ### Within Each User Story
 
@@ -294,5 +303,5 @@ US4 begins when US3's T032 is merged. US5 (verification) runs after US1 merges.
 - Follow the "Dependencies & Execution Order" section to sequence work; task IDs are unique but may not strictly encode dependency order after updates
 - Adapter unit tests (githubMcpAdapter.spec.ts, mcpContextEnricher.spec.ts) already cover basic `callTool()` integration via mocks — Tasks T008/T009 ADD new contract-specific test cases, not replace existing ones
 - Live smoke tests (T039, T048) require real credentials; they are gated by `SOFIA_LIVE_MCP_TESTS=true` and are NOT run in CI
-- US5 (SDK alignment) requires zero code changes — the existing architecture is already correctly aligned per research.md Topic 7
+- US5 (SDK alignment) now includes SDK `mcpServers` wiring tasks (T049–T051) per SDK compliance review — the current architecture is agent-aligned per research.md Topic 7, but `createSession()` was not forwarding `mcpServers` config
 - The `DiscoveryState` entity described in data-model.md does not exist yet in `session.ts` — T031 creates it; existing sessions remain valid because the field is `optional()`

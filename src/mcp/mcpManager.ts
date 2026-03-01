@@ -17,12 +17,26 @@ export interface StdioServerConfig {
   type: 'stdio';
   command: string;
   args: string[];
+  /** Environment variables for the subprocess (merged with process.env). */
+  env?: Record<string, string>;
+  /** Working directory for the subprocess. */
+  cwd?: string;
+  /** Restrict which tools are exposed from this server. */
+  tools?: string[];
+  /** Connection timeout in milliseconds. */
+  timeout?: number;
 }
 
 export interface HttpServerConfig {
   name: string;
   type: 'http';
   url: string;
+  /** HTTP headers to include with each request (e.g., Authorization). */
+  headers?: Record<string, string>;
+  /** Restrict which tools are exposed from this server. */
+  tools?: string[];
+  /** Request timeout in milliseconds. */
+  timeout?: number;
 }
 
 export type McpServerConfig = StdioServerConfig | HttpServerConfig;
@@ -89,6 +103,11 @@ export async function loadMcpConfig(configPath: string): Promise<McpConfig> {
             name,
             type: 'http',
             url: cfg.url,
+            ...(cfg.headers && typeof cfg.headers === 'object'
+              ? { headers: cfg.headers as Record<string, string> }
+              : {}),
+            ...(Array.isArray(cfg.tools) ? { tools: cfg.tools as string[] } : {}),
+            ...(typeof cfg.timeout === 'number' ? { timeout: cfg.timeout } : {}),
           };
         } else if (cfg.command && typeof cfg.command === 'string') {
           servers[name] = {
@@ -96,6 +115,12 @@ export async function loadMcpConfig(configPath: string): Promise<McpConfig> {
             type: 'stdio',
             command: cfg.command,
             args: Array.isArray(cfg.args) ? cfg.args : [],
+            ...(cfg.env && typeof cfg.env === 'object'
+              ? { env: cfg.env as Record<string, string> }
+              : {}),
+            ...(typeof cfg.cwd === 'string' ? { cwd: cfg.cwd } : {}),
+            ...(Array.isArray(cfg.tools) ? { tools: cfg.tools as string[] } : {}),
+            ...(typeof cfg.timeout === 'number' ? { timeout: cfg.timeout } : {}),
           };
         }
       }
@@ -109,6 +134,60 @@ export async function loadMcpConfig(configPath: string): Promise<McpConfig> {
     // Re-throw parse or other errors
     throw err;
   }
+}
+
+// ── SDK config bridge ────────────────────────────────────────────────────────
+
+/**
+ * SDK-compatible MCP server config shape.
+ * Matches `MCPLocalServerConfig | MCPRemoteServerConfig` from `@github/copilot-sdk`.
+ * The `tools` field is required by the SDK (`string[]`); defaults to `['*']` (all tools).
+ */
+export interface SdkMcpServerConfig {
+  type?: string;
+  tools: string[];
+  timeout?: number;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  cwd?: string;
+  url?: string;
+  headers?: Record<string, string>;
+}
+
+/**
+ * Convert sofIA's `McpConfig` to the shape expected by the Copilot SDK's
+ * `SessionConfig.mcpServers` (`Record<string, MCPServerConfig>`).
+ *
+ * This bridges `.vscode/mcp.json` → SDK `createSession({ mcpServers })`.
+ * The SDK types are `MCPLocalServerConfig` and `MCPRemoteServerConfig`.
+ */
+export function toSdkMcpServers(config: McpConfig): Record<string, SdkMcpServerConfig> {
+  const result: Record<string, SdkMcpServerConfig> = {};
+
+  for (const [name, server] of Object.entries(config.servers)) {
+    if (server.type === 'stdio') {
+      result[name] = {
+        type: 'stdio',
+        command: server.command,
+        args: server.args,
+        tools: server.tools ?? ['*'],
+        ...(server.env ? { env: server.env } : {}),
+        ...(server.cwd ? { cwd: server.cwd } : {}),
+        ...(server.timeout ? { timeout: server.timeout } : {}),
+      };
+    } else if (server.type === 'http') {
+      result[name] = {
+        type: 'http',
+        url: server.url,
+        tools: server.tools ?? ['*'],
+        ...(server.headers ? { headers: server.headers } : {}),
+        ...(server.timeout ? { timeout: server.timeout } : {}),
+      };
+    }
+  }
+
+  return result;
 }
 
 // ── McpManager ───────────────────────────────────────────────────────────────

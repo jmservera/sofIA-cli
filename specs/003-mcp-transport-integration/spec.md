@@ -113,8 +113,19 @@ As a developer, I want the MCP transport layer to align with how the GitHub Copi
 
 **Acceptance Scenarios**:
 
-1. **Given** the Copilot SDK provides a tool-calling mechanism, **When** `McpManager.callTool()` is invoked, **Then** it routes through the SDK's tool dispatch rather than custom HTTP/stdio transport where applicable.
-2. **Given** the SDK defines agent registration patterns, **When** sofIA's discovery/ideation/design/select/plan agents are initialized, **Then** they follow SDK conventions for capability declaration and tool access.
+1. **Given** the Copilot SDK provides native `mcpServers` support in `SessionConfig`, **When** `createSession()` is called with MCP server configurations from `.vscode/mcp.json`, **Then** the SDK manages server lifecycle (spawn/connect, JSON-RPC, tool dispatch) for LLM-initiated tool calls without custom transport code.
+2. **Given** adapters (GitHub, Context7, Azure) need deterministic programmatic tool calls, **When** `McpManager.callTool()` is invoked, **Then** it routes through the custom transport layer (`StdioMcpTransport` / `HttpMcpTransport`) since the SDK's `executeToolCall` is private and cannot be called directly from application code.
+3. **Given** the SDK defines agent registration patterns, **When** sofIA's discovery/ideation/design/select/plan agents are initialized, **Then** they follow SDK conventions for capability declaration and tool access.
+
+### Dual-Lifecycle Limitation
+
+**⚠️ Known limitation**: The Copilot SDK's `mcpServers` support and the custom `McpTransport` layer manage MCP server connections independently. If the same server (e.g., `context7`) is used both by the LLM during conversation turns (SDK-managed) and by a programmatic adapter call (custom transport-managed), **two separate subprocess instances** will be spawned. This is acceptable for Feature 003 scope because:
+
+- The two paths serve fundamentally different call patterns (LLM-driven vs. deterministic).
+- MCP subprocesses are lightweight (Node.js CLI tools via npx).
+- HTTP servers (GitHub, Microsoft Docs) are stateless and unaffected.
+
+This limitation should be revisited in a future feature if subprocess resource usage becomes a concern, potentially by sharing a single subprocess instance between the SDK and custom transport layers.
 
 ---
 

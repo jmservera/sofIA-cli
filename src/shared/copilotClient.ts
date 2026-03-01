@@ -24,6 +24,29 @@ export interface SessionOptions {
   systemPrompt: string;
   tools?: ToolDefinition[];
   references?: string[];
+  /**
+   * MCP server configurations to forward to the Copilot SDK's
+   * `createSession()`. The SDK manages server lifecycle (spawn/connect,
+   * JSON-RPC, tool dispatch) for LLM-initiated tool calls.
+   *
+   * Format: `Record<string, MCPServerConfig>` matching the SDK's expected
+   * shape (MCPLocalServerConfig or MCPRemoteServerConfig).
+   * Uses `import('@github/copilot-sdk').MCPServerConfig` when SDK is available.
+   */
+  mcpServers?: Record<
+    string,
+    {
+      type?: string;
+      tools: string[];
+      timeout?: number;
+      command?: string;
+      args?: string[];
+      env?: Record<string, string>;
+      cwd?: string;
+      url?: string;
+      headers?: Record<string, string>;
+    }
+  >;
 }
 
 /**
@@ -123,9 +146,7 @@ export async function createCopilotClient(): Promise<CopilotClient> {
     sdk = await import('@github/copilot-sdk');
   } catch (err: unknown) {
     const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `GitHub Copilot SDK (@github/copilot-sdk) is not available: ${detail}`,
-    );
+    throw new Error(`GitHub Copilot SDK (@github/copilot-sdk) is not available: ${detail}`);
   }
 
   const { CopilotClient: SdkClient, approveAll } = sdk;
@@ -137,13 +158,27 @@ export async function createCopilotClient(): Promise<CopilotClient> {
 
   return {
     async createSession(options: SessionOptions): Promise<ConversationSession> {
-      const sdkSession = await sdkClient.createSession({
+      const sessionConfig = {
         onPermissionRequest: approveAll,
         systemMessage: {
           mode: 'replace' as const,
           content: options.systemPrompt,
         },
-      });
+        // Forward MCP server configs to the SDK so it manages server lifecycle
+        // (spawn, connect, JSON-RPC dispatch) for LLM-initiated tool calls.
+        // Cast needed because our SessionOptions uses a portable shape that
+        // doesn't carry the SDK's discriminated-union literal types.
+        ...(options.mcpServers && Object.keys(options.mcpServers).length > 0
+          ? {
+              mcpServers: options.mcpServers as Record<
+                string,
+                import('@github/copilot-sdk').MCPServerConfig
+              >,
+            }
+          : {}),
+      };
+
+      const sdkSession = await sdkClient.createSession(sessionConfig);
 
       const history: CopilotMessage[] = [];
 
