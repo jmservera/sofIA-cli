@@ -491,7 +491,7 @@ export class RalphLoop {
         outputDir,
         githubAdapter?.getRepoUrl(),
         techStack,
-        'failed',
+        undefined,
         'user-stopped',
         Date.now() - startTime,
       );
