@@ -73,9 +73,9 @@ export async function loadMcpConfig(configPath: string): Promise<McpConfig> {
     // Strip JSONC comments — only full-line // comments and block comments
     // Avoid stripping // inside string values (e.g. URLs like https://)
     const stripped = raw
-      .replace(/^\s*\/\/.*$/gm, '')           // full-line // comments
-      .replace(/\/\*[\s\S]*?\*\//g, '')        // block comments
-      .replace(/,(\s*[}\]])/g, '$1');          // trailing commas
+      .replace(/^\s*\/\/.*$/gm, '') // full-line // comments
+      .replace(/\/\*[\s\S]*?\*\//g, '') // block comments
+      .replace(/,(\s*[}\]])/g, '$1'); // trailing commas
     const parsed = JSON.parse(stripped);
 
     const servers: Record<string, McpServerConfig> = {};
@@ -151,5 +151,34 @@ export class McpManager {
   /** Get all server configs as an array. */
   getAllConfigs(): McpServerConfig[] {
     return Object.values(this.config.servers);
+  }
+
+  /**
+   * Call a tool on a named MCP server.
+   *
+   * This is a low-level hook for adapters (GitHubMcpAdapter, McpContextEnricher)
+   * to invoke server-side tools. In production, the Copilot SDK integration layer
+   * should replace this with real MCP tool dispatch. Currently returns a
+   * structured response from a placeholder implementation.
+   *
+   * @param serverName The MCP server name (e.g., 'github', 'context7', 'azure')
+   * @param toolName The tool to call on that server
+   * @param args Arguments for the tool
+   * @returns The tool response as a parsed object, or throws if unavailable
+   */
+  async callTool(
+    serverName: string,
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (!this.isAvailable(serverName)) {
+      throw new Error(`MCP server '${serverName}' is not available`);
+    }
+
+    // Placeholder: In production, this dispatches to the real MCP transport.
+    // For now, throw to indicate the call was attempted but not implemented.
+    throw new Error(
+      `MCP callTool not yet wired to transport: ${serverName}.${toolName}(${JSON.stringify(args)})`,
+    );
   }
 }
