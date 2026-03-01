@@ -370,26 +370,26 @@ Do the SDK's `infiniteSessions`, `customAgents`, and `skillDirectories` features
 
 ### Decision
 
-| Feature | Decision | Rationale |
-|---------|----------|----------|
-| `infiniteSessions` | **Wire for Ralph Loop sessions** | Prevents context window exhaustion in extended iterations; low implementation effort |
-| `customAgents` | **Defer — current per-phase sessions are deliberate** | Phase isolation provides clean context boundaries and independent checkpointing |
-| `skillDirectories` | **Defer — `promptLoader.ts` is sufficient** | Current approach works; skills could supplement in future features |
-| `resumeSession` | **Defer (different feature scope) but note reduced complexity** | SDK makes this nearly trivial; updated Out of Scope note in spec.md |
+| Feature            | Decision                                                        | Rationale                                                                            |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `infiniteSessions` | **Wire for Ralph Loop sessions**                                | Prevents context window exhaustion in extended iterations; low implementation effort |
+| `customAgents`     | **Defer — current per-phase sessions are deliberate**           | Phase isolation provides clean context boundaries and independent checkpointing      |
+| `skillDirectories` | **Defer — `promptLoader.ts` is sufficient**                     | Current approach works; skills could supplement in future features                   |
+| `resumeSession`    | **Defer (different feature scope) but note reduced complexity** | SDK makes this nearly trivial; updated Out of Scope note in spec.md                  |
 
 ---
 
 ## Summary of Decisions
 
-| Topic                | Decision                                                                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SDK MCP support      | SDK provides native `mcpServers` in `createSession()` for LLM conversations; build custom `mcpTransport.ts` only for programmatic adapter calls (GitHub, Context7, Azure) |
-| stdio transport      | `child_process.spawn` + JSON-RPC 2.0 newline-delimited over stdin/stdout                                                                                                  |
-| HTTP transport       | Native `fetch()` + `AbortController` timeout + `Authorization: Bearer`                                                                                                    |
-| Auth model           | Transport-level: env var for HTTP, subprocess env inheritance for stdio                                                                                                   |
-| Retry policy         | 1 retry max, transient errors only, 1s base delay ±20% jitter                                                                                                             |
-| pushFiles bug        | Add post-scaffold push; per-iteration push already correct                                                                                                                |
-| Discovery enrichment | New `discoveryEnricher.ts`; `DiscoveryEnrichment` in session schema                                                                                                       |
-| Agent alignment      | No refactoring needed; current SDK usage is correct                                                                                                                       |
-| SDK hooks & events   | Wire `onPreToolUse`/`onPostToolUse` for CLI spinner visibility; `onErrorOccurred` for LLM-path errors; `assistant.usage` for token tracking                               |
+| Topic                | Decision                                                                                                                                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SDK MCP support      | SDK provides native `mcpServers` in `createSession()` for LLM conversations; build custom `mcpTransport.ts` only for programmatic adapter calls (GitHub, Context7, Azure)                                 |
+| stdio transport      | `child_process.spawn` + JSON-RPC 2.0 newline-delimited over stdin/stdout                                                                                                                                  |
+| HTTP transport       | Native `fetch()` + `AbortController` timeout + `Authorization: Bearer`                                                                                                                                    |
+| Auth model           | Transport-level: env var for HTTP, subprocess env inheritance for stdio                                                                                                                                   |
+| Retry policy         | 1 retry max, transient errors only, 1s base delay ±20% jitter                                                                                                                                             |
+| pushFiles bug        | Add post-scaffold push; per-iteration push already correct                                                                                                                                                |
+| Discovery enrichment | New `discoveryEnricher.ts`; `DiscoveryEnrichment` in session schema                                                                                                                                       |
+| Agent alignment      | No refactoring needed; current SDK usage is correct                                                                                                                                                       |
+| SDK hooks & events   | Wire `onPreToolUse`/`onPostToolUse` for CLI spinner visibility; `onErrorOccurred` for LLM-path errors; `assistant.usage` for token tracking                                                               |
 | SDK session features | `infiniteSessions` wired for Ralph Loop; `customAgents` deferred (per-phase sessions deliberate); `skillDirectories` deferred (`promptLoader.ts` sufficient); session persistence noted as low-complexity |

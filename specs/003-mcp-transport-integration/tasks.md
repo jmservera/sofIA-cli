@@ -18,17 +18,17 @@
 
 The following items are already implemented and do not require new tasks:
 
-| Component                  | File                                                                         | Status                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Project setup              | `package.json`, `tsconfig.json`, `eslint.config.js`                          | ✅ Complete                                                                |
-| MCP config loader          | `src/mcp/mcpManager.ts` (`loadMcpConfig`, `McpManager` struct)               | ✅ Complete                                                                |
-| Web search bridge          | `src/mcp/webSearch.ts`                                                       | ✅ Complete (no changes needed)                                            |
-| GitHub adapter structure   | `src/develop/githubMcpAdapter.ts` (calls `callTool()` correctly)             | ✅ Complete (minor contract updates needed)                                |
-| Context enricher structure | `src/develop/mcpContextEnricher.ts` (calls `callTool()` correctly)           | ✅ Complete (minor contract updates needed)                                |
-| Ralph Loop core            | `src/develop/ralphLoop.ts` (per-iteration push reads file content correctly) | ✅ Complete (post-scaffold push is missing)                                |
-| Adapter unit tests (basic) | `tests/unit/develop/githubMcpAdapter.spec.ts`, `mcpContextEnricher.spec.ts`  | ✅ Complete (new contract cases needed)                                    |
-| Ralph Loop unit tests      | `tests/unit/develop/ralphLoop.spec.ts`                                       | ✅ Complete (post-scaffold push test missing)                              |
-| McpManager basic tests     | `tests/unit/mcp/mcpManager.spec.ts`                                          | ✅ Complete (`callTool()` real dispatch tests missing)                     |
+| Component                  | File                                                                         | Status                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Project setup              | `package.json`, `tsconfig.json`, `eslint.config.js`                          | ✅ Complete                                                                                                                     |
+| MCP config loader          | `src/mcp/mcpManager.ts` (`loadMcpConfig`, `McpManager` struct)               | ✅ Complete                                                                                                                     |
+| Web search bridge          | `src/mcp/webSearch.ts`                                                       | ✅ Complete (no changes needed)                                                                                                 |
+| GitHub adapter structure   | `src/develop/githubMcpAdapter.ts` (calls `callTool()` correctly)             | ✅ Complete (minor contract updates needed)                                                                                     |
+| Context enricher structure | `src/develop/mcpContextEnricher.ts` (calls `callTool()` correctly)           | ✅ Complete (minor contract updates needed)                                                                                     |
+| Ralph Loop core            | `src/develop/ralphLoop.ts` (per-iteration push reads file content correctly) | ✅ Complete (post-scaffold push is missing)                                                                                     |
+| Adapter unit tests (basic) | `tests/unit/develop/githubMcpAdapter.spec.ts`, `mcpContextEnricher.spec.ts`  | ✅ Complete (new contract cases needed)                                                                                         |
+| Ralph Loop unit tests      | `tests/unit/develop/ralphLoop.spec.ts`                                       | ✅ Complete (post-scaffold push test missing)                                                                                   |
+| McpManager basic tests     | `tests/unit/mcp/mcpManager.spec.ts`                                          | ✅ Complete (`callTool()` real dispatch tests missing)                                                                          |
 | FR-020 SDK Alignment       | `specs/003-mcp-transport-integration/research.md` (Topics 7–9)               | ✅ Agent architecture verified aligned; SDK hooks, `infiniteSessions`, `customAgents`, `skillDirectories` evaluated (T049–T055) |
 
 ---

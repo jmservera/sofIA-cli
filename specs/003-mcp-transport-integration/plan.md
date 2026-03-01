@@ -27,7 +27,7 @@ Additionally: the discovery phase gains optional web search and WorkIQ enrichmen
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Outcome-first discovery**: ✅ Working MCP transport is the critical path to end-to-end PoC generation — the measurable outcome is a real GitHub repo with real code, created and enriched by live MCP tool calls.
 - **Secure-by-default**: ✅ No tokens or secrets logged; WorkIQ requires explicit user consent before accessing M365 data; MCP subprocess env vars inherit from shell (not hardcoded); least privilege per server config.
@@ -100,7 +100,7 @@ tests/
 
 ## Post-Design Constitution Re-Check
 
-*All 6 gates re-evaluated after Phase 1 design. No violations.*
+_All 6 gates re-evaluated after Phase 1 design. No violations._
 
 - **Outcome-first discovery**: ✅ Contracts tie every transport call to a concrete user-visible outcome (real repo URL, real docs, real search results).
 - **Secure-by-default**: ✅ WorkIQ permission gate enforced in `discoveryEnricher.ts`; no env-var secrets hardcoded; subprocess stdio does not log raw credentials.
