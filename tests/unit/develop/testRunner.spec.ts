@@ -245,7 +245,7 @@ More console output after
       expect(result.total).toBe(3);
     });
 
-    it('uses first-{-to-last-} fallback when JSON spans mixed output', () => {
+    it('uses first-brace to last-brace fallback when JSON spans mixed output', () => {
       // Construct output where JSON is embedded in non-JSON text
       const embedded = `npm warn something\n{"numPassedTests":1,"numFailedTests":0,"numPendingTests":0,"numTotalTests":1,"success":true,"testResults":[]}\nDone`;
       const runner = new FakeTestRunner(embedded);
