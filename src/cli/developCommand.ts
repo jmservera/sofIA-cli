@@ -11,8 +11,11 @@
 import { join } from 'node:path';
 
 import type { WorkshopSession } from '../shared/schemas/session.js';
+import type { McpManager } from '../mcp/mcpManager.js';
 import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import { RalphLoop } from '../develop/ralphLoop.js';
+import { GitHubMcpAdapter } from '../develop/githubMcpAdapter.js';
+import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +42,8 @@ export interface DevelopCommandDeps {
   };
   io: import('../loop/conversationLoop.js').LoopIO;
   client: import('../shared/copilotClient.js').CopilotClient;
+  /** Optional MCP manager — when provided, wires GitHub MCP and context enrichment */
+  mcpManager?: McpManager;
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -76,8 +81,8 @@ export async function developCommand(
   deps: DevelopCommandDeps,
 ): Promise<void> {
   const { store, io, client } = deps;
+  const { mcpManager } = deps;
   const json = opts.json ?? false;
-
   // ── Resolve session ──────────────────────────────────────────────────────
   let sessionId = opts.session;
 
@@ -132,6 +137,9 @@ export async function developCommand(
   // ── Create RalphLoop ─────────────────────────────────────────────────────
   const spinner = createNoOpSpinner();
 
+  const enricher = mcpManager ? new McpContextEnricher(mcpManager) : undefined;
+  const githubAdapter = mcpManager ? new GitHubMcpAdapter(mcpManager) : undefined;
+
   const ralph = new RalphLoop({
     client,
     io,
@@ -139,6 +147,8 @@ export async function developCommand(
     spinner,
     maxIterations: opts.maxIterations ?? 10,
     outputDir,
+    enricher,
+    githubAdapter,
     onSessionUpdate: async (updated) => {
       await store.save(updated);
     },
