@@ -14,6 +14,6 @@
         "sofIA-cli/.vscode/mcp.json: azure": {
             "allowedDuringChat": true
         }
-    }
+    },
+  "projectStats.ignoreFolders": ["node_modules", ".git", "dist", "tmp", "coverage", ".sofia"]
 }
-

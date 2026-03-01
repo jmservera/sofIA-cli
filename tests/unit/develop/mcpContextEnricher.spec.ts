@@ -74,12 +74,23 @@ describe('McpContextEnricher', () => {
       expect(result.combined).toBeTruthy();
       expect(result.libraryDocs).toBeDefined();
       // Should have called resolve-library-id and query-docs for each dep
-      expect(callTool).toHaveBeenCalledWith('context7', 'resolve-library-id', {
-        libraryName: 'express',
-      });
-      expect(callTool).toHaveBeenCalledWith('context7', 'query-docs', {
-        libraryId: 'express-lib-id',
-      });
+      expect(callTool).toHaveBeenCalledWith(
+        'context7',
+        'resolve-library-id',
+        {
+          libraryName: 'express',
+        },
+        { timeoutMs: 30_000 },
+      );
+      expect(callTool).toHaveBeenCalledWith(
+        'context7',
+        'query-docs',
+        {
+          libraryId: 'express-lib-id',
+          topic: 'express',
+        },
+        { timeoutMs: 30_000 },
+      );
     });
 
     it('falls back to npmjs link when callTool throws for a dependency', async () => {
@@ -166,6 +177,7 @@ describe('McpContextEnricher', () => {
         expect.objectContaining({
           query: expect.stringContaining('cosmos db'),
         }),
+        { timeoutMs: 30_000 },
       );
     });
 
@@ -321,6 +333,232 @@ describe('McpContextEnricher', () => {
       // Should have at least some context
       const hasMultipleSections = (result.combined.match(/###/g) ?? []).length >= 1;
       expect(hasMultipleSections).toBe(true);
+    });
+  });
+
+  // ── T009: Contract tests per contracts/context-enricher.md ──────────────
+
+  describe('queryContext7 — contract: response field fallbacks', () => {
+    it('uses response.id as fallback when response.libraryId is missing', async () => {
+      const callTool = vi
+        .fn()
+        .mockResolvedValueOnce({ id: '/expressjs/express' }) // fallback field
+        .mockResolvedValueOnce({ content: 'Express docs from id fallback' });
+      const manager = makeMcpManager(['context7'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        dependencies: ['express'],
+      });
+
+      expect(result.libraryDocs).toBeDefined();
+      expect(result.libraryDocs).toContain('Express docs from id fallback');
+      // Should have called query-docs with the resolved id
+      expect(callTool).toHaveBeenCalledWith(
+        'context7',
+        'query-docs',
+        {
+          libraryId: '/expressjs/express',
+          topic: 'express',
+        },
+        { timeoutMs: 30_000 },
+      );
+    });
+
+    it('uses response.text as fallback content when response.content is missing', async () => {
+      const callTool = vi
+        .fn()
+        .mockResolvedValueOnce({ libraryId: 'zod-id' })
+        .mockResolvedValueOnce({ text: 'Zod docs from text fallback' }); // text fallback
+      const manager = makeMcpManager(['context7'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        dependencies: ['zod'],
+      });
+
+      expect(result.libraryDocs).toBeDefined();
+      expect(result.libraryDocs).toContain('Zod docs from text fallback');
+    });
+
+    it('processes max 5 non-skipped dependencies', async () => {
+      const callTool = vi.fn().mockResolvedValue({ libraryId: 'lib-id', content: 'docs' });
+      const manager = makeMcpManager(['context7'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const deps = ['dep1', 'dep2', 'dep3', 'dep4', 'dep5', 'dep6', 'dep7'];
+      await enricher.enrich({
+        mcpManager: manager,
+        dependencies: deps,
+      });
+
+      // Only 5 non-skipped deps should be processed (2 calls each: resolve + query)
+      expect(callTool).toHaveBeenCalledTimes(10); // 5 * 2
+    });
+
+    it('falls back to npmjs link when both libraryId and id are missing', async () => {
+      const callTool = vi.fn().mockResolvedValueOnce({}); // no libraryId, no id
+      const manager = makeMcpManager(['context7'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        dependencies: ['unknown-pkg'],
+      });
+
+      expect(result.libraryDocs).toBeDefined();
+      expect(result.libraryDocs).toContain('npmjs.com/package/unknown-pkg');
+    });
+  });
+
+  describe('queryAzureMcp — contract: response field fallbacks', () => {
+    it('uses response.text as fallback when response.content is missing', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        text: 'Azure guidance from text fallback',
+      });
+      const manager = makeMcpManager(['azure'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        architectureNotes: 'Use Azure Cosmos DB',
+      });
+
+      expect(result.azureGuidance).toBeDefined();
+      expect(result.azureGuidance).toContain('Azure guidance from text fallback');
+    });
+  });
+
+  describe('queryWebSearch — contract: MCP-first then fallback', () => {
+    it('tries MCP callTool websearch before Azure AI Foundry bridge', async () => {
+      const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
+      vi.mocked(isWebSearchConfigured).mockReturnValue(true);
+
+      const callTool = vi.fn().mockResolvedValue({
+        content: 'MCP search results here',
+      });
+      const manager = makeMcpManager(['websearch'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        stuckIterations: 2,
+        failingTests: ['test A fails with TypeError'],
+      });
+
+      expect(result.webSearchResults).toContain('MCP search results here');
+      expect(callTool).toHaveBeenCalledWith(
+        'websearch',
+        'search',
+        expect.objectContaining({
+          query: expect.stringContaining('how to fix'),
+        }),
+        { timeoutMs: 30_000 },
+      );
+    });
+  });
+
+  // ── T010: Web search gating tests ───────────────────────────────────────
+
+  describe('enrich() — web search stuckIterations gating', () => {
+    it('MUST NOT invoke queryWebSearch when stuckIterations < 2', async () => {
+      const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
+      vi.mocked(isWebSearchConfigured).mockReturnValue(true);
+
+      const callTool = vi.fn().mockResolvedValue({ content: 'should not be called' });
+      const manager = makeMcpManager(['websearch'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        stuckIterations: 1,
+        failingTests: ['test A fails'],
+      });
+
+      expect(result.webSearchResults).toBeUndefined();
+      // websearch callTool should NOT have been called
+      const webSearchCalls = callTool.mock.calls.filter((c: unknown[]) => c[0] === 'websearch');
+      expect(webSearchCalls).toHaveLength(0);
+    });
+
+    it('MUST invoke queryWebSearch when stuckIterations >= 2', async () => {
+      const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
+      vi.mocked(isWebSearchConfigured).mockReturnValue(true);
+
+      const callTool = vi.fn().mockResolvedValue({ content: 'web search results' });
+      const manager = makeMcpManager(['websearch'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        stuckIterations: 2,
+        failingTests: ['test B fails with ReferenceError'],
+      });
+
+      expect(result.webSearchResults).toBeDefined();
+      const webSearchCalls = callTool.mock.calls.filter((c: unknown[]) => c[0] === 'websearch');
+      expect(webSearchCalls.length).toBeGreaterThan(0);
+    });
+
+    it('MUST invoke queryWebSearch when stuckIterations is 3', async () => {
+      const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
+      vi.mocked(isWebSearchConfigured).mockReturnValue(true);
+
+      const callTool = vi.fn().mockResolvedValue({ content: 'search data' });
+      const manager = makeMcpManager(['websearch'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        stuckIterations: 3,
+        failingTests: ['test C'],
+      });
+
+      expect(result.webSearchResults).toBeDefined();
+    });
+
+    it('does not invoke queryWebSearch when failingTests is empty', async () => {
+      const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
+      vi.mocked(isWebSearchConfigured).mockReturnValue(true);
+
+      const callTool = vi.fn();
+      const manager = makeMcpManager(['websearch'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        stuckIterations: 5,
+        failingTests: [],
+      });
+
+      expect(result.webSearchResults).toBeUndefined();
+    });
+  });
+
+  describe('enrich() — concurrent execution', () => {
+    it('runs queryContext7 and queryAzureMcp (results combined)', async () => {
+      const callTool = vi
+        .fn()
+        // Context7 resolve + query
+        .mockResolvedValueOnce({ libraryId: 'express-id' })
+        .mockResolvedValueOnce({ content: 'Express docs' })
+        // Azure documentation
+        .mockResolvedValueOnce({ content: 'Azure best practices' });
+      const manager = makeMcpManager(['context7', 'azure'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        dependencies: ['express'],
+        architectureNotes: 'Use Azure Cosmos DB for storage',
+      });
+
+      expect(result.libraryDocs).toBeDefined();
+      expect(result.azureGuidance).toBeDefined();
+      expect(result.combined).toContain('Library Documentation');
+      expect(result.combined).toContain('Azure');
     });
   });
 });

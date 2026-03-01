@@ -94,17 +94,29 @@ export class McpContextEnricher {
     let azureGuidance: string | undefined;
     let webSearchResults: string | undefined;
 
-    // Context7: library documentation when dependencies are present
+    // Context7 + Azure MCP: run concurrently via Promise.allSettled()
+    const concurrent: Promise<void>[] = [];
+
     if (this.mcpManager.isAvailable('context7') && dependencies.length > 0) {
-      libraryDocs = await this.queryContext7(dependencies);
-      if (libraryDocs) parts.push(`### Library Documentation (Context7)\n\n${libraryDocs}`);
+      concurrent.push(
+        this.queryContext7(dependencies).then((result) => {
+          libraryDocs = result;
+        }),
+      );
     }
 
-    // Azure MCP: cloud architecture when plan references Azure
     if (this.mcpManager.isAvailable('azure') && mentionsAzure(architectureNotes)) {
-      azureGuidance = await this.queryAzureMcp(architectureNotes);
-      if (azureGuidance) parts.push(`### Azure Architecture Guidance\n\n${azureGuidance}`);
+      concurrent.push(
+        this.queryAzureMcp(architectureNotes).then((result) => {
+          azureGuidance = result;
+        }),
+      );
     }
+
+    await Promise.allSettled(concurrent);
+
+    if (libraryDocs) parts.push(`### Library Documentation (Context7)\n\n${libraryDocs}`);
+    if (azureGuidance) parts.push(`### Azure Architecture Guidance\n\n${azureGuidance}`);
 
     // web.search: when stuck for 2+ iterations
     if (isWebSearchConfigured() && stuckIterations >= 2 && options.failingTests?.length) {
@@ -141,9 +153,14 @@ export class McpContextEnricher {
 
         try {
           // Step 1: Resolve library ID
-          const resolved = await this.mcpManager.callTool('context7', 'resolve-library-id', {
-            libraryName: dep,
-          });
+          const resolved = await this.mcpManager.callTool(
+            'context7',
+            'resolve-library-id',
+            {
+              libraryName: dep,
+            },
+            { timeoutMs: 30_000 },
+          );
           const libraryId = (resolved.libraryId as string) ?? (resolved.id as string);
           if (!libraryId) {
             docs.push(
@@ -153,9 +170,15 @@ export class McpContextEnricher {
           }
 
           // Step 2: Query docs with the resolved ID
-          const docResult = await this.mcpManager.callTool('context7', 'query-docs', {
-            libraryId,
-          });
+          const docResult = await this.mcpManager.callTool(
+            'context7',
+            'query-docs',
+            {
+              libraryId,
+              topic: dep,
+            },
+            { timeoutMs: 30_000 },
+          );
           const content = (docResult.content as string) ?? (docResult.text as string);
           if (content) {
             docs.push(`- **${dep}**:\n${content}`);
@@ -190,9 +213,14 @@ export class McpContextEnricher {
       if (detected.length === 0) return undefined;
 
       try {
-        const response = await this.mcpManager.callTool('azure', 'documentation', {
-          query: `Best practices for ${detected.join(', ')}`,
-        });
+        const response = await this.mcpManager.callTool(
+          'azure',
+          'documentation',
+          {
+            query: `Best practices for ${detected.join(', ')}`,
+          },
+          { timeoutMs: 30_000 },
+        );
         const content = (response.content as string) ?? (response.text as string);
         if (content) {
           return content;
@@ -226,9 +254,14 @@ export class McpContextEnricher {
       // Attempt real web search via MCP if available
       if (this.mcpManager.isAvailable('websearch')) {
         try {
-          const response = await this.mcpManager.callTool('websearch', 'search', {
-            query: `how to fix: ${query}`,
-          });
+          const response = await this.mcpManager.callTool(
+            'websearch',
+            'search',
+            {
+              query: `how to fix: ${query}`,
+            },
+            { timeoutMs: 30_000 },
+          );
           const content = (response.content as string) ?? (response.text as string);
           if (content) {
             return content;
