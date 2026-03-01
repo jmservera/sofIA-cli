@@ -113,7 +113,16 @@ export class ConversationLoop {
   async run(): Promise<WorkshopSession> {
     this.setupSignalHandler();
 
-    const systemPrompt = this.handler.buildSystemPrompt(this.session);
+    let systemPrompt = this.handler.buildSystemPrompt(this.session);
+
+    // Inject prior conversation history into the system prompt when resuming
+    // so the LLM has context from previous turns in this phase.
+    const priorTurns = (this.session.turns ?? []).filter((t) => t.phase === this.handler.phase);
+    if (priorTurns.length > 0) {
+      const historyBlock = priorTurns.map((t) => `[${t.role}]: ${t.content}`).join('\n\n');
+      systemPrompt += `\n\n## Previous conversation history\n\n${historyBlock}`;
+    }
+
     const references = this.handler.getReferences?.(this.session) ?? [];
     const sessionOpts: SessionOptions = { systemPrompt, references };
 
