@@ -62,6 +62,11 @@
 - [ ] T017 [P] [US1] Unit test: `developCommand` defaults to resume when `poc.finalStatus === 'failed'|'partial'` per FR-006 in `tests/unit/cli/developCommand.spec.ts`
 - [ ] T018 [P] [US1] Unit test: resume re-scaffolds when output directory is missing but iterations exist per FR-007 in `tests/unit/develop/ralphLoop.spec.ts`
 - [ ] T019 [US1] Integration test: full resume flow — create session with 2 completed iterations, run `RalphLoop`, verify starts at iteration 3 in `tests/integration/ralphLoopPartial.spec.ts` (add describe block "resume from interrupted session")
+- [ ] T065 [P] [US1] Unit test: resume ALWAYS re-runs dependency install step even when scaffolding is skipped per FR-003 in `tests/unit/develop/ralphLoop.spec.ts`
+- [ ] T066 [P] [US1] Unit test: resume includes prior iteration history in LLM prompt context (test results + applied changes summary) per FR-004 in `tests/unit/develop/ralphLoop.spec.ts`
+- [ ] T067 [P] [US1] Unit test: resume decision logging emits info-level messages for iteration number, skip scaffold, incomplete-iteration rerun, and re-run install per FR-007a in `tests/unit/develop/ralphLoop.spec.ts`
+- [ ] T068 [P] [US1] Unit test: corrupted/invalid `poc.iterations` causes safe fallback to fresh run (and warning log) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
+- [ ] T069 [P] [US1] Unit test: output directory present but `.sofia-metadata.json` integrity mismatch triggers warning and forces re-scaffold (do not skip scaffold) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
 
 ### Implementation for User Story 1
 
@@ -69,9 +74,11 @@
 - [ ] T021 [US1] Update `developCommand()` in `src/cli/developCommand.ts` to call `deriveCheckpointState()` before creating RalphLoop and handle FR-005 (success exit) and FR-006 (failed/partial default resume)
 - [ ] T022 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to seed `iterations` from `session.poc.iterations`, derive `iterNum = iterations.length + 1`, and pop incomplete last iteration per FR-001/FR-001a
 - [ ] T023 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to skip scaffold when output dir + `.sofia-metadata.json` exist per FR-002, and always re-run install per FR-003
-- [ ] T024 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to include prior iteration history in LLM prompt context per FR-004 (seed `prevFailingTests` from last iteration's `testResults.failures`)
+- [ ] T024 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to include prior iteration history in LLM prompt context per FR-004 (include prior test results and a concise summary of applied changes across prior iterations; not just last failing tests)
 - [ ] T025 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to re-scaffold when output dir is missing but iterations exist per FR-007
 - [ ] T026 [US1] Add info-level resume decision logging in `src/develop/ralphLoop.ts` and `src/cli/developCommand.ts` per FR-007a (iteration number, skip scaffold, re-run install, incomplete iteration re-run)
+- [ ] T070 [US1] Harden `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate iteration entries (missing/invalid shapes) and safely fall back to fresh run + warning log per Edge Cases in `spec.md`
+- [ ] T071 [US1] Extend `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate `.sofia-metadata.json` integrity (at minimum: sessionId match; if Phase 9 adds `templateId`, validate that too) and disable `canSkipScaffold` + warn if mismatch per Edge Cases in `spec.md`
 
 **Checkpoint**: Resume works end-to-end. `sofia dev --session X` resumes from correct iteration after interruption. All resume decisions are logged at info level.
 
@@ -201,6 +208,13 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
+**TDD note**: Complete T072–T074 (tests) before implementing T056–T058 (FR-022) to satisfy the constitution's Red → Green requirement.
+
+- [ ] T072 [P] Unit test: scaffold TODO marker scanning records `totalInitial`, `remaining`, and `markers` in `.sofia-metadata.json` per FR-022 in `tests/unit/develop/pocScaffolder.spec.ts`
+- [ ] T073 [P] Unit test: TODO marker rescan after an iteration updates `.sofia-metadata.json.todos.remaining` per FR-022 in `tests/unit/develop/ralphLoop.spec.ts`
+- [ ] T074 [P] Integration test: TODO tracking writes and updates `.sofia-metadata.json` in a real scaffold output directory per FR-022 in `tests/integration/ralphLoopFlow.spec.ts` (new describe block "todo tracking")
+- [ ] T075 Validation task: compare fresh vs resumed run PoC quality (test pass counts) on the same plan/session to satisfy SC-004-005; capture results in test output or quickstart notes
+- [ ] T076 [P] Benchmark/validation task: measure resume detection overhead (derive checkpoint + metadata checks) and ensure <500ms per SC-004-007 (can be a small integration test with timing guard or a quickstart step)
 - [ ] T056 [P] Extend `.sofia-metadata.json` schema in `src/develop/pocScaffolder.ts` to include `templateId` and `todos` fields per FR-022 and contracts/cli.md extended schema
 - [ ] T057 [P] Add TODO marker scanning logic to `src/develop/pocScaffolder.ts` — scan scaffold files at scaffold time for `TODO:` markers, record in `.sofia-metadata.json`
 - [ ] T058 Add TODO marker rescan after each iteration in `src/develop/ralphLoop.ts` — update `.sofia-metadata.json` with remaining TODO count per FR-022
