@@ -209,11 +209,25 @@ export class CodeGenerator {
     lines.push('## Task');
     if (testResults.failed > 0) {
       lines.push(
-        'Fix the failing tests. Respond with the complete updated file contents for each file you need to modify, using fenced code blocks with file paths.',
+        'Fix the failing tests and any underlying issues. For every file you modify or create, respond with its complete contents using fenced code blocks in this format:',
+      );
+      lines.push('');
+      lines.push('```ts file=relative/path/to/file.ts');
+      lines.push('// full file content here');
+      lines.push('```');
+      lines.push('');
+      lines.push(
+        'Only include complete files in these fenced code blocks; do not include partial snippets for changed files.',
       );
     } else {
       lines.push(
-        'All tests pass! Review the code for quality and completeness. If satisfied, respond with a brief summary. If improvements are needed, provide updated files.',
+        'The test run reported 0 failing tests. Review the code, tests, and test output for quality, completeness, and any hidden issues (such as parsing errors or missing tests).',
+      );
+      lines.push(
+        'If you determine that any code or tests should be improved or fixed, respond with the complete contents of each file you need to modify or create, using fenced code blocks in the same ` ```lang file=relative/path/to/file.ext` format as above.',
+      );
+      lines.push(
+        'If you are confident that no further changes are required, respond with a concise summary explaining why no changes are needed and do not include any fenced code blocks.',
       );
     }
 
