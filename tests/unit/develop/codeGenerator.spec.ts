@@ -12,7 +12,11 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { CodeGenerator, parseFencedCodeBlocks, buildFileTree } from '../../../src/develop/codeGenerator.js';
+import {
+  CodeGenerator,
+  parseFencedCodeBlocks,
+  buildFileTree,
+} from '../../../src/develop/codeGenerator.js';
 import type { TestResults } from '../../../src/shared/schemas/session.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -25,8 +29,17 @@ function makeTestResults(overrides?: Partial<TestResults>): TestResults {
     total: 3,
     durationMs: 500,
     failures: [
-      { testName: 'suite > test A', message: 'Expected 3 but got 5', file: 'tests/a.test.ts', line: 10 },
-      { testName: 'suite > test B', message: 'Cannot read properties of undefined', file: 'tests/b.test.ts' },
+      {
+        testName: 'suite > test A',
+        message: 'Expected 3 but got 5',
+        file: 'tests/a.test.ts',
+        line: 10,
+      },
+      {
+        testName: 'suite > test B',
+        message: 'Cannot read properties of undefined',
+        file: 'tests/b.test.ts',
+      },
     ],
     rawOutput: 'FAIL tests/a.test.ts\nFAIL tests/b.test.ts\n',
     ...overrides,
@@ -221,7 +234,7 @@ describe('CodeGenerator', () => {
       expect(prompt).toContain('FAIL tests/a.test.ts');
     });
 
-    it('shows "all tests pass" task when no failures', () => {
+    it('shows "0 failing tests" task when no failures', () => {
       const prompt = generator.buildIterationPrompt({
         iteration: 3,
         maxIterations: 10,
@@ -230,7 +243,7 @@ describe('CodeGenerator', () => {
         filesInPoc: [],
       });
 
-      expect(prompt).toContain('All tests pass');
+      expect(prompt).toContain('0 failing tests');
     });
   });
 
@@ -257,7 +270,7 @@ describe('CodeGenerator', () => {
       await generator.applyChanges(llmResponse);
 
       const content = await readFile(join(tmpDir, 'src', 'index.ts'), 'utf-8');
-      expect(content).toContain("export function hello()");
+      expect(content).toContain('export function hello()');
     });
 
     it('handles empty LLM response gracefully', async () => {
