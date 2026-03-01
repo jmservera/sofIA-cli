@@ -65,7 +65,7 @@ Identify if the defined agents are correctly structured to work with the GitHub 
 
 ## P2 — Important, Workarounds Exist
 
-### GAP-005: No Resume/Checkpoint for `sofia dev`
+### GAP-006: No Resume/Checkpoint for `sofia dev`
 
 `RalphLoop.run()` always starts from scratch: scaffold → install → iterate. There is no detection of an existing PoC directory or prior `poc.iterations` state. Running `sofia dev --session X` a second time re-scaffolds everything.
 
@@ -73,13 +73,13 @@ The CLI recovery message at [src/cli/developCommand.ts](../src/cli/developComman
 
 **Recommendation**: Detect existing PoC output and `poc.iterations` in the session. If found, skip scaffolding and resume from the last iteration number. Honor `--force` to override this.
 
-### GAP-006: `--force` Flag Declared but Not Implemented
+### GAP-007: `--force` Flag Declared but Not Implemented
 
 `developCommand.ts` declares the `--force` option in `DevelopCommandOptions` and it's accepted by the CLI, but the flag is never read or acted upon in the command handler.
 
 **Recommendation**: When `--force` is set, delete the existing output directory and reset `poc.iterations` before starting.
 
-### GAP-007: testRunner.ts at 45% Coverage
+### GAP-008: testRunner.ts at 45% Coverage
 
 [src/develop/testRunner.ts](../src/develop/testRunner.ts) has significant untested code paths:
 
@@ -89,7 +89,7 @@ The CLI recovery message at [src/cli/developCommand.ts](../src/cli/developComman
 
 **Recommendation**: Add integration tests that spawn a real test process (e.g., a tiny Vitest project) to cover these paths. Consider extracting the spawn logic into a testable wrapper.
 
-### GAP-008: PoC Template Selection Not Finalized
+### GAP-009: PoC Template Selection Not Finalized
 
 The plan notes "v1 targets TypeScript + Vitest PoCs only (template: `node-ts-vitest`); other templates deferred." The spec's Open Items section asks to "Finalize the PoC repo technology templates and how they map from the plan's architecture notes."
 
