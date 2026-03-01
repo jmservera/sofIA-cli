@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { RalphLoop } from '../../../src/develop/ralphLoop.js';
 import { PocScaffolder } from '../../../src/develop/pocScaffolder.js';
 import { TestRunner } from '../../../src/develop/testRunner.js';
+import { GitHubMcpAdapter } from '../../../src/develop/githubMcpAdapter.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../../src/loop/conversationLoop.js';
 import type { CopilotClient } from '../../../src/shared/copilotClient.js';
@@ -468,6 +469,82 @@ describe('RalphLoop', () => {
 
       const result = await ralph.run();
       expect(result.outputDir).toBe(tmpDir);
+    });
+  });
+
+  describe('GitHub MCP adapter integration', () => {
+    it('reads written files from disk and passes their content to pushFiles', async () => {
+      const session = makeSession();
+      const io = makeIo();
+
+      // LLM returns a file with known content
+      const knownContent = 'export function main() { return "hello"; }\n';
+      const client: CopilotClient = {
+        createSession: vi.fn().mockResolvedValue({
+          send: vi.fn().mockReturnValue({
+            async *[Symbol.asyncIterator]() {
+              yield {
+                type: 'TextDelta',
+                text: `\`\`\`typescript file=src/index.ts\n${knownContent}\`\`\``,
+                timestamp: '',
+              };
+            },
+          }),
+          getHistory: () => [],
+        }),
+      };
+
+      // Fail on first run so the LLM turn (and pushFiles) is reached; pass on second
+      let runCount = 0;
+      const testRunner: TestRunner = {
+        run: vi.fn().mockImplementation(async (): Promise<TestResults> => {
+          runCount++;
+          if (runCount === 1) {
+            return {
+              passed: 0,
+              failed: 1,
+              skipped: 0,
+              total: 1,
+              durationMs: 100,
+              failures: [{ testName: 'main > works', message: 'not implemented' }],
+              rawOutput: 'FAIL',
+            };
+          }
+          return { passed: 1, failed: 0, skipped: 0, total: 1, durationMs: 100, failures: [], rawOutput: 'OK' };
+        }),
+      } as unknown as TestRunner;
+
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      // Create a mock GitHub adapter that captures pushFiles calls
+      const pushFilesMock = vi.fn().mockResolvedValue({ available: true, commitSha: 'abc123' });
+      const githubAdapter = {
+        isAvailable: () => true,
+        getRepoUrl: () => 'https://github.com/acme/poc-test',
+        pushFiles: pushFilesMock,
+        createRepository: vi.fn().mockResolvedValue({ available: true, repoUrl: 'https://github.com/acme/poc-test', repoName: 'poc-test' }),
+      } as unknown as GitHubMcpAdapter;
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 5,
+        testRunner,
+        scaffolder,
+        githubAdapter,
+      });
+
+      await ralph.run();
+
+      // pushFiles should have been called with the real file content written by applyChanges
+      expect(pushFilesMock).toHaveBeenCalled();
+      const callArgs = pushFilesMock.mock.calls[0][0] as { files: Array<{ path: string; content: string }> };
+      const pushedFile = callArgs.files.find((f) => f.path === 'src/index.ts');
+      expect(pushedFile).toBeDefined();
+      expect(pushedFile!.content).toBe(knownContent);
+      expect(pushedFile!.content).not.toBe('');
     });
   });
 });

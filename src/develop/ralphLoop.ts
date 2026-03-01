@@ -7,6 +7,7 @@
  * Contract: specs/002-poc-generation/contracts/ralph-loop.md
  */
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
@@ -457,9 +458,20 @@ export class RalphLoop {
 
       // Push iteration files to GitHub if available
       if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+        const filesWithContent = await Promise.all(
+          applyResult.writtenFiles.map(async (f) => {
+            try {
+              const content = await readFile(join(outputDir, f), 'utf-8');
+              return { path: f, content };
+            } catch (err) {
+              io.writeActivity(`Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`);
+              return { path: f, content: '' };
+            }
+          }),
+        );
         await githubAdapter.pushFiles({
           repoUrl: githubAdapter.getRepoUrl()!,
-          files: applyResult.writtenFiles.map((f) => ({ path: f, content: '' })),
+          files: filesWithContent,
           commitMessage: `chore: iteration ${iterNum} — ${testResults.failed} test(s) failing`,
         });
       }
