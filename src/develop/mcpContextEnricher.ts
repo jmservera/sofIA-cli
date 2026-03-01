@@ -123,16 +123,14 @@ export class McpContextEnricher {
   /**
    * Query Context7 for library documentation.
    *
-   * In a real implementation this would call the Context7 MCP tool.
-   * This implementation simulates the call and degrades gracefully.
+   * Calls `mcpManager.callTool('context7', 'resolve-library-id', ...)` to
+   * resolve each dependency, then `query-docs` for the resolved library.
+   * Degrades gracefully when the service is unavailable or errors.
    */
   private async queryContext7(dependencies: string[]): Promise<string | undefined> {
-    // Guard: Context7 must be available (checked by caller, but defensive here)
     if (!this.mcpManager.isAvailable('context7')) return undefined;
 
     try {
-      // In production this would call the MCP tool via the Copilot SDK.
-      // For now, return structured guidance based on known dependencies.
       const docs: string[] = [];
 
       for (const dep of dependencies.slice(0, 5)) {
@@ -140,12 +138,40 @@ export class McpContextEnricher {
         if (dep.startsWith('@types/') || dep === 'typescript' || dep === 'vitest') {
           continue;
         }
-        docs.push(`- **${dep}**: See https://www.npmjs.com/package/${dep} for API documentation`);
+
+        try {
+          // Step 1: Resolve library ID
+          const resolved = await this.mcpManager.callTool('context7', 'resolve-library-id', {
+            libraryName: dep,
+          });
+          const libraryId = (resolved.libraryId as string) ?? (resolved.id as string);
+          if (!libraryId) {
+            docs.push(
+              `- **${dep}**: See https://www.npmjs.com/package/${dep} for API documentation`,
+            );
+            continue;
+          }
+
+          // Step 2: Query docs with the resolved ID
+          const docResult = await this.mcpManager.callTool('context7', 'query-docs', {
+            libraryId,
+          });
+          const content = (docResult.content as string) ?? (docResult.text as string);
+          if (content) {
+            docs.push(`- **${dep}**:\n${content}`);
+          } else {
+            docs.push(
+              `- **${dep}**: See https://www.npmjs.com/package/${dep} for API documentation`,
+            );
+          }
+        } catch {
+          // Individual dep failure — fallback link
+          docs.push(`- **${dep}**: See https://www.npmjs.com/package/${dep} for API documentation`);
+        }
       }
 
       return docs.length > 0 ? docs.join('\n') : undefined;
     } catch {
-      // Degrade gracefully
       return undefined;
     }
   }
@@ -153,20 +179,27 @@ export class McpContextEnricher {
   /**
    * Query Azure MCP for architecture guidance.
    *
-   * Degrades gracefully when Azure MCP is unavailable.
+   * Calls `mcpManager.callTool('azure', 'documentation', ...)` with detected
+   * Azure keywords. Degrades gracefully when Azure MCP is unavailable.
    */
   private async queryAzureMcp(architectureNotes: string): Promise<string | undefined> {
-    // Guard: Azure MCP must be available (checked by caller, but defensive here)
     if (!this.mcpManager.isAvailable('azure')) return undefined;
 
     try {
-      // In production this would call the Azure MCP / Microsoft Docs MCP tool.
-      // For now, return structured guidance based on detected Azure services.
-      const detected = AZURE_KEYWORDS.filter((kw) =>
-        architectureNotes.toLowerCase().includes(kw),
-      );
-
+      const detected = AZURE_KEYWORDS.filter((kw) => architectureNotes.toLowerCase().includes(kw));
       if (detected.length === 0) return undefined;
+
+      try {
+        const response = await this.mcpManager.callTool('azure', 'documentation', {
+          query: `Best practices for ${detected.join(', ')}`,
+        });
+        const content = (response.content as string) ?? (response.text as string);
+        if (content) {
+          return content;
+        }
+      } catch {
+        // MCP call failed — fall back to static guidance
+      }
 
       return [
         `Detected Azure services: ${detected.join(', ')}`,
@@ -182,14 +215,29 @@ export class McpContextEnricher {
    * Query web search for solutions to failing tests.
    *
    * Only called when stuckIterations >= 2 to avoid unnecessary API calls.
+   * Uses `mcpManager.callTool` to search for error messages.
    */
   private async queryWebSearch(failingTests: string[]): Promise<string | undefined> {
     if (!isWebSearchConfigured()) return undefined;
 
     try {
-      // In production this would call the web.search tool.
-      // For now, return structured guidance based on the failing test names.
       const query = failingTests.slice(0, 3).join('; ');
+
+      // Attempt real web search via MCP if available
+      if (this.mcpManager.isAvailable('websearch')) {
+        try {
+          const response = await this.mcpManager.callTool('websearch', 'search', {
+            query: `how to fix: ${query}`,
+          });
+          const content = (response.content as string) ?? (response.text as string);
+          if (content) {
+            return content;
+          }
+        } catch {
+          // Web search MCP unavailable — fall through to static message
+        }
+      }
+
       return `Web search for: "${query}" — no results available in this environment.`;
     } catch {
       return undefined;

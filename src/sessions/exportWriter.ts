@@ -14,8 +14,8 @@ import type { WorkshopSession } from '../shared/schemas/session.js';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ExportFile {
-  path: string;  // Relative to export directory
-  type: string;  // 'markdown' | 'json'
+  path: string; // Relative to export directory
+  type: string; // 'markdown' | 'json'
 }
 
 export interface ExportResult {
@@ -64,7 +64,7 @@ function generateDiscoverMarkdown(session: WorkshopSession): string | null {
   }
 
   // Include conversation turns for this phase
-  const discoverTurns = session.turns?.filter(t => t.phase === 'Discover') ?? [];
+  const discoverTurns = session.turns?.filter((t) => t.phase === 'Discover') ?? [];
   if (discoverTurns.length > 0) {
     lines.push('## Conversation\n');
     for (const turn of discoverTurns) {
@@ -88,7 +88,7 @@ function generateIdeateMarkdown(session: WorkshopSession): string | null {
     }
   }
 
-  const ideateTurns = session.turns?.filter(t => t.phase === 'Ideate') ?? [];
+  const ideateTurns = session.turns?.filter((t) => t.phase === 'Ideate') ?? [];
   if (ideateTurns.length > 0) {
     lines.push('## Conversation\n');
     for (const turn of ideateTurns) {
@@ -107,7 +107,9 @@ function generateDesignMarkdown(session: WorkshopSession): string | null {
   lines.push(`**Method**: ${session.evaluation.method}\n`);
   lines.push('### Evaluated Ideas\n');
   for (const eval_ of session.evaluation.ideas) {
-    lines.push(`- **${eval_.ideaId}**: Feasibility=${eval_.feasibility ?? 'N/A'}, Value=${eval_.value ?? 'N/A'}`);
+    lines.push(
+      `- **${eval_.ideaId}**: Feasibility=${eval_.feasibility ?? 'N/A'}, Value=${eval_.value ?? 'N/A'}`,
+    );
   }
   lines.push('');
 
@@ -212,10 +214,9 @@ function generateDevelopMarkdown(session: WorkshopSession): string | null {
   if (poc.iterations.length > 0) {
     lines.push('## Iteration Timeline\n');
     for (const iter of poc.iterations) {
-      const duration =
-        iter.endedAt
-          ? `${((new Date(iter.endedAt).getTime() - new Date(iter.startedAt).getTime()) / 1000).toFixed(1)}s`
-          : 'in progress';
+      const duration = iter.endedAt
+        ? `${((new Date(iter.endedAt).getTime() - new Date(iter.startedAt).getTime()) / 1000).toFixed(1)}s`
+        : 'in progress';
       lines.push(`### Iteration ${iter.iteration} — ${iter.outcome} (${duration})\n`);
       if (iter.changesSummary) {
         lines.push(`${iter.changesSummary}\n`);
@@ -225,7 +226,9 @@ function generateDevelopMarkdown(session: WorkshopSession): string | null {
       }
       if (iter.testResults) {
         const tr = iter.testResults;
-        lines.push(`**Tests**: ${tr.passed} passed, ${tr.failed} failed, ${tr.skipped} skipped (${tr.durationMs}ms)\n`);
+        lines.push(
+          `**Tests**: ${tr.passed} passed, ${tr.failed} failed, ${tr.skipped} skipped (${tr.durationMs}ms)\n`,
+        );
       }
       if (iter.errorMessage) {
         lines.push(`**Error**: ${iter.errorMessage}\n`);
@@ -282,6 +285,19 @@ export async function exportSession(
   if (session.plan?.milestones?.length) {
     highlights.push(`${session.plan.milestones.length} milestones planned`);
   }
+  // PoC highlights
+  if (session.poc) {
+    const poc = session.poc;
+    if (poc.finalStatus) {
+      highlights.push(`PoC status: ${poc.finalStatus}`);
+    }
+    if (poc.iterations?.length) {
+      highlights.push(`PoC iterations: ${poc.iterations.length}`);
+    }
+    if (poc.terminationReason) {
+      highlights.push(`PoC termination: ${poc.terminationReason}`);
+    }
+  }
 
   // Generate summary.json
   const summary: ExportSummary = {
@@ -294,11 +310,7 @@ export async function exportSession(
   };
 
   const summaryFileName = 'summary.json';
-  await writeFile(
-    join(exportDir, summaryFileName),
-    JSON.stringify(summary, null, 2),
-    'utf-8',
-  );
+  await writeFile(join(exportDir, summaryFileName), JSON.stringify(summary, null, 2), 'utf-8');
   files.push({ path: summaryFileName, type: 'json' });
 
   return { exportDir, files };

@@ -28,9 +28,27 @@ function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSessio
     artifacts: { generatedFiles: [] },
     turns: [
       { phase: 'Discover', sequence: 1, role: 'user', content: 'We sell rockets', timestamp: now },
-      { phase: 'Discover', sequence: 2, role: 'assistant', content: 'Interesting! Tell me more.', timestamp: now },
-      { phase: 'Ideate', sequence: 3, role: 'user', content: 'We need better delivery', timestamp: now },
-      { phase: 'Ideate', sequence: 4, role: 'assistant', content: 'Here are some ideas.', timestamp: now },
+      {
+        phase: 'Discover',
+        sequence: 2,
+        role: 'assistant',
+        content: 'Interesting! Tell me more.',
+        timestamp: now,
+      },
+      {
+        phase: 'Ideate',
+        sequence: 3,
+        role: 'user',
+        content: 'We need better delivery',
+        timestamp: now,
+      },
+      {
+        phase: 'Ideate',
+        sequence: 4,
+        role: 'assistant',
+        content: 'Here are some ideas.',
+        timestamp: now,
+      },
     ],
     businessContext: {
       businessDescription: 'ACME Rockets Inc.',
@@ -156,8 +174,11 @@ describe('exportWriter', () => {
       plan: undefined,
       turns: [
         {
-          phase: 'Discover', sequence: 1, role: 'user',
-          content: 'We sell rockets', timestamp: new Date().toISOString(),
+          phase: 'Discover',
+          sequence: 1,
+          role: 'user',
+          content: 'We sell rockets',
+          timestamp: new Date().toISOString(),
         },
       ],
     });
@@ -178,7 +199,7 @@ describe('exportWriter', () => {
 
     expect(result.exportDir).toBe(tmpDir);
     expect(result.files.length).toBeGreaterThan(0);
-    expect(result.files.every(f => f.path && f.type)).toBe(true);
+    expect(result.files.every((f) => f.path && f.type)).toBe(true);
   });
 
   it('summary.json files paths are relative', async () => {
@@ -242,7 +263,7 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     const result = await exportSession(session, tmpDir);
     const files = await readdir(tmpDir);
     expect(files).toContain('develop.md');
-    const fileEntry = result.files.find(f => f.path === 'develop.md');
+    const fileEntry = result.files.find((f) => f.path === 'develop.md');
     expect(fileEntry).toBeDefined();
   });
 
@@ -366,7 +387,7 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
     expect(content).toContain('success');
     expect(content).toContain('tests-passing');
-    expect(content).toContain('5');  // passed count
+    expect(content).toContain('5'); // passed count
     expect(content).toContain('60.0s'); // total duration
   });
 
@@ -383,9 +404,7 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
           skipped: 0,
           total: 1,
           durationMs: 500,
-          failures: [
-            { testName: 'route optimizer test', message: 'Expected 3 but got 5' },
-          ],
+          failures: [{ testName: 'route optimizer test', message: 'Expected 3 but got 5' }],
         },
       },
     });
@@ -429,5 +448,40 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
     expect(content).toContain('error');
     expect(content).toContain('npm install failed');
+  });
+
+  it('includes PoC highlights in summary.json (F030)', async () => {
+    const session = createSessionWithPoc({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: '2026-01-15T10:00:00Z',
+            outcome: 'tests-passing',
+            filesChanged: ['src/index.ts'],
+          },
+          {
+            iteration: 2,
+            startedAt: '2026-01-15T10:01:00Z',
+            outcome: 'tests-passing',
+            filesChanged: ['src/routes.ts'],
+          },
+        ],
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+      },
+    });
+    await exportSession(session, tmpDir);
+    const summaryRaw = await readFile(join(tmpDir, 'summary.json'), 'utf-8');
+    const summary = JSON.parse(summaryRaw) as { highlights?: string[] };
+    expect(summary.highlights).toBeDefined();
+    expect(summary.highlights).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('PoC status: success'),
+        expect.stringContaining('PoC iterations: 2'),
+        expect.stringContaining('PoC termination: tests-passing'),
+      ]),
+    );
   });
 });
