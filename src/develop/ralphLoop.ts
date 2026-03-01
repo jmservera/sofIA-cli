@@ -8,7 +8,7 @@
  */
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
 import type { LoopIO } from '../loop/conversationLoop.js';
@@ -23,7 +23,7 @@ import type {
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
 import { PocScaffolder } from './pocScaffolder.js';
 import { TestRunner } from './testRunner.js';
-import { CodeGenerator } from './codeGenerator.js';
+import { CodeGenerator, isPathWithinDirectory, isUnsafePath } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
 import { GitHubMcpAdapter } from './githubMcpAdapter.js';
 
@@ -460,8 +460,12 @@ export class RalphLoop {
       if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
         const filesWithContent = await Promise.all(
           applyResult.writtenFiles.map(async (f) => {
+            if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
+              io.writeActivity(`Warning: skipping out-of-bounds file path for push: ${f}`);
+              return null;
+            }
             try {
-              const content = await readFile(join(outputDir, f), 'utf-8');
+              const content = await readFile(resolve(outputDir, f), 'utf-8');
               return { path: f, content };
             } catch (err) {
               io.writeActivity(`Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`);
@@ -469,9 +473,12 @@ export class RalphLoop {
             }
           }),
         );
+        const validFiles = filesWithContent.filter(
+          (file): file is { path: string; content: string } => file !== null,
+        );
         await githubAdapter.pushFiles({
           repoUrl: githubAdapter.getRepoUrl()!,
-          files: filesWithContent,
+          files: validFiles,
           commitMessage: `chore: iteration ${iterNum} — ${testResults.failed} test(s) failing`,
         });
       }

@@ -8,7 +8,7 @@
  * Contract: specs/002-poc-generation/contracts/ralph-loop.md (Code change format)
  */
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, sep, isAbsolute } from 'node:path';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 
 import type { TestResults } from '../shared/schemas/session.js';
@@ -139,6 +139,44 @@ export function buildFileTree(dir: string, prefix = ''): string[] {
   }
 
   return lines;
+}
+
+// ── Path safety ───────────────────────────────────────────────────────────────
+
+/**
+ * Returns true when `filePath` resolves to a location inside `baseDir`.
+ *
+ * Works cross-platform: on a POSIX host, `resolve()` is OS-native and correctly
+ * handles POSIX absolute paths. For Windows-style paths produced by an LLM on a
+ * POSIX host (`C:\...`, `\\server\...`, `//server/...`), we also apply explicit
+ * pattern matching so they are caught regardless of which OS the server runs on.
+ */
+export function isPathWithinDirectory(filePath: string, baseDir: string): boolean {
+  const resolvedBase = resolve(baseDir);
+  const prefix = resolvedBase.endsWith(sep) ? resolvedBase : resolvedBase + sep;
+  const resolvedFull = resolve(baseDir, filePath);
+  return resolvedFull.startsWith(prefix);
+}
+
+/**
+ * Returns true when `filePath` must be rejected before any path joining.
+ *
+ * Catches:
+ * - POSIX absolute paths (`/etc/passwd`) via `isAbsolute()`.
+ * - Windows drive-letter paths (`C:\...` or `C:/...`) — unsafe on Windows hosts;
+ *   `isAbsolute()` only detects these correctly on Windows, so we also apply an
+ *   explicit pattern that works from any host OS.
+ * - Windows/POSIX UNC paths (`\\server\share` or `//server/share`).
+ * - Path traversal segments (`..`).
+ */
+export function isUnsafePath(filePath: string): boolean {
+  if (isAbsolute(filePath)) return true;
+  if (filePath.includes('..')) return true;
+  // Windows drive-letter absolute paths (C:\ or C:/)
+  if (/^[a-zA-Z]:[\\/]/.test(filePath)) return true;
+  // UNC paths with backslash or forward slash (\\server or //server)
+  if (/^[/\\]{2}/.test(filePath)) return true;
+  return false;
 }
 
 // ── CodeGenerator ────────────────────────────────────────────────────────────
@@ -273,8 +311,8 @@ export class CodeGenerator {
     const writtenFiles: string[] = [];
 
     for (const file of parsedFiles) {
-      // Reject absolute paths or path traversal
-      if (file.path.startsWith('/') || file.path.includes('..')) {
+      // Reject unsafe paths before any filesystem access.
+      if (isUnsafePath(file.path) || !isPathWithinDirectory(file.path, this.outputDir)) {
         continue;
       }
 
