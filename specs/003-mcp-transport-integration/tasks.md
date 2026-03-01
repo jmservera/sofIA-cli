@@ -29,7 +29,7 @@ The following items are already implemented and do not require new tasks:
 | Adapter unit tests (basic) | `tests/unit/develop/githubMcpAdapter.spec.ts`, `mcpContextEnricher.spec.ts`  | ✅ Complete (new contract cases needed)                                    |
 | Ralph Loop unit tests      | `tests/unit/develop/ralphLoop.spec.ts`                                       | ✅ Complete (post-scaffold push test missing)                              |
 | McpManager basic tests     | `tests/unit/mcp/mcpManager.spec.ts`                                          | ✅ Complete (`callTool()` real dispatch tests missing)                     |
-| FR-020 SDK Alignment       | `specs/003-mcp-transport-integration/research.md` (Topic 7)                  | ✅ Agent architecture aligned — SDK `mcpServers` wiring added in T049–T051 |
+| FR-020 SDK Alignment       | `specs/003-mcp-transport-integration/research.md` (Topics 7–9)               | ✅ Agent architecture verified aligned; SDK hooks, `infiniteSessions`, `customAgents`, `skillDirectories` evaluated (T049–T055) |
 
 ---
 
@@ -157,7 +157,7 @@ The following items are already implemented and do not require new tasks:
 
 ## Phase 7: User Story 5 — Copilot SDK Agent Architecture Alignment (Priority: P2)
 
-**Status: PARTIALLY FULFILLED** — `research.md` Topic 7 documents that the current `src/` agent definitions are already aligned with Copilot SDK v0.1.28 conventions. **However**, the SDK's native `mcpServers` support (discovered during SDK compliance review) requires wiring `.vscode/mcp.json` config through `createSession()` so the LLM can invoke MCP tools during conversation turns.
+**Status: PARTIALLY FULFILLED** — `research.md` Topic 7 documents that the current `src/` agent definitions are already aligned with Copilot SDK v0.1.28 conventions. **However**, the SDK compliance review identified three gaps: (1) native `mcpServers` support requires wiring `.vscode/mcp.json` config through `createSession()` (Topics 1, 7); (2) SDK hooks (`onPreToolUse`/`onPostToolUse`) must be wired for CLI tool-call visibility per Constitution Principle VIII (Topic 8); (3) `infiniteSessions` should be configured for Ralph Loop sessions to prevent context window exhaustion (Topic 9).
 
 ### Tests for SDK mcpServers wiring (REQUIRED — write FIRST)
 
@@ -168,7 +168,17 @@ The following items are already implemented and do not require new tasks:
 
 - [ ] T051 [US5] Wire `loadMcpConfig()` → `toSdkMcpServers()` → `createSession({ mcpServers })` in the application entry point: load `.vscode/mcp.json` via `loadMcpConfig()`, convert via `toSdkMcpServers()`, and pass the result through `SessionOptions.mcpServers` so the Copilot SDK manages MCP server lifecycle for LLM-initiated tool calls (depends on T049, T050)
 
-- [ ] T038 Confirm no regressions from US1 and US5 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager, copilotClient, and adapter updates
+### Tests for SDK hooks and transparency (REQUIRED — write FIRST)
+
+- [ ] T052 [P] [US5] Add failing tests to `tests/unit/shared/copilotClient.spec.ts` for SDK hooks integration: verify that `SessionOptions` accepts a `hooks` object with `onPreToolUse` and `onPostToolUse` callbacks; verify that when `hooks` is provided, it is forwarded to the SDK's `createSession()` call; verify that when `hooks` is omitted, no hooks are passed to the SDK
+
+### Implementation for SDK hooks, infiniteSessions, and events
+
+- [ ] T053 [US5] Wire SDK `onPreToolUse`/`onPostToolUse` hooks in `src/shared/copilotClient.ts`: add `hooks?: { onPreToolUse?: (toolName: string, toolArgs: Record<string, unknown>) => void; onPostToolUse?: (toolName: string, result: unknown, durationMs: number) => void; onErrorOccurred?: (error: Error) => void }` to `SessionOptions`; forward hooks to SDK `createSession({ hooks })` so tool-call activity (tool name, start/end, duration) is emitted to the CLI spinner via the existing activity event system in `src/shared/events.ts`; wire `onErrorOccurred` to log SDK-path errors at `warn` level (FR-021, FR-022) (depends on T052)
+- [ ] T054 [P] [US5] Wire `infiniteSessions` config to Ralph Loop `createSession()` calls in `src/develop/ralphLoop.ts`: pass `infiniteSessions: { backgroundCompactionThreshold: 0.7, bufferExhaustionThreshold: 0.9 }` to prevent context window exhaustion during extended multi-iteration conversations (FR-023); add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying the config is forwarded
+- [ ] T055 [P] [US5] Subscribe to SDK `assistant.usage` event in the conversation loop (`src/loop/conversationLoop.ts`): log token usage (input/output tokens) at `debug` level via pino logger; optionally emit cumulative usage as an activity event for the CLI spinner (FR-024); add unit test in `tests/unit/loop/conversationLoop.spec.ts` verifying event subscription
+
+- [ ] T038 Confirm no regressions from US1 and US5 changes by running `npm run test:unit` and verifying all existing `tests/unit/` specs remain green after the McpManager, copilotClient, hooks, and adapter updates
 
 ---
 
@@ -200,7 +210,7 @@ The following items are already implemented and do not require new tasks:
 - **US2 (T024–T025)**: Depends only on T001 — independent of US1 transport layer (different module)
 - **US3 (T026–T033)**: Depends on T001 — independent of US1 and US2
 - **US4 (T034–T037)**: Depends on T032 (DiscoveryEnricher class must exist from US3)
-- **US5 (T038)**: Depends on US1 implementation being complete (verifies no regressions)
+- **US5 (T049–T055, T038)**: T049–T052 tests can start after T001; T051 depends on T049, T050; T053 depends on T052; T054 and T055 are independent (can start after T001); T038 depends on US1 and US5 implementation being complete (verifies no regressions)
 - **Polish (T039–T048)**: Depends on all US phases being complete
 
 ### User Story Dependencies
@@ -209,7 +219,7 @@ The following items are already implemented and do not require new tasks:
 - **US2 (P1)**: Independent — can start immediately after T001 in parallel with US1
 - **US3 (P2)**: Independent — can start after T001 in parallel with US1 and US2
 - **US4 (P3)**: Depends on US3 (T032 — DiscoveryEnricher class must exist)
-- **US5 (P2)**: T049–T050 tests can start after T001 (types exist in mcpManager.ts); T051 wiring depends on T049, T050; T038 verification after US1 and US5 implementation
+- **US5 (P2)**: T049–T050 tests can start after T001 (types exist in mcpManager.ts); T051 wiring depends on T049, T050; T052 test can start after T001; T053 depends on T052; T054 and T055 are independent, parallelizable after T001; T038 verification after US1 and US5 implementation
 
 ### Within Each User Story
 
@@ -217,6 +227,7 @@ The following items are already implemented and do not require new tasks:
 2. In US1: transport core + retry (T012–T015) before McpManager (T016–T017) before adapter/enricher updates (T018–T023)
 3. In US3: schema (T030–T031) before enricher class (T032) before phase handler wiring (T033)
 4. In US4: enricher class must exist (T032) before WorkIQ method (T036) before wiring/storage (T037)
+5. In US5: mcpServers tests (T049–T050) before wiring (T051); hooks test (T052) before hooks impl (T053); T054 and T055 are independent
 
 ### Parallel Opportunities
 
@@ -235,6 +246,11 @@ The following items are already implemented and do not require new tasks:
 **US3 and US1/US2**:
 
 - US3 (T026–T033) can be worked on in parallel with US1 and US2 (different modules: `session.ts`, `discoveryEnricher.ts`, `phaseHandlers.ts`)
+
+**US5 Internal**:
+
+- T049, T050, T052 (test tasks) can all run in parallel (different test files)
+- T054 and T055 are independent of each other and of T051/T053 (different modules: `ralphLoop.ts`, `conversationLoop.ts`)
 
 ---
 
@@ -283,7 +299,8 @@ Task: "Add DiscoveryEnrichmentSchema to src/shared/schemas/session.ts" (T030)
 3. US2 → Scaffold push fixed → Demo complete PoC round-trip
 4. US3 → Discovery enrichment → Richer ideation phase
 5. US4 → WorkIQ integration → Internal context available
-6. Polish → Live smoke tests + CI green
+6. US5 → SDK hooks for tool visibility, `infiniteSessions` for context management, usage tracking → CLI transparency complete
+7. Polish → Live smoke tests + CI green
 
 ### Parallel Team Strategy
 
@@ -303,5 +320,5 @@ US4 begins when US3's T032 is merged. US5 (verification) runs after US1 merges.
 - Follow the "Dependencies & Execution Order" section to sequence work; task IDs are unique but may not strictly encode dependency order after updates
 - Adapter unit tests (githubMcpAdapter.spec.ts, mcpContextEnricher.spec.ts) already cover basic `callTool()` integration via mocks — Tasks T008/T009 ADD new contract-specific test cases, not replace existing ones
 - Live smoke tests (T039, T048) require real credentials; they are gated by `SOFIA_LIVE_MCP_TESTS=true` and are NOT run in CI
-- US5 (SDK alignment) now includes SDK `mcpServers` wiring tasks (T049–T051) per SDK compliance review — the current architecture is agent-aligned per research.md Topic 7, but `createSession()` was not forwarding `mcpServers` config
+- US5 (SDK alignment) now includes SDK `mcpServers` wiring (T049–T051), hooks integration for CLI transparency (T052–T053), `infiniteSessions` for Ralph Loop context management (T054), and SDK event subscriptions (T055) — per SDK compliance review (research.md Topics 7–9)
 - The `DiscoveryState` entity described in data-model.md does not exist yet in `session.ts` — T031 creates it; existing sessions remain valid because the field is `optional()`

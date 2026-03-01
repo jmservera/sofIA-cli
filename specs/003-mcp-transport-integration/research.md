@@ -267,6 +267,118 @@ The Copilot SDK v0.1.28 agent model:
 
 ---
 
+## Topic 8: SDK Hooks, Events, and CLI Transparency (FR-021, FR-022, FR-024)
+
+### Question
+
+How should sofIA use the Copilot SDK's hooks and event system to provide real-time visibility into tool activity, errors, and usage — satisfying Constitution Principle VIII (CLI-First UX & Transparency)?
+
+### Findings
+
+The Copilot SDK v0.1.28 provides two complementary mechanisms for runtime visibility:
+
+**Hooks** (via `SessionConfig.hooks`):
+
+Six lifecycle hooks are available:
+
+- `onPreToolUse(toolName, toolArgs, context)` — fired before every tool call; returns `{ permissionDecision, reason }` to allow/deny
+- `onPostToolUse(toolResult, context)` — fired after every tool call; can modify or log results
+- `onUserPromptSubmitted(prompt, context)` — modify user prompts before processing
+- `onSessionStart(context)` — add additional context at session start
+- `onSessionEnd(context)` — cleanup/analytics
+- `onErrorOccurred(error, context)` — custom error handling for LLM-path errors
+
+**Events** (via `session.on()`/`session.once()`):
+
+40+ event types are available, including:
+
+- `assistant.usage` — token usage per turn (input/output tokens)
+- Streaming delta events for real-time content display
+- Tool call lifecycle events
+
+**Key insight for CLI transparency**: `onPreToolUse` and `onPostToolUse` are the standard mechanism to implement Constitution Principle VIII's requirement that _"Users MUST always see the current execution state."_ Currently, sofIA's spinner shows phase-level activity but does NOT show individual MCP tool calls being made during LLM conversation turns. The SDK hooks are the native way to emit this visibility.
+
+**`onErrorOccurred` for LLM-path errors**: FR-004's `classifyMcpError()` only covers the custom transport path (adapter calls). Errors during SDK-managed tool calls (LLM conversation path) are handled by the SDK internally. The `onErrorOccurred` hook allows sofIA to log, surface, or recover from these errors — complementing the custom transport error handling.
+
+**`onPermissionRequest` for tool approval**: The SDK provides an `onPermissionRequest` handler that implements deny-by-default tool approval. This was evaluated as an alternative to `io.prompt()` for WorkIQ consent (FR-016). Decision: defer in favor of the existing `io.prompt()` pattern, which is consistent with other interactive prompts in the discovery phase and supports custom consent UX.
+
+**`assistant.usage` for token tracking**: Subscribing to the `assistant.usage` event provides per-turn token counts. This can be logged at `debug` level and optionally displayed in the spinner for transparency during long-running sessions.
+
+### Decision
+
+**Wire SDK hooks for tool-call visibility**:
+
+1. Add `hooks` support to `SessionOptions` in `copilotClient.ts`.
+2. Wire `onPreToolUse` to emit a `tool:start` activity event (tool name) to the CLI spinner.
+3. Wire `onPostToolUse` to emit a `tool:end` activity event (tool name, duration) to the CLI spinner.
+4. Wire `onErrorOccurred` to log SDK-path errors at `warn` level via the existing pino logger.
+5. Subscribe to `assistant.usage` events and log token usage at `debug` level.
+
+**Defer**: `onPermissionRequest` (use `io.prompt()` instead for WorkIQ consent), `onUserPromptSubmitted` (no current use case), `onSessionStart`/`onSessionEnd` (no current use case beyond what's already handled).
+
+**Rationale**: Hooks are the SDK-native mechanism for the transparency that Constitution Principle VIII requires. Without them, MCP tool calls during LLM conversation turns are invisible to the user. The implementation is low-effort: forward hooks to `createSession()`, emit events to the existing spinner infrastructure in `src/shared/events.ts`.
+
+---
+
+## Topic 9: SDK Advanced Session Features — infiniteSessions, customAgents, skillDirectories (FR-023)
+
+### Question
+
+Do the SDK's `infiniteSessions`, `customAgents`, and `skillDirectories` features offer advantages over sofIA's current implementation patterns?
+
+### Findings
+
+**`infiniteSessions` config**:
+
+- Controls context window management for long-running sessions.
+- `backgroundCompactionThreshold` (default 0.7): triggers background context compaction when usage exceeds this ratio.
+- `bufferExhaustionThreshold` (default 0.9): forces compaction to prevent context overflow.
+- **Direct relevance**: The Ralph Loop runs extended multi-iteration conversations (up to `maxIterations` turns with code generation, test output, and enrichment context). Without `infiniteSessions`, long runs risk silently truncating conversation history, losing important context about failing tests or previous code changes.
+- **Current gap**: Neither spec nor tasks configure `infiniteSessions`. The Ralph Loop could hit context limits on iteration 8+ with verbose test output.
+
+**`customAgents` config**:
+
+- Allows defining multiple agent personas within a single session.
+- Each agent has its own system prompt, tools, and capabilities.
+- The SDK handles agent switching within the session.
+- **sofIA's current pattern**: Creates a new session per phase via `createSession()`. Each phase has its own system prompt and tools.
+- **Evaluation**: `customAgents` would allow all phases to share a single session, but sofIA intentionally isolates phases with separate sessions for:
+  - Clean context boundaries between workshop phases
+  - Independent session history per phase
+  - Ability to checkpoint/resume individual phases
+- **Conclusion**: The per-phase session pattern is deliberate and offers advantages that `customAgents` would sacrifice. No change needed.
+
+**`skillDirectories` config**:
+
+- Skills are named directories containing `SKILL.md` files (markdown with optional YAML frontmatter).
+- Content is injected into the session context.
+- Can disable specific skills via `disabledSkills`.
+- **sofIA's current pattern**: `promptLoader.ts` loads prompts from `src/prompts/` as markdown files, injects them as system prompts via `SessionOptions.systemMessage`.
+- **Evaluation**: `skillDirectories` could replace `promptLoader.ts` for phase-specific prompts, but:
+  - `promptLoader.ts` already works correctly and is tested.
+  - Skills are additive context injection, not primary system prompts — semantically different.
+  - Migration would add complexity without clear benefit.
+- **Conclusion**: Keep `promptLoader.ts`. Skills could be used for supplementary context (e.g., workshop materials, card decks) in future features.
+
+**`resumeSession(sessionId)` + session persistence**:
+
+- Sessions persist at `~/.copilot/session-state/{sessionId}/` with checkpoints, plan.md, files.
+- `resumeSession()` restores conversation history, tool call results, agent planning state.
+- **Current "Out of Scope" deferral**: "Resume/checkpoint for `sofia dev`" (GAP-006 P2) was deferred assuming significant implementation effort.
+- **SDK reality**: The SDK handles persistence natively — sofIA only needs to pass a structured `sessionId` and call `resumeSession()`. Implementation complexity is much lower than originally assessed.
+- **Conclusion**: Keep deferred (different feature scope) but note reduced complexity in spec's Out of Scope section.
+
+### Decision
+
+| Feature | Decision | Rationale |
+|---------|----------|----------|
+| `infiniteSessions` | **Wire for Ralph Loop sessions** | Prevents context window exhaustion in extended iterations; low implementation effort |
+| `customAgents` | **Defer — current per-phase sessions are deliberate** | Phase isolation provides clean context boundaries and independent checkpointing |
+| `skillDirectories` | **Defer — `promptLoader.ts` is sufficient** | Current approach works; skills could supplement in future features |
+| `resumeSession` | **Defer (different feature scope) but note reduced complexity** | SDK makes this nearly trivial; updated Out of Scope note in spec.md |
+
+---
+
 ## Summary of Decisions
 
 | Topic                | Decision                                                                                                                                                                  |
@@ -279,3 +391,5 @@ The Copilot SDK v0.1.28 agent model:
 | pushFiles bug        | Add post-scaffold push; per-iteration push already correct                                                                                                                |
 | Discovery enrichment | New `discoveryEnricher.ts`; `DiscoveryEnrichment` in session schema                                                                                                       |
 | Agent alignment      | No refactoring needed; current SDK usage is correct                                                                                                                       |
+| SDK hooks & events   | Wire `onPreToolUse`/`onPostToolUse` for CLI spinner visibility; `onErrorOccurred` for LLM-path errors; `assistant.usage` for token tracking                               |
+| SDK session features | `infiniteSessions` wired for Ralph Loop; `customAgents` deferred (per-phase sessions deliberate); `skillDirectories` deferred (`promptLoader.ts` sufficient); session persistence noted as low-complexity |

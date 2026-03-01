@@ -9,7 +9,7 @@
 
 Implement the real MCP transport layer that connects `McpManager.callTool()` to actual MCP server processes and HTTP endpoints, replacing all stubs and placeholder implementations introduced in Feature 002.
 
-The four currently-stubbed MCP integrations — GitHub adapter (repo creation + file push), Context7 enricher (library docs), Azure MCP enricher (cloud guidance), and web search enricher (stuck-iteration research) — will be wired to real transport. Research (FR-019) confirmed that `@github/copilot-sdk` v0.1.28 does not provide an MCP client protocol implementation, so a custom `mcpTransport.ts` (stdio + HTTP) is built for SDK gaps.
+The four currently-stubbed MCP integrations — GitHub adapter (repo creation + file push), Context7 enricher (library docs), Azure MCP enricher (cloud guidance), and web search enricher (stuck-iteration research) — will be wired to real transport. Research (FR-019) confirmed that `@github/copilot-sdk` v0.1.28 provides **native MCP server management** via `SessionConfig.mcpServers` for LLM-initiated tool calls during conversation turns, but the SDK's `executeToolCall()` is private — so a custom `mcpTransport.ts` (stdio + HTTP) is built for programmatic adapter calls (GitHub, Context7, Azure) that bypass the LLM.
 
 Additionally: the discovery phase gains optional web search and WorkIQ enrichment; `pushFiles` is fixed to include an initial post-scaffold push; and agent definitions are confirmed aligned with SDK patterns (no refactoring required).
 
@@ -34,7 +34,7 @@ Additionally: the discovery phase gains optional web search and WorkIQ enrichmen
 - **Node.js + TypeScript**: ✅ All new code extends the existing TypeScript ESM codebase; Copilot SDK used as primary integration surface.
 - **MCP-first**: ✅ This entire feature IS the MCP integration — every external call routes through MCP protocol rather than ad-hoc HTTP. WorkIQ uses its MCP interface. Web search uses the `web.search` MCP tool or Azure AI Foundry bridge already in `src/mcp/webSearch.ts`.
 - **Test-first (NON-NEGOTIABLE)**: ✅ Transport layer, retry logic, error classification, all adapter methods, and discovery enrichment flows require Red → Green → Review. Live integration tests gated behind `SOFIA_LIVE_MCP_TESTS=true`. Mock MCP servers used in unit/integration tests.
-- **CLI transparency**: ✅ MCP tool call start/end events stream to spinner; retry attempts logged at warn level; graceful degradation messages include what was skipped and why.
+- **CLI transparency**: ✅ SDK `onPreToolUse`/`onPostToolUse` hooks emit tool-call activity to the CLI spinner; `assistant.usage` events tracked for token transparency; retry attempts logged at warn level; graceful degradation messages include what was skipped and why.
 
 ## Project Structure
 
@@ -107,7 +107,7 @@ tests/
 - **Node.js + TypeScript**: ✅ All new modules follow existing ESM + strict TS patterns; Zod schemas for all response validation.
 - **MCP-first**: ✅ `mcpTransport.ts` IS the MCP protocol implementation; no ad-hoc HTTP side channels.
 - **Test-first (NON-NEGOTIABLE)**: ✅ Every new module has a spec file defined in the structure above. Mock MCP servers used in unit/integration; live tests gated.
-- **CLI transparency**: ✅ Transport emits activity events visible via spinner; retry attempts log warn-level messages with backoff delay; degradation messages specify which MCP server was skipped.
+- **CLI transparency**: ✅ SDK `onPreToolUse`/`onPostToolUse` hooks emit tool-call activity visible via spinner; `assistant.usage` events logged for token transparency; retry attempts log warn-level messages with backoff delay; degradation messages specify which MCP server was skipped.
 
 ## Complexity Tracking
 
