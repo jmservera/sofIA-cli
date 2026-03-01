@@ -598,6 +598,13 @@ export class RalphLoop {
         });
       }
 
+      // FR-022: Rescan TODO markers after applying changes
+      try {
+        await PocScaffolder.scanAndRecordTodos(outputDir);
+      } catch {
+        // Non-critical — ignore scanning errors
+      }
+
       const failIteration: PocIteration = {
         iteration: iterNum,
         startedAt: new Date(iterStart).toISOString(),

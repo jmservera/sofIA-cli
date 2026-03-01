@@ -276,13 +276,17 @@ describe('${ctx.projectName}', () => {
  */
 export class PocScaffolder {
   private readonly template: TemplateFile[];
+  private readonly templateId: string | undefined;
 
   constructor(templateOrFiles?: TemplateEntry | TemplateFile[]) {
     if (templateOrFiles && 'files' in templateOrFiles && 'id' in templateOrFiles) {
       // TemplateEntry
-      this.template = (templateOrFiles as TemplateEntry).files;
+      const entry = templateOrFiles as TemplateEntry;
+      this.template = entry.files;
+      this.templateId = entry.id;
     } else {
       this.template = (templateOrFiles as TemplateFile[] | undefined) ?? NODE_TS_VITEST_TEMPLATE;
+      this.templateId = undefined;
     }
   }
 
@@ -366,7 +370,92 @@ export class PocScaffolder {
       createdFiles.push(templateFile.path);
     }
 
+    // FR-022: Add templateId to metadata if available
+    const metadataPath = join(context.outputDir, '.sofia-metadata.json');
+    if (await fileExists(metadataPath)) {
+      try {
+        const { readFile: rf } = await import('node:fs/promises');
+        const raw = await rf(metadataPath, 'utf-8');
+        const metadata = JSON.parse(raw);
+        if (this.templateId) {
+          metadata.templateId = this.templateId;
+        }
+        await writeFile(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf-8');
+      } catch {
+        // Ignore metadata update errors
+      }
+    }
+
     return { createdFiles, skippedFiles, context };
+  }
+
+  /**
+   * Scan scaffold files for TODO markers and update .sofia-metadata.json.
+   * Called after scaffolding to track initial TODO count (FR-022).
+   */
+  static async scanAndRecordTodos(outputDir: string): Promise<{
+    totalInitial: number;
+    remaining: number;
+    markers: string[];
+  }> {
+    const { readFile: rf, readdir, stat } = await import('node:fs/promises');
+    const markers: string[] = [];
+
+    async function scanDir(dir: string, base: string): Promise<void> {
+      let entries;
+      try {
+        entries = await readdir(dir);
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
+        const full = join(dir, entry);
+        const rel = base ? `${base}/${entry}` : entry;
+        let s;
+        try {
+          s = await stat(full);
+        } catch {
+          continue;
+        }
+        if (s.isDirectory()) {
+          await scanDir(full, rel);
+        } else if (s.isFile()) {
+          try {
+            const content = await rf(full, 'utf-8');
+            const lines = content.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].includes('TODO:')) {
+                markers.push(`${rel}:${i + 1}: ${lines[i].trim()}`);
+              }
+            }
+          } catch {
+            // skip binary or unreadable files
+          }
+        }
+      }
+    }
+
+    await scanDir(outputDir, '');
+
+    const todos = {
+      totalInitial: markers.length,
+      remaining: markers.length,
+      markers,
+    };
+
+    // Update .sofia-metadata.json with TODO info
+    const metadataPath = join(outputDir, '.sofia-metadata.json');
+    try {
+      const raw = await rf(metadataPath, 'utf-8');
+      const metadata = JSON.parse(raw);
+      metadata.todos = todos;
+      await writeFile(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf-8');
+    } catch {
+      // Metadata file may not exist yet
+    }
+
+    return todos;
   }
 
   /**
