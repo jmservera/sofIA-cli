@@ -14,6 +14,25 @@ Currently, running `sofia dev --session X` a second time re-scaffolds everything
 
 **Gaps addressed**: GAP-006 (P2, resume/checkpoint), GAP-007 (P2, `--force`), GAP-008 (P2, testRunner coverage), GAP-009 (P2, template selection), GAP-009 (P3, scaffold TODOs), GAP-010 (P3, PTY E2E), GAP-011 (P3, workshop→develop transition) from `specs/003-next-spec-gaps.md`.
 
+## Clarifications
+
+### Session 2026-03-01
+
+- Q: When resuming after an interruption mid-iteration, should the system re-run the incomplete iteration or skip to N+1? → A: Re-run the last iteration if it has no test results (was interrupted mid-execution); skip to N+1 only if the iteration completed fully.
+- Q: Should npm install be skipped on resume if node_modules exists? → A: Always re-run npm install on resume — it's idempotent and avoids stale dependency issues from mid-iteration interruptions.
+- Q: Should the template define the test command or should the test runner auto-detect it? → A: Template defines both install and test commands in TechStack — single source of truth, no auto-detection.
+- Q: Should resume decisions (skip scaffold, re-run iteration, re-run install) be logged? → A: Log all resume decisions at info level (visible by default) for user confidence and debugging.
+- Q: What adjacent concerns should be explicitly out of scope? → A: Multi-session dev, cloud-based resume, template marketplace, and Python test runner integration are all out of scope.
+
+## Out of Scope
+
+The following concerns are explicitly excluded from this feature:
+
+- **Multi-session development** — Running `sofia dev` on multiple sessions simultaneously is not supported; resume is single-session only.
+- **Cloud-based resume** — Checkpoint state is local to the machine; syncing resume state across machines (e.g., via GitHub or cloud storage) is deferred.
+- **Template marketplace** — User-contributed or externally hosted templates are not supported; the template registry is internal and code-defined.
+- **Python test runner integration** — While the `python-pytest` scaffold template is in scope, adapting `testRunner.ts` to parse pytest's JSON output format is deferred. The Python template will use a test command format compatible with the existing JSON parser (e.g., pytest with `--json-report` plugin producing a compatible shape).
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 — Resume an Interrupted PoC Session (Priority: P1)
@@ -128,12 +147,14 @@ As a facilitator completing the Plan phase in `sofia workshop`, I want a clear i
 #### Resume/Checkpoint (GAP-006)
 
 - **FR-001**: `RalphLoop.run()` MUST check `session.poc.iterations` at startup. If iterations exist and `session.poc.finalStatus` is unset, it MUST resume from the next iteration number rather than starting from scratch.
+- **FR-001a**: When resuming, if the last recorded iteration has no test results (indicating it was interrupted mid-execution), the system MUST re-run that iteration from the last known-good state. Only fully completed iterations (with test results recorded) are considered done.
 - **FR-002**: When resuming, the Ralph Loop MUST skip scaffolding if the output directory exists and contains a valid `.sofia-metadata.json` marker.
-- **FR-003**: When resuming, the Ralph Loop MUST skip npm install if `node_modules/` exists and `package-lock.json` is present in the output directory.
+- **FR-003**: When resuming, the Ralph Loop MUST always re-run the dependency installation step (e.g., `npm install`). This is idempotent when dependencies haven't changed and avoids stale dependency issues when a prior iteration added packages before an interruption.
 - **FR-004**: When resuming, the Ralph Loop MUST include prior iteration history (test results, applied changes) in the LLM prompt context so the model understands what has already been tried.
 - **FR-005**: If `session.poc.finalStatus` is `'success'`, the CLI MUST display a completion message and exit without invoking the Ralph Loop.
 - **FR-006**: If `session.poc.finalStatus` is `'failed'` or `'partial'`, the CLI MUST default to resuming from the last iteration and allow the user to override with `--force`.
 - **FR-007**: If the output directory is missing but iterations exist in the session, the system MUST re-scaffold (using the original plan context) and resume iteration numbering from where it left off.
+- **FR-007a**: All resume decisions MUST be logged at info level (visible by default), including: which iteration is being resumed from, whether an incomplete iteration is being re-run, whether scaffolding is being skipped, and that npm install is being re-run. These messages MUST be visible to the user without requiring `--debug`.
 
 #### `--force` Flag (GAP-007)
 
@@ -146,7 +167,7 @@ As a facilitator completing the Plan phase in `sofia workshop`, I want a clear i
 - **FR-011**: The scaffolder MUST use a template registry that maps plan characteristics (language, framework) to scaffold templates.
 - **FR-012**: The template registry MUST include at least two templates: `node-ts-vitest` (TypeScript/Node.js/Vitest, current default) and `python-pytest` (Python/pytest).
 - **FR-013**: Template selection MUST be automatic based on the plan's `architectureNotes` and `dependencies`, with `node-ts-vitest` as the fallback default.
-- **FR-014**: Each template MUST define: file list, `TechStack` configuration (language, runtime, test runner, build command), and dependency installation command.
+- **FR-014**: Each template MUST define: file list, `TechStack` configuration (language, runtime, test runner command, build command, dependency install command), and test execution command. Both the install and test commands are part of the template — the test runner MUST NOT auto-detect them.
 - **FR-015**: Adding a new template MUST only require adding a registry entry — no changes to `PocScaffolder`'s core logic or `RalphLoop`'s iteration logic.
 
 #### TestRunner Coverage (GAP-008)
@@ -188,7 +209,7 @@ As a facilitator completing the Plan phase in `sofia workshop`, I want a clear i
 
 - Feature 002 session schema (`poc.iterations`, `poc.finalStatus`) is stable and does not require migration for resume support — only reading existing fields that are currently written but never read back.
 - The `.sofia-metadata.json` file written by the scaffolder is a reliable marker for detecting existing scaffold output.
-- npm install can be safely skipped when `node_modules/` and `package-lock.json` exist, as the dependencies haven't changed between interruption and resume.
+- npm install is always re-run on resume since it's idempotent (fast no-op when dependencies match) and avoids hard-to-diagnose stale dependency issues from interrupted iterations.
 - Python/FastAPI is the highest-value second template based on user demand and workshop feedback.
 - PTY allocation is available in the CI environment for E2E tests; tests skip gracefully if PTY is unavailable.
 - The two-command workflow (`workshop` then `dev`) is the intentional default; auto-transition in interactive mode is optional behavior.
