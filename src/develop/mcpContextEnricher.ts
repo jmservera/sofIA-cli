@@ -18,8 +18,8 @@ import { isWebSearchConfigured } from '../mcp/webSearch.js';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface EnricherOptions {
-  /** MCP manager to check service availability */
-  mcpManager: McpManager;
+  /** MCP manager to check service availability (legacy, optional) */
+  mcpManager?: McpManager;
   /** Dependencies listed in the plan (e.g., ["express", "zod"]) */
   dependencies?: string[];
   /** Plan architecture notes (checked for Azure keywords) */
