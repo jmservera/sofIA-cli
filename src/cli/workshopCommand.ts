@@ -180,6 +180,40 @@ async function runWorkshop(
       case 'continue': {
         const next = getNextPhase(phase);
         if (next) {
+          // FR-020: Show transition guidance when Plan → Develop
+          if (next === 'Develop') {
+            io.write(
+              renderMarkdown(
+                `\n### Ready for PoC Generation\n\n` +
+                  `The Plan phase is complete. To generate the proof-of-concept, run:\n\n` +
+                  '```\n' +
+                  `sofia dev --session ${session.sessionId}\n` +
+                  '```\n\n' +
+                  `This will scaffold a project matching your plan's technology stack, install dependencies,\n` +
+                  `and iteratively generate code until all tests pass.\n`,
+                { isTTY: io.isTTY },
+              ),
+            );
+
+            // FR-021: Offer auto-transition in interactive mode
+            if (!options.nonInteractive && io.isTTY) {
+              const answer = await io.readInput(
+                'Would you like to start PoC development now? (y/N): ',
+              );
+              if (answer?.trim().toLowerCase() === 'y') {
+                io.write(
+                  renderMarkdown(
+                    `\nStarting PoC development. Run the following command:\n\n` +
+                      '```\n' +
+                      `sofia dev --session ${session.sessionId}\n` +
+                      '```\n',
+                    { isTTY: io.isTTY },
+                  ),
+                );
+                return;
+              }
+            }
+          }
           currentPhaseIdx = phaseOrder.indexOf(next);
         } else {
           // Mark session as completed

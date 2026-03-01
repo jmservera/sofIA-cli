@@ -375,13 +375,31 @@ describe('developCommand — --force option', () => {
   });
 
   it('resumes from existing directory when --force is not set', async () => {
-    // Create output directory with metadata
+    // Create output directory with metadata matching the session
     mkdirSync(tmpDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({ scaffold: true }));
+    writeFileSync(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({ sessionId: 'test-dev-session' }),
+    );
 
     const io = makeIo();
     const client = makeFakeClient();
-    const session = makeSession();
+    // Session with prior iterations to trigger resume
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        repoPath: tmpDir,
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'scaffold',
+            filesChanged: [],
+          },
+        ],
+      },
+    });
     const store = {
       load: vi.fn().mockResolvedValue(session),
       save: vi.fn(),
@@ -421,5 +439,253 @@ describe('developCommand — --force option', () => {
     expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Cleared'));
     // Old file was removed (RalphLoop mock doesn't recreate it)
     expect(existsSync(join(tmpDir, 'old-file.ts'))).toBe(false);
+  });
+
+  it('--force clears session.poc and calls store.save() before creating RalphLoop (T027, FR-008)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'scaffold',
+            filesChanged: [],
+          },
+        ],
+        finalStatus: 'failed',
+      },
+    });
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand(
+      { session: 'test-dev-session', output: relOutput, force: true },
+      { store, io, client },
+    );
+
+    // store.save should have been called with poc cleared
+    expect(store.save).toHaveBeenCalledWith(
+      expect.objectContaining({ poc: undefined }),
+    );
+  });
+
+  it('--force on a success session clears status and starts fresh (T028, FR-010)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'tests-passing',
+            filesChanged: [],
+            testResults: {
+              passed: 2,
+              failed: 0,
+              skipped: 0,
+              total: 2,
+              durationMs: 100,
+              failures: [],
+            },
+          },
+        ],
+        finalStatus: 'success',
+      },
+    });
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand(
+      { session: 'test-dev-session', output: relOutput, force: true },
+      { store, io, client },
+    );
+
+    // Should have cleared poc before running loop
+    expect(store.save).toHaveBeenCalledWith(
+      expect.objectContaining({ poc: undefined }),
+    );
+    // RalphLoop should have been constructed and run
+    expect(RalphLoop).toHaveBeenCalled();
+  });
+
+  it('--force on a session with no prior poc behaves identically to first run (T029)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession(); // No poc
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand(
+      { session: 'test-dev-session', output: relOutput, force: true },
+      { store, io, client },
+    );
+
+    // store.save should have been called (poc was already undefined)
+    expect(store.save).toHaveBeenCalled();
+    // RalphLoop should have been created
+    expect(RalphLoop).toHaveBeenCalled();
+  });
+});
+
+// ── Resume behavior (US1) ─────────────────────────────────────────────────
+
+describe('developCommand — resume behavior', () => {
+  let savedExitCode: number | undefined;
+
+  beforeEach(() => {
+    savedExitCode = process.exitCode as number | undefined;
+    process.exitCode = undefined;
+
+    vi.mocked(RalphLoop).mockImplementation(function (options: RalphLoopOptions) {
+      const fakeResult: RalphLoopResult = {
+        session: makeSession(),
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        iterationsCompleted: 1,
+        outputDir: options.outputDir ?? '/tmp/poc-test',
+      };
+      return { run: vi.fn().mockResolvedValue(fakeResult) } as Partial<RalphLoop> as RalphLoop;
+    });
+
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    process.exitCode = savedExitCode;
+    vi.mocked(RalphLoop).mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it('exits with completion message when poc.finalStatus is success (T016, FR-005)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'tests-passing',
+            filesChanged: [],
+            testResults: {
+              passed: 2,
+              failed: 0,
+              skipped: 0,
+              total: 2,
+              durationMs: 100,
+              failures: [],
+            },
+          },
+        ],
+        finalStatus: 'success',
+      },
+    });
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session' }, { store, io, client });
+
+    // Should NOT have created a RalphLoop
+    expect(RalphLoop).not.toHaveBeenCalled();
+    // Should have displayed completion message
+    expect(io.writeActivity).toHaveBeenCalledWith(
+      expect.stringContaining('already complete'),
+    );
+  });
+
+  it('defaults to resume when poc.finalStatus is failed (T017, FR-006)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'scaffold',
+            filesChanged: [],
+          },
+        ],
+        finalStatus: 'failed',
+      },
+    });
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session' }, { store, io, client });
+
+    // Should have displayed resume message
+    expect(io.writeActivity).toHaveBeenCalledWith(
+      expect.stringContaining('Resuming session'),
+    );
+    // RalphLoop should have been created
+    expect(RalphLoop).toHaveBeenCalled();
+  });
+
+  it('defaults to resume when poc.finalStatus is partial (T017, FR-006)', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'tests-failing',
+            filesChanged: [],
+            testResults: {
+              passed: 1,
+              failed: 1,
+              skipped: 0,
+              total: 2,
+              durationMs: 100,
+              failures: [{ testName: 'test1', message: 'fail' }],
+            },
+          },
+        ],
+        finalStatus: 'partial',
+      },
+    });
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session' }, { store, io, client });
+
+    expect(io.writeActivity).toHaveBeenCalledWith(
+      expect.stringContaining('Resuming session'),
+    );
+    expect(RalphLoop).toHaveBeenCalled();
   });
 });

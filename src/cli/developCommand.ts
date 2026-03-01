@@ -3,10 +3,12 @@
  *
  * Runs the Develop phase for a completed workshop session:
  * - Validates the session has selection + plan
+ * - Derives checkpoint state for resume decisions
  * - Creates a RalphLoop and runs it
  * - Displays results (repo URL/path, final status)
  *
  * Contract: specs/002-poc-generation/tasks.md (T019, T029, T038)
+ * Contract: specs/004-dev-resume-hardening/contracts/cli.md
  */
 import { join } from 'node:path';
 import { existsSync, rmSync } from 'node:fs';
@@ -17,6 +19,9 @@ import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import { RalphLoop } from '../develop/ralphLoop.js';
 import { GitHubMcpAdapter } from '../develop/githubMcpAdapter.js';
 import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
+import { deriveCheckpointState } from '../develop/checkpointState.js';
+import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';
+import { PocScaffolder } from '../develop/pocScaffolder.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,36 +140,74 @@ export async function developCommand(
     ? join(process.cwd(), opts.output)
     : join(process.cwd(), 'poc', sessionId);
 
-  // ── Handle --force and existing output directory ─────────────────────────
-  const dirExists = existsSync(outputDir);
+  // ── Handle --force: reset session.poc AND output directory ───────────────
+  if (opts.force) {
+    // FR-008/009/010: Clear session state before doing anything else
+    session.poc = undefined;
+    await store.save(session);
 
-  if (dirExists && opts.force) {
-    // --force: clear the directory and scaffold fresh
-    try {
-      rmSync(outputDir, { recursive: true, force: true });
-    } catch (err: unknown) {
-      const msg = `Failed to clear output directory: ${err instanceof Error ? err.message : String(err)}`;
-      if (json) {
-        process.stdout.write(JSON.stringify({ error: msg }) + '\n');
-      } else {
-        process.stderr.write(`Error: ${msg}\n`);
+    const dirExists = existsSync(outputDir);
+    if (dirExists) {
+      try {
+        rmSync(outputDir, { recursive: true, force: true });
+      } catch (err: unknown) {
+        const msg = `Failed to clear output directory: ${err instanceof Error ? err.message : String(err)}`;
+        if (json) {
+          process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+        } else {
+          process.stderr.write(`Error: ${msg}\n`);
+        }
+        process.exitCode = 1;
+        return;
       }
-      process.exitCode = 1;
-      return;
     }
     if (!json) {
-      io.writeActivity(`Cleared existing output directory (--force): ${outputDir}`);
+      io.writeActivity(
+        'Cleared existing output directory and session state (--force)',
+      );
     }
-  } else if (dirExists && !opts.force) {
-    // Detect existing metadata to resume from last iteration
-    const metadataPath = join(outputDir, '.sofia-metadata.json');
-    if (existsSync(metadataPath)) {
-      if (!json) {
-        io.writeActivity(
-          `Resuming from existing output directory: ${outputDir}\n` + 'Use --force to start fresh.',
-        );
-      }
+  }
+
+  // ── Derive checkpoint state (resume detection) ───────────────────────────
+  const checkpoint = deriveCheckpointState(session, outputDir);
+
+  // FR-005: If PoC already succeeded, exit with completion message
+  if (!opts.force && checkpoint.priorFinalStatus === 'success') {
+    const msg = `PoC already complete for session ${sessionId}. Use --force to start fresh.`;
+    if (json) {
+      process.stdout.write(JSON.stringify({ status: 'already-complete', sessionId }) + '\n');
+    } else {
+      io.writeActivity(msg);
     }
+    return;
+  }
+
+  // FR-006: Default to resume for failed/partial
+  if (!opts.force && checkpoint.hasPriorRun) {
+    if (!json) {
+      io.writeActivity(
+        `Resuming session ${sessionId} from iteration ${checkpoint.resumeFromIteration} (${checkpoint.completedIterations} completed iterations found)`,
+      );
+    }
+  }
+
+  // ── Template selection ────────────────────────────────────────────────────
+  const registry = createDefaultRegistry();
+  const template = selectTemplate(
+    registry,
+    session.plan?.architectureNotes,
+    session.plan?.dependencies,
+  );
+  if (!json) {
+    const matchedPattern = template.matchPatterns.find((p) =>
+      [session.plan?.architectureNotes ?? '', ...(session.plan?.dependencies ?? [])]
+        .join(' ')
+        .toLowerCase()
+        .includes(p.toLowerCase()),
+    );
+    io.writeActivity(
+      `Selected template: ${template.id}${matchedPattern ? ` (matched '${matchedPattern}' in architecture notes)` : ' (default)'}`,
+    );
   }
 
   // ── Create RalphLoop ─────────────────────────────────────────────────────
@@ -182,6 +225,9 @@ export async function developCommand(
     outputDir,
     enricher,
     githubAdapter,
+    checkpoint,
+    scaffolder: new PocScaffolder(template),
+    templateEntry: template,
     onSessionUpdate: async (updated) => {
       await store.save(updated);
     },

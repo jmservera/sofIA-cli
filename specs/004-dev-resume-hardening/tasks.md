@@ -17,10 +17,10 @@
 
 **Purpose**: Project initialization, shared types, and test infrastructure used by multiple stories
 
-- [ ] T001 Create `CheckpointState` interface and `deriveCheckpointState()` function in `src/develop/checkpointState.ts` per data-model.md derivation logic
-- [ ] T002 [P] Create `TemplateEntry` interface and `TemplateRegistry` type in `src/develop/templateRegistry.ts` (types only — no template content yet)
-- [ ] T003 [P] Create test fixture project in `tests/fixtures/test-fixture-project/` with `package.json`, `vitest.config.ts`, `src/add.ts`, `tests/passing.test.ts`, `tests/failing.test.ts`, and `tests/hanging.test.ts` per data-model.md TestFixtureProject spec
-- [ ] T004 Run `npm install` in `tests/fixtures/test-fixture-project/` and add `tests/fixtures/test-fixture-project/node_modules` to `.gitignore`
+- [x] T001 Create `CheckpointState` interface and `deriveCheckpointState()` function in `src/develop/checkpointState.ts` per data-model.md derivation logic
+- [x] T002 [P] Create `TemplateEntry` interface and `TemplateRegistry` type in `src/develop/templateRegistry.ts` (types only — no template content yet)
+- [x] T003 [P] Create test fixture project in `tests/fixtures/test-fixture-project/` with `package.json`, `vitest.config.ts`, `src/add.ts`, `tests/passing.test.ts`, `tests/failing.test.ts`, and `tests/hanging.test.ts` per data-model.md TestFixtureProject spec
+- [x] T004 Run `npm install` in `tests/fixtures/test-fixture-project/` and add `tests/fixtures/test-fixture-project/node_modules` to `.gitignore`
 
 ---
 
@@ -30,13 +30,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Make `extractJson()` and `buildErrorResult()` methods `protected` in `src/develop/testRunner.ts` (like `parseOutput` already is) to enable subclass testing
-- [ ] T006 Add `testCommand` optional parameter to `TestRunnerOptions` interface in `src/develop/testRunner.ts` and use it in `spawnTests()` instead of hardcoded `npm test -- --reporter=json`
-- [ ] T007 Extract `NODE_TS_VITEST_TEMPLATE` from `src/develop/pocScaffolder.ts` into `src/develop/templateRegistry.ts` as the first `TemplateEntry`, including `techStack`, `installCommand`, `testCommand`, and `matchPatterns`
-- [ ] T008 Add `selectTemplate()` function to `src/develop/templateRegistry.ts` implementing first-match-wins logic per contracts/cli.md Template Selection rules
-- [ ] T009 Add `PYTHON_PYTEST_TEMPLATE` entry to `src/develop/templateRegistry.ts` with files (`.gitignore`, `requirements.txt`, `pytest.ini`, `README.md`, `src/__init__.py`, `src/main.py`, `tests/test_main.py`, `.sofia-metadata.json`), `techStack`, `installCommand`, `testCommand`, and `matchPatterns` per data-model.md TemplateEntry table
-- [ ] T010 Update `PocScaffolder.buildContext()` in `src/develop/pocScaffolder.ts` to accept an optional `TemplateEntry` parameter and use its `techStack` instead of the hardcoded default
-- [ ] T011 Update `PocScaffolder` constructor in `src/develop/pocScaffolder.ts` to accept `TemplateEntry` (using `entry.files`) instead of raw `TemplateFile[]`, preserving backward compatibility
+- [x] T005 Make `extractJson()` and `buildErrorResult()` methods `protected` in `src/develop/testRunner.ts` (like `parseOutput` already is) to enable subclass testing
+- [x] T006 Add `testCommand` optional parameter to `TestRunnerOptions` interface in `src/develop/testRunner.ts` and use it in `spawnTests()` instead of hardcoded `npm test -- --reporter=json`
+- [x] T007 Extract `NODE_TS_VITEST_TEMPLATE` from `src/develop/pocScaffolder.ts` into `src/develop/templateRegistry.ts` as the first `TemplateEntry`, including `techStack`, `installCommand`, `testCommand`, and `matchPatterns`
+- [x] T008 Add `selectTemplate()` function to `src/develop/templateRegistry.ts` implementing first-match-wins logic per contracts/cli.md Template Selection rules
+- [x] T009 Add `PYTHON_PYTEST_TEMPLATE` entry to `src/develop/templateRegistry.ts` with files (`.gitignore`, `requirements.txt`, `pytest.ini`, `README.md`, `src/__init__.py`, `src/main.py`, `tests/test_main.py`, `.sofia-metadata.json`), `techStack`, `installCommand`, `testCommand`, and `matchPatterns` per data-model.md TemplateEntry table
+- [x] T010 Update `PocScaffolder.buildContext()` in `src/develop/pocScaffolder.ts` to accept an optional `TemplateEntry` parameter and use its `techStack` instead of the hardcoded default
+- [x] T011 Update `PocScaffolder` constructor in `src/develop/pocScaffolder.ts` to accept `TemplateEntry` (using `entry.files`) instead of raw `TemplateFile[]`, preserving backward compatibility
 
 **Checkpoint**: Foundation ready — shared types, test fixtures, and registry exist. User story implementation can begin.
 
@@ -54,31 +54,31 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T012 [P] [US1] Unit test: `deriveCheckpointState` returns correct state for no-poc, completed, partial, interrupted sessions in `tests/unit/develop/checkpointState.spec.ts`
-- [ ] T013 [P] [US1] Unit test: `RalphLoop.run()` seeds `iterations` from `session.poc.iterations` and starts from correct `iterNum` in `tests/unit/develop/ralphLoop.spec.ts` (add describe block "resume iteration seeding")
-- [ ] T014 [P] [US1] Unit test: `RalphLoop.run()` skips scaffold when checkpoint says `canSkipScaffold=true` in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T015 [P] [US1] Unit test: `RalphLoop.run()` pops incomplete last iteration (no testResults) and re-runs it per FR-001a in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T016 [P] [US1] Unit test: `developCommand` exits with completion message when `poc.finalStatus === 'success'` per FR-005 in `tests/unit/cli/developCommand.spec.ts`
-- [ ] T017 [P] [US1] Unit test: `developCommand` defaults to resume when `poc.finalStatus === 'failed'|'partial'` per FR-006 in `tests/unit/cli/developCommand.spec.ts`
-- [ ] T018 [P] [US1] Unit test: resume re-scaffolds when output directory is missing but iterations exist per FR-007 in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T019 [US1] Integration test: full resume flow — create session with 2 completed iterations, run `RalphLoop`, verify starts at iteration 3 in `tests/integration/ralphLoopPartial.spec.ts` (add describe block "resume from interrupted session")
-- [ ] T065 [P] [US1] Unit test: resume ALWAYS re-runs dependency install step even when scaffolding is skipped per FR-003 in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T066 [P] [US1] Unit test: resume includes prior iteration history in LLM prompt context (test results + applied changes summary) per FR-004 in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T067 [P] [US1] Unit test: resume decision logging emits info-level messages for iteration number, skip scaffold, incomplete-iteration rerun, and re-run install per FR-007a in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T068 [P] [US1] Unit test: corrupted/invalid `poc.iterations` causes safe fallback to fresh run (and warning log) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
-- [ ] T069 [P] [US1] Unit test: output directory present but `.sofia-metadata.json` integrity mismatch triggers warning and forces re-scaffold (do not skip scaffold) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
+- [x] T012 [P] [US1] Unit test: `deriveCheckpointState` returns correct state for no-poc, completed, partial, interrupted sessions in `tests/unit/develop/checkpointState.spec.ts`
+- [x] T013 [P] [US1] Unit test: `RalphLoop.run()` seeds `iterations` from `session.poc.iterations` and starts from correct `iterNum` in `tests/unit/develop/ralphLoop.spec.ts` (add describe block "resume iteration seeding")
+- [x] T014 [P] [US1] Unit test: `RalphLoop.run()` skips scaffold when checkpoint says `canSkipScaffold=true` in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T015 [P] [US1] Unit test: `RalphLoop.run()` pops incomplete last iteration (no testResults) and re-runs it per FR-001a in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T016 [P] [US1] Unit test: `developCommand` exits with completion message when `poc.finalStatus === 'success'` per FR-005 in `tests/unit/cli/developCommand.spec.ts`
+- [x] T017 [P] [US1] Unit test: `developCommand` defaults to resume when `poc.finalStatus === 'failed'|'partial'` per FR-006 in `tests/unit/cli/developCommand.spec.ts`
+- [x] T018 [P] [US1] Unit test: resume re-scaffolds when output directory is missing but iterations exist per FR-007 in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T019 [US1] Integration test: full resume flow — create session with 2 completed iterations, run `RalphLoop`, verify starts at iteration 3 in `tests/integration/ralphLoopPartial.spec.ts` (add describe block "resume from interrupted session")
+- [x] T065 [P] [US1] Unit test: resume ALWAYS re-runs dependency install step even when scaffolding is skipped per FR-003 in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T066 [P] [US1] Unit test: resume includes prior iteration history in LLM prompt context (test results + applied changes summary) per FR-004 in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T067 [P] [US1] Unit test: resume decision logging emits info-level messages for iteration number, skip scaffold, incomplete-iteration rerun, and re-run install per FR-007a in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T068 [P] [US1] Unit test: corrupted/invalid `poc.iterations` causes safe fallback to fresh run (and warning log) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
+- [x] T069 [P] [US1] Unit test: output directory present but `.sofia-metadata.json` integrity mismatch triggers warning and forces re-scaffold (do not skip scaffold) per Edge Cases in `spec.md` in `tests/unit/develop/checkpointState.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Implement `deriveCheckpointState()` logic in `src/develop/checkpointState.ts` per data-model.md derivation rules
-- [ ] T021 [US1] Update `developCommand()` in `src/cli/developCommand.ts` to call `deriveCheckpointState()` before creating RalphLoop and handle FR-005 (success exit) and FR-006 (failed/partial default resume)
-- [ ] T022 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to seed `iterations` from `session.poc.iterations`, derive `iterNum = iterations.length + 1`, and pop incomplete last iteration per FR-001/FR-001a
-- [ ] T023 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to skip scaffold when output dir + `.sofia-metadata.json` exist per FR-002, and always re-run install per FR-003
-- [ ] T024 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to include prior iteration history in LLM prompt context per FR-004 (include prior test results and a concise summary of applied changes across prior iterations; not just last failing tests)
-- [ ] T025 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to re-scaffold when output dir is missing but iterations exist per FR-007
-- [ ] T026 [US1] Add info-level resume decision logging in `src/develop/ralphLoop.ts` and `src/cli/developCommand.ts` per FR-007a (iteration number, skip scaffold, re-run install, incomplete iteration re-run)
-- [ ] T070 [US1] Harden `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate iteration entries (missing/invalid shapes) and safely fall back to fresh run + warning log per Edge Cases in `spec.md`
-- [ ] T071 [US1] Extend `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate `.sofia-metadata.json` integrity (at minimum: sessionId match; if Phase 9 adds `templateId`, validate that too) and disable `canSkipScaffold` + warn if mismatch per Edge Cases in `spec.md`
+- [x] T020 [US1] Implement `deriveCheckpointState()` logic in `src/develop/checkpointState.ts` per data-model.md derivation rules
+- [x] T021 [US1] Update `developCommand()` in `src/cli/developCommand.ts` to call `deriveCheckpointState()` before creating RalphLoop and handle FR-005 (success exit) and FR-006 (failed/partial default resume)
+- [x] T022 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to seed `iterations` from `session.poc.iterations`, derive `iterNum = iterations.length + 1`, and pop incomplete last iteration per FR-001/FR-001a
+- [x] T023 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to skip scaffold when output dir + `.sofia-metadata.json` exist per FR-002, and always re-run install per FR-003
+- [x] T024 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to include prior iteration history in LLM prompt context per FR-004 (include prior test results and a concise summary of applied changes across prior iterations; not just last failing tests)
+- [x] T025 [US1] Modify `RalphLoop.run()` in `src/develop/ralphLoop.ts` to re-scaffold when output dir is missing but iterations exist per FR-007
+- [x] T026 [US1] Add info-level resume decision logging in `src/develop/ralphLoop.ts` and `src/cli/developCommand.ts` per FR-007a (iteration number, skip scaffold, re-run install, incomplete iteration re-run)
+- [x] T070 [US1] Harden `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate iteration entries (missing/invalid shapes) and safely fall back to fresh run + warning log per Edge Cases in `spec.md`
+- [x] T071 [US1] Extend `deriveCheckpointState()` in `src/develop/checkpointState.ts` to validate `.sofia-metadata.json` integrity (at minimum: sessionId match; if Phase 9 adds `templateId`, validate that too) and disable `canSkipScaffold` + warn if mismatch per Edge Cases in `spec.md`
 
 **Checkpoint**: Resume works end-to-end. `sofia dev --session X` resumes from correct iteration after interruption. All resume decisions are logged at info level.
 
@@ -94,15 +94,15 @@
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T027 [P] [US2] Unit test: `developCommand` with `--force` clears `session.poc` and calls `store.save()` before creating RalphLoop per FR-008 in `tests/unit/cli/developCommand.spec.ts`
-- [ ] T028 [P] [US2] Unit test: `developCommand` with `--force` on a `poc.finalStatus === 'success'` session clears status and starts fresh per FR-010 in `tests/unit/cli/developCommand.spec.ts`
-- [ ] T029 [P] [US2] Unit test: `developCommand` with `--force` on a session with no prior poc state behaves identically to first run in `tests/unit/cli/developCommand.spec.ts`
-- [ ] T030 [US2] Integration test: force-restart flow — create session with iterations, run with `--force`, verify empty iterations and fresh scaffold in `tests/integration/ralphLoopFlow.spec.ts` (add describe block "force restart")
+- [x] T027 [P] [US2] Unit test: `developCommand` with `--force` clears `session.poc` and calls `store.save()` before creating RalphLoop per FR-008 in `tests/unit/cli/developCommand.spec.ts`
+- [x] T028 [P] [US2] Unit test: `developCommand` with `--force` on a `poc.finalStatus === 'success'` session clears status and starts fresh per FR-010 in `tests/unit/cli/developCommand.spec.ts`
+- [x] T029 [P] [US2] Unit test: `developCommand` with `--force` on a session with no prior poc state behaves identically to first run in `tests/unit/cli/developCommand.spec.ts`
+- [x] T030 [US2] Integration test: force-restart flow — create session with iterations, run with `--force`, verify empty iterations and fresh scaffold in `tests/integration/ralphLoopFlow.spec.ts` (add describe block "force restart")
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Update `developCommand()` in `src/cli/developCommand.ts` to clear `session.poc = undefined` and call `store.save(session)` when `--force` is set per FR-008, before creating RalphLoop
-- [ ] T032 [US2] Ensure `--force` path logs info-level message "Cleared existing output directory and session state (--force)" in `src/cli/developCommand.ts`
+- [x] T031 [US2] Update `developCommand()` in `src/cli/developCommand.ts` to clear `session.poc = undefined` and call `store.save(session)` when `--force` is set per FR-008, before creating RalphLoop
+- [x] T032 [US2] Ensure `--force` path logs info-level message "Cleared existing output directory and session state (--force)" in `src/cli/developCommand.ts`
 
 **Checkpoint**: `--force` resets both output directory and session state. Works on any `finalStatus` value including `'success'`.
 
@@ -118,18 +118,18 @@
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T033 [P] [US3] Unit test: `selectTemplate()` returns `python-pytest` for plans mentioning "Python" or "FastAPI" in `tests/unit/develop/templateRegistry.spec.ts`
-- [ ] T034 [P] [US3] Unit test: `selectTemplate()` returns `node-ts-vitest` for plans mentioning "TypeScript" or with no architecture notes in `tests/unit/develop/templateRegistry.spec.ts`
-- [ ] T035 [P] [US3] Unit test: `selectTemplate()` returns default `node-ts-vitest` for ambiguous plans in `tests/unit/develop/templateRegistry.spec.ts`
-- [ ] T036 [P] [US3] Unit test: `PocScaffolder` uses `TemplateEntry.files` when constructed with a template entry in `tests/unit/develop/pocScaffolder.spec.ts`
-- [ ] T037 [US3] Integration test: scaffold with `python-pytest` template generates expected file structure (`requirements.txt`, `src/main.py`, `tests/test_main.py`) in `tests/integration/pocScaffold.spec.ts` (add describe block "python-pytest template")
+- [x] T033 [P] [US3] Unit test: `selectTemplate()` returns `python-pytest` for plans mentioning "Python" or "FastAPI" in `tests/unit/develop/templateRegistry.spec.ts`
+- [x] T034 [P] [US3] Unit test: `selectTemplate()` returns `node-ts-vitest` for plans mentioning "TypeScript" or with no architecture notes in `tests/unit/develop/templateRegistry.spec.ts`
+- [x] T035 [P] [US3] Unit test: `selectTemplate()` returns default `node-ts-vitest` for ambiguous plans in `tests/unit/develop/templateRegistry.spec.ts`
+- [x] T036 [P] [US3] Unit test: `PocScaffolder` uses `TemplateEntry.files` when constructed with a template entry in `tests/unit/develop/pocScaffolder.spec.ts`
+- [x] T037 [US3] Integration test: scaffold with `python-pytest` template generates expected file structure (`requirements.txt`, `src/main.py`, `tests/test_main.py`) in `tests/integration/pocScaffold.spec.ts` (add describe block "python-pytest template")
 
 ### Implementation for User Story 3
 
-- [ ] T038 [US3] Wire template selection into `developCommand.ts`: call `selectTemplate(registry, plan.architectureNotes, plan.dependencies)` and pass result to `PocScaffolder` and `RalphLoop`
-- [ ] T039 [US3] Update `RalphLoop` to use `TemplateEntry.installCommand` for dependency installation instead of hardcoded `npm install` in `src/develop/ralphLoop.ts`
-- [ ] T040 [US3] Update `RalphLoop` to pass `TemplateEntry.testCommand` to `TestRunner` constructor in `src/develop/ralphLoop.ts`
-- [ ] T041 [US3] Add info-level log "Selected template: {id} (matched '{pattern}' in architecture notes)" in `src/cli/developCommand.ts`
+- [x] T038 [US3] Wire template selection into `developCommand.ts`: call `selectTemplate(registry, plan.architectureNotes, plan.dependencies)` and pass result to `PocScaffolder` and `RalphLoop`
+- [x] T039 [US3] Update `RalphLoop` to use `TemplateEntry.installCommand` for dependency installation instead of hardcoded `npm install` in `src/develop/ralphLoop.ts`
+- [x] T040 [US3] Update `RalphLoop` to pass `TemplateEntry.testCommand` to `TestRunner` constructor in `src/develop/ralphLoop.ts`
+- [x] T041 [US3] Add info-level log "Selected template: {id} (matched '{pattern}' in architecture notes)" in `src/cli/developCommand.ts`
 
 **Checkpoint**: Python plans produce Python scaffold. TypeScript plans preserve current behavior. Adding a new template requires only a registry entry.
 
@@ -147,16 +147,16 @@
 
 > **NOTE**: These are the deliverable for this story — the tests themselves ARE the feature
 
-- [ ] T042 [P] [US4] Integration test: `testRunner.run()` against fixture project with passing tests, verify correct pass/fail/skip counts in `tests/integration/testRunnerReal.spec.ts`
-- [ ] T043 [P] [US4] Integration test: `testRunner.run()` against fixture project with failing tests, verify failure details parsed correctly in `tests/integration/testRunnerReal.spec.ts`
-- [ ] T044 [US4] Integration test: `testRunner.run()` with short timeout against hanging test fixture, verify SIGTERM→SIGKILL and timeout error result per FR-016/FR-018 in `tests/integration/testRunnerReal.spec.ts`
-- [ ] T045 [US4] Unit test: `extractJson()` fallback path (first-`{`-to-last-`}`) with mixed console+JSON output per FR-017 in `tests/unit/develop/testRunner.spec.ts` (use `TestableTestRunner` subclass)
-- [ ] T046 [US4] Unit test: `extractJson()` returns null for output with no valid JSON per FR-017 in `tests/unit/develop/testRunner.spec.ts`
-- [ ] T047 [US4] Unit test: `buildErrorResult()` produces correct zero-count result with error message per FR-018 in `tests/unit/develop/testRunner.spec.ts`
+- [x] T042 [P] [US4] Integration test: `testRunner.run()` against fixture project with passing tests, verify correct pass/fail/skip counts in `tests/integration/testRunnerReal.spec.ts`
+- [x] T043 [P] [US4] Integration test: `testRunner.run()` against fixture project with failing tests, verify failure details parsed correctly in `tests/integration/testRunnerReal.spec.ts`
+- [x] T044 [US4] Integration test: `testRunner.run()` with short timeout against hanging test fixture, verify SIGTERM→SIGKILL and timeout error result per FR-016/FR-018 in `tests/integration/testRunnerReal.spec.ts`
+- [x] T045 [US4] Unit test: `extractJson()` fallback path (first-`{`-to-last-`}`) with mixed console+JSON output per FR-017 in `tests/unit/develop/testRunner.spec.ts` (use `TestableTestRunner` subclass)
+- [x] T046 [US4] Unit test: `extractJson()` returns null for output with no valid JSON per FR-017 in `tests/unit/develop/testRunner.spec.ts`
+- [x] T047 [US4] Unit test: `buildErrorResult()` produces correct zero-count result with error message per FR-018 in `tests/unit/develop/testRunner.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] If any coverage gaps remain after writing the above tests, add targeted unit tests to reach 80%+ coverage for `src/develop/testRunner.ts` (run `npm test -- --coverage` to verify)
+- [x] T048 [US4] If any coverage gaps remain after writing the above tests, add targeted unit tests to reach 80%+ coverage for `src/develop/testRunner.ts` (run `npm test -- --coverage` to verify)
 
 **Checkpoint**: `testRunner.ts` coverage is at or above 80%. All critical code paths (spawn, parse, timeout, fallback) have automated tests using real fixtures.
 
@@ -174,9 +174,9 @@
 
 > **NOTE**: The tests ARE the deliverable — this story is test-only
 
-- [ ] T049 [P] [US5] E2E test: PTY-spawn `sofia dev`, send Ctrl+C during iteration, verify exit code 0 and recovery message in `tests/e2e/developPty.spec.ts`
-- [ ] T050 [P] [US5] E2E test: PTY-spawn `sofia dev`, verify iteration progress lines ("Iteration N/M") appear in PTY output buffer in `tests/e2e/developPty.spec.ts`
-- [ ] T051 [US5] Add PTY availability guard to `tests/e2e/developPty.spec.ts` — skip gracefully if `node-pty` allocation fails (e.g., CI without TTY)
+- [x] T049 [P] [US5] E2E test: PTY-spawn `sofia dev`, send Ctrl+C during iteration, verify exit code 0 and recovery message in `tests/e2e/developPty.spec.ts`
+- [x] T050 [P] [US5] E2E test: PTY-spawn `sofia dev`, verify iteration progress lines ("Iteration N/M") appear in PTY output buffer in `tests/e2e/developPty.spec.ts`
+- [x] T051 [US5] Add PTY availability guard to `tests/e2e/developPty.spec.ts` — skip gracefully if `node-pty` allocation fails (e.g., CI without TTY)
 
 **Checkpoint**: Interactive behaviors (Ctrl+C, progress output) are validated in CI via PTY simulation.
 
@@ -192,13 +192,13 @@
 
 ### Tests for User Story 6 (REQUIRED) ⚠️
 
-- [ ] T052 [P] [US6] Unit test: workshop command displays "sofia dev --session {id}" after Plan phase completes per FR-020 in `tests/unit/cli/workshopCommand.spec.ts`
-- [ ] T053 [P] [US6] Unit test: workshop command offers auto-transition prompt in interactive mode per FR-021 in `tests/unit/cli/workshopCommand.spec.ts`
+- [x] T052 [P] [US6] Unit test: workshop command displays "sofia dev --session {id}" after Plan phase completes per FR-020 in `tests/unit/cli/workshopCommand.spec.ts`
+- [x] T053 [P] [US6] Unit test: workshop command offers auto-transition prompt in interactive mode per FR-021 in `tests/unit/cli/workshopCommand.spec.ts`
 
 ### Implementation for User Story 6
 
-- [ ] T054 [US6] Add transition guidance message in `src/cli/workshopCommand.ts` when `getNextPhase(phase) === 'Develop'` — display exact `sofia dev --session ${session.sessionId}` command per contracts/cli.md
-- [ ] T055 [US6] Add interactive mode offer ("Would you like to start PoC development now?") in `src/cli/workshopCommand.ts` per FR-021 (SHOULD — use `@inquirer/prompts` confirm)
+- [x] T054 [US6] Add transition guidance message in `src/cli/workshopCommand.ts` when `getNextPhase(phase) === 'Develop'` — display exact `sofia dev --session ${session.sessionId}` command per contracts/cli.md
+- [x] T055 [US6] Add interactive mode offer ("Would you like to start PoC development now?") in `src/cli/workshopCommand.ts` per FR-021 (SHOULD — use `@inquirer/prompts` confirm)
 
 **Checkpoint**: Workshop users see clear next-step guidance including the exact command to run after Plan phase.
 
@@ -210,20 +210,20 @@
 
 **TDD note**: Complete T072–T074 (tests) before implementing T056–T058 (FR-022) to satisfy the constitution's Red → Green requirement.
 
-- [ ] T072 [P] Unit test: scaffold TODO marker scanning records `totalInitial`, `remaining`, and `markers` in `.sofia-metadata.json` per FR-022 in `tests/unit/develop/pocScaffolder.spec.ts`
-- [ ] T073 [P] Unit test: TODO marker rescan after an iteration updates `.sofia-metadata.json.todos.remaining` per FR-022 in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T074 [P] Integration test: TODO tracking writes and updates `.sofia-metadata.json` in a real scaffold output directory per FR-022 in `tests/integration/ralphLoopFlow.spec.ts` (new describe block "todo tracking")
-- [ ] T075 Validation task: compare fresh vs resumed run PoC quality (test pass counts) on the same plan/session to satisfy SC-004-005; capture results in test output or quickstart notes
-- [ ] T076 [P] Benchmark/validation task: measure resume detection overhead (derive checkpoint + metadata checks) and ensure <500ms per SC-004-007 (can be a small integration test with timing guard or a quickstart step)
-- [ ] T056 [P] Extend `.sofia-metadata.json` schema in `src/develop/pocScaffolder.ts` to include `templateId` and `todos` fields per FR-022 and contracts/cli.md extended schema
-- [ ] T057 [P] Add TODO marker scanning logic to `src/develop/pocScaffolder.ts` — scan scaffold files at scaffold time for `TODO:` markers, record in `.sofia-metadata.json`
-- [ ] T058 Add TODO marker rescan after each iteration in `src/develop/ralphLoop.ts` — update `.sofia-metadata.json` with remaining TODO count per FR-022
-- [ ] T059 [P] Update `src/develop/index.ts` barrel export to include `checkpointState.ts` and `templateRegistry.ts`
-- [ ] T060 Run `npm run typecheck` and fix any type errors across all modified files
-- [ ] T061 Run `npm run lint` and fix any lint warnings (especially `import/order`) across all modified files
-- [ ] T062 Run full test suite `npm test` and verify all tests pass (no regressions)
-- [ ] T063 Run `npm test -- --coverage` on `src/develop/testRunner.ts` and verify coverage ≥ 80% per SC-004-004
-- [ ] T064 Run quickstart.md validation — execute the quick verification steps from `specs/004-dev-resume-hardening/quickstart.md`
+- [x] T072 [P] Unit test: scaffold TODO marker scanning records `totalInitial`, `remaining`, and `markers` in `.sofia-metadata.json` per FR-022 in `tests/unit/develop/pocScaffolder.spec.ts`
+- [x] T073 [P] Unit test: TODO marker rescan after an iteration updates `.sofia-metadata.json.todos.remaining` per FR-022 in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T074 [P] Integration test: TODO tracking writes and updates `.sofia-metadata.json` in a real scaffold output directory per FR-022 in `tests/integration/ralphLoopFlow.spec.ts` (new describe block "todo tracking")
+- [x] T075 Validation task: compare fresh vs resumed run PoC quality (test pass counts) on the same plan/session to satisfy SC-004-005; capture results in test output or quickstart notes
+- [x] T076 [P] Benchmark/validation task: measure resume detection overhead (derive checkpoint + metadata checks) and ensure <500ms per SC-004-007 (can be a small integration test with timing guard or a quickstart step)
+- [x] T056 [P] Extend `.sofia-metadata.json` schema in `src/develop/pocScaffolder.ts` to include `templateId` and `todos` fields per FR-022 and contracts/cli.md extended schema
+- [x] T057 [P] Add TODO marker scanning logic to `src/develop/pocScaffolder.ts` — scan scaffold files at scaffold time for `TODO:` markers, record in `.sofia-metadata.json`
+- [x] T058 Add TODO marker rescan after each iteration in `src/develop/ralphLoop.ts` — update `.sofia-metadata.json` with remaining TODO count per FR-022
+- [x] T059 [P] Update `src/develop/index.ts` barrel export to include `checkpointState.ts` and `templateRegistry.ts`
+- [x] T060 Run `npm run typecheck` and fix any type errors across all modified files
+- [x] T061 Run `npm run lint` and fix any lint warnings (especially `import/order`) across all modified files
+- [x] T062 Run full test suite `npm test` and verify all tests pass (no regressions)
+- [x] T063 Run `npm test -- --coverage` on `src/develop/testRunner.ts` and verify coverage ≥ 80% per SC-004-004
+- [x] T064 Run quickstart.md validation — execute the quick verification steps from `specs/004-dev-resume-hardening/quickstart.md`
 
 ---
 
