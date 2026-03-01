@@ -7,7 +7,8 @@
  * Contract: specs/002-poc-generation/contracts/ralph-loop.md
  */
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
 import type { LoopIO } from '../loop/conversationLoop.js';
@@ -18,11 +19,12 @@ import type {
   WorkshopSession,
   PocIteration,
   PocDevelopmentState,
+  TestResults,
 } from '../shared/schemas/session.js';
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
-import { PocScaffolder } from './pocScaffolder.js';
+import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
 import { TestRunner } from './testRunner.js';
-import { CodeGenerator } from './codeGenerator.js';
+import { CodeGenerator, isPathWithinDirectory, isUnsafePath } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
 import { GitHubMcpAdapter } from './githubMcpAdapter.js';
 
@@ -117,10 +119,11 @@ export class RalphLoop {
 
   private aborted = false;
   private sigintHandler: (() => void) | null = null;
+  /** Mutable reference to the latest session state, used by the SIGINT handler (F010). */
+  private currentSession: WorkshopSession;
 
   constructor(options: RalphLoopOptions) {
-    const outputDir =
-      options.outputDir ?? join(process.cwd(), 'poc', options.session.sessionId);
+    const outputDir = options.outputDir ?? join(process.cwd(), 'poc', options.session.sessionId);
 
     this.options = {
       maxIterations: 10,
@@ -129,6 +132,7 @@ export class RalphLoop {
       ...options,
       outputDir,
     };
+    this.currentSession = options.session;
   }
 
   /**
@@ -172,8 +176,9 @@ export class RalphLoop {
 
     // ── Determine repo source ──────────────────────────────────────────────
     const githubAdapter = this.options.githubAdapter;
-    const repoSource: 'local' | 'github-mcp' =
-      githubAdapter?.isAvailable() ? 'github-mcp' : 'local';
+    const repoSource: 'local' | 'github-mcp' = githubAdapter?.isAvailable()
+      ? 'github-mcp'
+      : 'local';
 
     if (repoSource === 'local') {
       io.writeActivity(`GitHub MCP not available — using local output: ${outputDir}`);
@@ -221,12 +226,17 @@ export class RalphLoop {
     iterations.push(scaffoldIteration);
 
     spinner?.stop();
-    io.writeActivity(
-      `Scaffold complete: ${scaffoldResult.createdFiles.length} files created`,
-    );
+    io.writeActivity(`Scaffold complete: ${scaffoldResult.createdFiles.length} files created`);
 
     // Persist after scaffold
-    session = this.updateSessionPoc(session, iterations, repoSource, outputDir, undefined, techStack);
+    session = this.updateSessionPoc(
+      session,
+      iterations,
+      repoSource,
+      outputDir,
+      undefined,
+      techStack,
+    );
     await onSessionUpdate(session);
 
     // Push scaffold to GitHub if available
@@ -288,7 +298,9 @@ export class RalphLoop {
       spinner?.stop();
 
       safeOnEvent(
-        createActivityEvent(`Test results: ${testResults.passed} passed, ${testResults.failed} failed`),
+        createActivityEvent(
+          `Test results: ${testResults.passed} passed, ${testResults.failed} failed`,
+        ),
       );
 
       // ── Check if all tests pass ────────────────────────────────────────
@@ -320,6 +332,38 @@ export class RalphLoop {
         await onSessionUpdate(session);
         safeOnEvent(createActivityEvent('Ralph loop terminated: tests-passing'));
         this.cleanupSigint();
+
+        // Validate PoC output; downgrade to 'partial' if validation fails
+        const validation = await validatePocOutput(outputDir);
+        if (!validation.valid) {
+          const issues = [
+            ...validation.missingFiles.map((f) => `missing: ${f}`),
+            ...validation.errors,
+          ];
+          io.writeActivity(`PoC validation warning: ${issues.join('; ')}`);
+
+          session = this.updateSessionPoc(
+            session,
+            iterations,
+            repoSource,
+            outputDir,
+            githubAdapter?.getRepoUrl(),
+            techStack,
+            'partial',
+            'tests-passing',
+            Date.now() - startTime,
+            testResults,
+          );
+          await onSessionUpdate(session);
+
+          return {
+            session,
+            finalStatus: 'partial',
+            terminationReason: 'tests-passing',
+            iterationsCompleted: iterNum,
+            outputDir,
+          };
+        }
 
         return {
           session,
@@ -365,6 +409,14 @@ export class RalphLoop {
       const prevIteration = iterations[iterations.length - 1];
       const prevOutcome = prevIteration?.outcome ?? 'scaffold';
 
+      // Read actual file contents so the LLM can see the code (F003/F004)
+      const fileContents = await this.readFileContents(
+        outputDir,
+        filesInPoc,
+        currentFailingTests,
+        testResults,
+      );
+
       const prompt = codeGenerator.buildIterationPrompt({
         iteration: iterNum,
         maxIterations,
@@ -372,6 +424,7 @@ export class RalphLoop {
         testResults,
         filesInPoc,
         mcpContext: mcpContext || undefined,
+        fileContents,
       });
 
       const promptSummary = codeGenerator.buildPromptContextSummary({
@@ -415,7 +468,14 @@ export class RalphLoop {
         };
         iterations.push(errIteration);
 
-        session = this.updateSessionPoc(session, iterations, repoSource, outputDir, githubAdapter?.getRepoUrl(), techStack);
+        session = this.updateSessionPoc(
+          session,
+          iterations,
+          repoSource,
+          outputDir,
+          githubAdapter?.getRepoUrl(),
+          techStack,
+        );
         await onSessionUpdate(session);
         continue; // Continue to next iteration — LLM may recover
       }
@@ -449,7 +509,14 @@ export class RalphLoop {
             llmPromptContext: promptSummary,
           };
           iterations.push(errIteration);
-          session = this.updateSessionPoc(session, iterations, repoSource, outputDir, githubAdapter?.getRepoUrl(), techStack);
+          session = this.updateSessionPoc(
+            session,
+            iterations,
+            repoSource,
+            outputDir,
+            githubAdapter?.getRepoUrl(),
+            techStack,
+          );
           await onSessionUpdate(session);
           continue; // Continue — LLM may fix the bad dependency
         }
@@ -457,9 +524,29 @@ export class RalphLoop {
 
       // Push iteration files to GitHub if available
       if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+        const filesWithContent = await Promise.all(
+          applyResult.writtenFiles.map(async (f) => {
+            if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
+              io.writeActivity(`Warning: skipping out-of-bounds file path for push: ${f}`);
+              return null;
+            }
+            try {
+              const content = await readFile(resolve(outputDir, f), 'utf-8');
+              return { path: f, content };
+            } catch (err) {
+              io.writeActivity(
+                `Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`,
+              );
+              return { path: f, content: '' };
+            }
+          }),
+        );
+        const validFiles = filesWithContent.filter(
+          (file): file is { path: string; content: string } => file !== null,
+        );
         await githubAdapter.pushFiles({
           repoUrl: githubAdapter.getRepoUrl()!,
-          files: applyResult.writtenFiles.map((f) => ({ path: f, content: '' })),
+          files: validFiles,
           commitMessage: `chore: iteration ${iterNum} — ${testResults.failed} test(s) failing`,
         });
       }
@@ -475,7 +562,14 @@ export class RalphLoop {
       };
       iterations.push(failIteration);
 
-      session = this.updateSessionPoc(session, iterations, repoSource, outputDir, githubAdapter?.getRepoUrl(), techStack);
+      session = this.updateSessionPoc(
+        session,
+        iterations,
+        repoSource,
+        outputDir,
+        githubAdapter?.getRepoUrl(),
+        techStack,
+      );
       await onSessionUpdate(session);
 
       if (this.aborted) break;
@@ -484,6 +578,15 @@ export class RalphLoop {
     // ── Max iterations reached (or user-stopped) ───────────────────────
     if (this.aborted) {
       this.cleanupSigint();
+
+      // Compute finalStatus for the result, but do NOT persist it to the session.
+      // Contract: on user abort, session.poc.finalStatus must remain unset so the
+      // session can be resumed later without a stale terminal status. (F012)
+      const lastIterForAbort = iterations[iterations.length - 1];
+      const lastTestsForAbort = lastIterForAbort?.testResults;
+      const abortFinalStatus =
+        (lastTestsForAbort?.passed ?? 0) > 0 ? ('partial' as const) : ('failed' as const);
+
       session = this.updateSessionPoc(
         session,
         iterations,
@@ -491,31 +594,108 @@ export class RalphLoop {
         outputDir,
         githubAdapter?.getRepoUrl(),
         techStack,
-        'failed',
+        undefined,        // finalStatus deliberately omitted on user-stop
         'user-stopped',
         Date.now() - startTime,
+        lastTestsForAbort,
       );
       await onSessionUpdate(session);
       safeOnEvent(createActivityEvent('Ralph loop terminated: user-stopped'));
 
       return {
         session,
-        finalStatus: 'failed',
+        finalStatus: abortFinalStatus,
         terminationReason: 'user-stopped',
         iterationsCompleted: iterations.length,
         outputDir,
       };
     }
 
-    // Determine final status based on last test results
+    // Determine final status based on a final test run after the last code changes (F008)
+    io.writeActivity('Running final test pass after last iteration...');
     const lastIter = iterations[iterations.length - 1];
-    const lastTestResults = lastIter?.testResults;
-    const someTestsPassed = (lastTestResults?.passed ?? 0) > 0;
+    let finalTestResults: TestResults | undefined;
+    try {
+      finalTestResults = await testRunner.run(outputDir);
+    } catch {
+      // If test runner fails, fall back to last iteration's results
+    }
+
+    if (finalTestResults && finalTestResults.failed === 0 && finalTestResults.passed > 0) {
+      // Last code fix actually resolved all failures!
+      const finalIteration: PocIteration = {
+        iteration: iterations.length + 1,
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        outcome: 'tests-passing',
+        filesChanged: [],
+        testResults: finalTestResults,
+      };
+      iterations.push(finalIteration);
+
+      session = this.updateSessionPoc(
+        session,
+        iterations,
+        repoSource,
+        outputDir,
+        githubAdapter?.getRepoUrl(),
+        techStack,
+        'success',
+        'tests-passing',
+        Date.now() - startTime,
+        finalTestResults,
+      );
+      await onSessionUpdate(session);
+      safeOnEvent(createActivityEvent('Ralph loop terminated: tests-passing (final run)'));
+      this.cleanupSigint();
+
+      // Validate PoC output; downgrade to 'partial' if validation fails
+      const validation = await validatePocOutput(outputDir);
+      if (!validation.valid) {
+        const issues = [
+          ...validation.missingFiles.map((f) => `missing: ${f}`),
+          ...validation.errors,
+        ];
+        io.writeActivity(`PoC validation warning: ${issues.join('; ')}`);
+
+        session = this.updateSessionPoc(
+          session,
+          iterations,
+          repoSource,
+          outputDir,
+          githubAdapter?.getRepoUrl(),
+          techStack,
+          'partial',
+          'tests-passing',
+          Date.now() - startTime,
+          finalTestResults,
+        );
+        await onSessionUpdate(session);
+
+        return {
+          session,
+          finalStatus: 'partial',
+          terminationReason: 'tests-passing',
+          iterationsCompleted: iterations.length,
+          outputDir,
+        };
+      }
+
+      return {
+        session,
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        iterationsCompleted: iterations.length,
+        outputDir,
+      };
+    }
+
+    // Use final test results if available, otherwise fall back to last iteration
+    const effectiveTestResults = finalTestResults ?? lastIter?.testResults;
+    const someTestsPassed = (effectiveTestResults?.passed ?? 0) > 0;
     const finalStatus = someTestsPassed ? 'partial' : 'failed';
 
-    io.writeActivity(
-      `Max iterations (${maxIterations}) reached. Final status: ${finalStatus}`,
-    );
+    io.writeActivity(`Max iterations (${maxIterations}) reached. Final status: ${finalStatus}`);
     safeOnEvent(createActivityEvent(`Ralph loop terminated: max-iterations (${finalStatus})`));
 
     session = this.updateSessionPoc(
@@ -528,7 +708,7 @@ export class RalphLoop {
       finalStatus,
       'max-iterations',
       Date.now() - startTime,
-      lastTestResults,
+      effectiveTestResults,
     );
     await onSessionUpdate(session);
     this.cleanupSigint();
@@ -543,6 +723,62 @@ export class RalphLoop {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
+
+  /** Maximum total size of file contents to include in the prompt (50KB). */
+  private static readonly MAX_FILE_CONTENT_BYTES = 50 * 1024;
+
+  /**
+   * Read file contents from the PoC directory for inclusion in the iteration prompt.
+   *
+   * If the total content exceeds MAX_FILE_CONTENT_BYTES, includes only files
+   * referenced in test failures plus core files (src/index.ts, package.json).
+   */
+  private async readFileContents(
+    outputDir: string,
+    filesInPoc: string[],
+    failingTests: string[],
+    testResults: TestResults,
+  ): Promise<Array<{ path: string; content: string }>> {
+    // Flatten the tree listing into actual relative file paths
+    const flatFiles = filesInPoc
+      .map((f) => f.replace(/^\s+/, ''))
+      .filter((f) => !f.endsWith('/') && f.length > 0);
+
+    // Read all file contents
+    const allContents: Array<{ path: string; content: string }> = [];
+    for (const relPath of flatFiles) {
+      try {
+        const fullPath = join(outputDir, relPath);
+        const content = await readFile(fullPath, 'utf-8');
+        allContents.push({ path: relPath, content });
+      } catch {
+        // skip unreadable files
+      }
+    }
+
+    // Check total size
+    const totalSize = allContents.reduce(
+      (sum, f) => sum + Buffer.byteLength(f.content, 'utf-8'),
+      0,
+    );
+    if (totalSize <= RalphLoop.MAX_FILE_CONTENT_BYTES) {
+      return allContents;
+    }
+
+    // Over budget — filter to only failure-referenced files + core files
+    this.options.io.writeActivity(
+      `File content exceeds 50KB (${(totalSize / 1024).toFixed(1)}KB), including only failure-referenced files`,
+    );
+    const coreFiles = new Set(['src/index.ts', 'package.json']);
+
+    // Gather file references from failures
+    const failureFiles = new Set<string>();
+    for (const failure of testResults.failures) {
+      if (failure.file) failureFiles.add(failure.file);
+    }
+
+    return allContents.filter((f) => coreFiles.has(f.path) || failureFiles.has(f.path));
+  }
 
   /**
    * Run a single auto-completing LLM turn.
@@ -585,7 +821,13 @@ export class RalphLoop {
     repoSource: 'local' | 'github-mcp',
     outputDir: string,
     repoUrl?: string,
-    techStack?: { language: string; runtime: string; testRunner: string; buildCommand?: string; framework?: string },
+    techStack?: {
+      language: string;
+      runtime: string;
+      testRunner: string;
+      buildCommand?: string;
+      framework?: string;
+    },
     finalStatus?: 'success' | 'failed' | 'partial',
     terminationReason?: 'tests-passing' | 'max-iterations' | 'user-stopped' | 'error',
     totalDurationMs?: number,
@@ -603,11 +845,14 @@ export class RalphLoop {
       finalTestResults,
     };
 
-    return {
+    const updated: WorkshopSession = {
       ...session,
       poc,
       updatedAt: new Date().toISOString(),
     };
+    // Keep the mutable reference up to date for the SIGINT handler (F010)
+    this.currentSession = updated;
+    return updated;
   }
 
   /**
@@ -621,7 +866,13 @@ export class RalphLoop {
     startTime: number,
     outputDir: string,
     repoSource: 'local' | 'github-mcp',
-    techStack?: { language: string; runtime: string; testRunner: string; buildCommand?: string; framework?: string },
+    techStack?: {
+      language: string;
+      runtime: string;
+      testRunner: string;
+      buildCommand?: string;
+      framework?: string;
+    },
     onEvent?: (event: SofiaEvent) => void,
     errorMessage?: string,
   ): Promise<RalphLoopResult> {
@@ -656,9 +907,10 @@ export class RalphLoop {
 
   /**
    * Setup SIGINT handler for Ctrl+C.
+   * Uses `this.currentSession` (mutable) so the handler always persists the latest state (F010).
    */
   private setupSigintHandler(
-    session: WorkshopSession,
+    _session: WorkshopSession,
     onSessionUpdate: (s: WorkshopSession) => Promise<void>,
     onEvent: (e: SofiaEvent) => void,
   ): void {
@@ -666,7 +918,7 @@ export class RalphLoop {
       this.aborted = true;
       this.options.io.writeActivity('\nCtrl+C detected — stopping after current iteration...');
       onEvent(createActivityEvent('User requested stop (SIGINT)'));
-      void onSessionUpdate(session);
+      void onSessionUpdate(this.currentSession);
     };
     process.once('SIGINT', this.sigintHandler);
   }

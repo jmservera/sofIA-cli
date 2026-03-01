@@ -162,6 +162,8 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
       const { createLoopIO } = await import('./ioContext.js');
       const { createCopilotClient } = await import('../shared/copilotClient.js');
       const { getLogger } = await import('../logging/logger.js');
+      const { loadMcpConfig, McpManager } = await import('../mcp/mcpManager.js');
+      const { join: pathJoin } = await import('node:path');
 
       const globalOpts = program.opts();
       const merged = { ...globalOpts, ...opts };
@@ -188,10 +190,28 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
         return;
       }
 
+      // Load MCP config and wire adapters when MCP servers are configured
+      const mcpConfigPath = pathJoin(process.cwd(), '.vscode', 'mcp.json');
+      let mcpManager: import('../mcp/mcpManager.js').McpManager | undefined;
+      try {
+        const mcpConfig = await loadMcpConfig(mcpConfigPath);
+        if (Object.keys(mcpConfig.servers).length > 0) {
+          mcpManager = new McpManager(mcpConfig);
+          // Mark all configured servers as connected (optimistic: actual MCP failures
+          // degrade gracefully inside GitHubMcpAdapter / McpContextEnricher)
+          for (const name of mcpManager.listServers()) {
+            mcpManager.markConnected(name);
+          }
+        }
+      } catch {
+        // MCP config is optional — proceed without it
+      }
+
       await developCommand(merged as Parameters<typeof developCommand>[0], {
         store,
         io,
         client,
+        mcpManager,
       });
     });
 

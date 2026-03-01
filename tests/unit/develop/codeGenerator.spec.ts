@@ -12,7 +12,13 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { CodeGenerator, parseFencedCodeBlocks, buildFileTree } from '../../../src/develop/codeGenerator.js';
+import {
+  CodeGenerator,
+  parseFencedCodeBlocks,
+  buildFileTree,
+  isUnsafePath,
+  isPathWithinDirectory,
+} from '../../../src/develop/codeGenerator.js';
 import type { TestResults } from '../../../src/shared/schemas/session.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -25,8 +31,17 @@ function makeTestResults(overrides?: Partial<TestResults>): TestResults {
     total: 3,
     durationMs: 500,
     failures: [
-      { testName: 'suite > test A', message: 'Expected 3 but got 5', file: 'tests/a.test.ts', line: 10 },
-      { testName: 'suite > test B', message: 'Cannot read properties of undefined', file: 'tests/b.test.ts' },
+      {
+        testName: 'suite > test A',
+        message: 'Expected 3 but got 5',
+        file: 'tests/a.test.ts',
+        line: 10,
+      },
+      {
+        testName: 'suite > test B',
+        message: 'Cannot read properties of undefined',
+        file: 'tests/b.test.ts',
+      },
     ],
     rawOutput: 'FAIL tests/a.test.ts\nFAIL tests/b.test.ts\n',
     ...overrides,
@@ -139,6 +154,50 @@ describe('buildFileTree', () => {
   });
 });
 
+// ── isUnsafePath ──────────────────────────────────────────────────────────────
+
+describe('isUnsafePath', () => {
+  it('returns true for POSIX absolute paths', () => {
+    expect(isUnsafePath('/etc/passwd')).toBe(true);
+    expect(isUnsafePath('/tmp/evil')).toBe(true);
+  });
+
+  it('returns true for Windows drive-letter paths', () => {
+    expect(isUnsafePath('C:\\Windows\\System32\\evil.ts')).toBe(true);
+    expect(isUnsafePath('c:/Windows/evil.ts')).toBe(true);
+  });
+
+  it('returns true for UNC paths (backslash and forward-slash)', () => {
+    expect(isUnsafePath('\\\\server\\share\\evil.ts')).toBe(true);
+    expect(isUnsafePath('//server/share/evil.ts')).toBe(true);
+  });
+
+  it('returns true for path traversal segments', () => {
+    expect(isUnsafePath('../../etc/passwd')).toBe(true);
+    expect(isUnsafePath('src/../../../evil')).toBe(true);
+  });
+
+  it('returns false for normal relative paths', () => {
+    expect(isUnsafePath('src/index.ts')).toBe(false);
+    expect(isUnsafePath('tests/index.test.ts')).toBe(false);
+    expect(isUnsafePath('package.json')).toBe(false);
+  });
+});
+
+// ── isPathWithinDirectory ─────────────────────────────────────────────────────
+
+describe('isPathWithinDirectory', () => {
+  it('returns true for relative paths inside the directory', () => {
+    expect(isPathWithinDirectory('src/index.ts', '/tmp/poc')).toBe(true);
+    expect(isPathWithinDirectory('package.json', '/tmp/poc')).toBe(true);
+  });
+
+  it('returns false for paths that resolve outside the directory', () => {
+    // On POSIX, path.resolve('/tmp/poc', '../../etc/passwd') → '/etc/passwd'
+    expect(isPathWithinDirectory('../../etc/passwd', '/tmp/poc')).toBe(false);
+  });
+});
+
 // ── CodeGenerator ─────────────────────────────────────────────────────────────
 
 describe('CodeGenerator', () => {
@@ -221,7 +280,7 @@ describe('CodeGenerator', () => {
       expect(prompt).toContain('FAIL tests/a.test.ts');
     });
 
-    it('shows "all tests pass" task when no failures', () => {
+    it('shows "0 failing tests" task when no failures', () => {
       const prompt = generator.buildIterationPrompt({
         iteration: 3,
         maxIterations: 10,
@@ -230,7 +289,38 @@ describe('CodeGenerator', () => {
         filesInPoc: [],
       });
 
-      expect(prompt).toContain('All tests pass');
+      expect(prompt).toContain('0 failing tests');
+    });
+
+    it('includes file contents in ## Current Code section when fileContents provided', () => {
+      const prompt = generator.buildIterationPrompt({
+        iteration: 2,
+        maxIterations: 5,
+        previousOutcome: 'tests-failing',
+        testResults: makeTestResults(),
+        filesInPoc: ['src/index.ts'],
+        fileContents: [
+          { path: 'src/index.ts', content: 'export function main() { return 42; }' },
+          { path: 'tests/index.test.ts', content: 'import { test } from "vitest";' },
+        ],
+      });
+
+      expect(prompt).toContain('## Current Code');
+      expect(prompt).toContain('### src/index.ts');
+      expect(prompt).toContain('export function main() { return 42; }');
+      expect(prompt).toContain('### tests/index.test.ts');
+    });
+
+    it('omits ## Current Code section when fileContents is empty or absent', () => {
+      const prompt = generator.buildIterationPrompt({
+        iteration: 2,
+        maxIterations: 5,
+        previousOutcome: 'tests-failing',
+        testResults: makeTestResults(),
+        filesInPoc: ['src/index.ts'],
+      });
+
+      expect(prompt).not.toContain('## Current Code');
     });
   });
 
@@ -257,7 +347,7 @@ describe('CodeGenerator', () => {
       await generator.applyChanges(llmResponse);
 
       const content = await readFile(join(tmpDir, 'src', 'index.ts'), 'utf-8');
-      expect(content).toContain("export function hello()");
+      expect(content).toContain('export function hello()');
     });
 
     it('handles empty LLM response gracefully', async () => {
@@ -279,6 +369,20 @@ describe('CodeGenerator', () => {
 
     it('rejects paths with path traversal', async () => {
       const llmResponse = `\`\`\`typescript file=../../etc/passwd\nmalicious content\n\`\`\`\n`;
+
+      const result = await generator.applyChanges(llmResponse);
+      expect(result.writtenFiles).toHaveLength(0);
+    });
+
+    it('rejects Windows absolute paths (drive-letter)', async () => {
+      const llmResponse = `\`\`\`typescript file=C:\\Windows\\System32\\malicious.ts\nevil\n\`\`\`\n`;
+
+      const result = await generator.applyChanges(llmResponse);
+      expect(result.writtenFiles).toHaveLength(0);
+    });
+
+    it('rejects Windows UNC paths', async () => {
+      const llmResponse = `\`\`\`typescript file=\\\\server\\share\\malicious.ts\nevil\n\`\`\`\n`;
 
       const result = await generator.applyChanges(llmResponse);
       expect(result.writtenFiles).toHaveLength(0);

@@ -21,7 +21,14 @@ vi.mock('../../../src/mcp/webSearch.js', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeMcpManager(availableServers: string[] = []): McpManager {
+function makeMcpManager(
+  availableServers: string[] = [],
+  callToolImpl?: (
+    server: string,
+    tool: string,
+    args: Record<string, unknown>,
+  ) => Promise<Record<string, unknown>>,
+): McpManager {
   return {
     isAvailable: (name: string) => availableServers.includes(name),
     listServers: () => availableServers,
@@ -29,6 +36,9 @@ function makeMcpManager(availableServers: string[] = []): McpManager {
     markConnected: () => {},
     markDisconnected: () => {},
     getAllConfigs: () => [],
+    callTool: callToolImpl
+      ? vi.fn(callToolImpl)
+      : vi.fn().mockRejectedValue(new Error('not wired')),
   } as unknown as McpManager;
 }
 
@@ -47,7 +57,13 @@ describe('McpContextEnricher', () => {
 
   describe('enrich() — Context7', () => {
     it('queries Context7 when available and dependencies listed', async () => {
-      const manager = makeMcpManager(['context7']);
+      const callTool = vi
+        .fn()
+        .mockResolvedValueOnce({ libraryId: 'express-lib-id' })
+        .mockResolvedValueOnce({ content: 'Express.js API docs here' })
+        .mockResolvedValueOnce({ libraryId: 'zod-lib-id' })
+        .mockResolvedValueOnce({ content: 'Zod schema validation docs' });
+      const manager = makeMcpManager(['context7'], callTool);
       const enricher = new McpContextEnricher(manager);
 
       const result = await enricher.enrich({
@@ -55,10 +71,29 @@ describe('McpContextEnricher', () => {
         dependencies: ['express', 'zod'],
       });
 
-      // Should include library docs section
       expect(result.combined).toBeTruthy();
-      // Context7 should have generated some content
       expect(result.libraryDocs).toBeDefined();
+      // Should have called resolve-library-id and query-docs for each dep
+      expect(callTool).toHaveBeenCalledWith('context7', 'resolve-library-id', {
+        libraryName: 'express',
+      });
+      expect(callTool).toHaveBeenCalledWith('context7', 'query-docs', {
+        libraryId: 'express-lib-id',
+      });
+    });
+
+    it('falls back to npmjs link when callTool throws for a dependency', async () => {
+      const callTool = vi.fn().mockRejectedValue(new Error('not wired'));
+      const manager = makeMcpManager(['context7'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        dependencies: ['express'],
+      });
+
+      expect(result.libraryDocs).toBeDefined();
+      expect(result.libraryDocs).toContain('npmjs.com/package/express');
     });
 
     it('skips Context7 when not available', async () => {
@@ -87,7 +122,11 @@ describe('McpContextEnricher', () => {
     });
 
     it('filters out type-only packages from Context7 queries', async () => {
-      const manager = makeMcpManager(['context7']);
+      const callTool = vi
+        .fn()
+        .mockResolvedValueOnce({ libraryId: 'express-id' })
+        .mockResolvedValueOnce({ content: 'Express docs' });
+      const manager = makeMcpManager(['context7'], callTool);
       const enricher = new McpContextEnricher(manager);
 
       const result = await enricher.enrich({
@@ -95,20 +134,23 @@ describe('McpContextEnricher', () => {
         dependencies: ['@types/node', 'typescript', 'vitest', 'express'],
       });
 
-      // Should only query for express (skips @types/*, typescript, vitest)
       expect(result.libraryDocs).toBeDefined();
-      // express should be mentioned
       if (result.libraryDocs) {
         expect(result.libraryDocs).toContain('express');
         expect(result.libraryDocs).not.toContain('@types/node');
         expect(result.libraryDocs).not.toContain('typescript');
       }
+      // Only express should trigger callTool calls (2 calls: resolve + query)
+      expect(callTool).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('enrich() — Azure MCP', () => {
-    it('queries Azure MCP when available and plan mentions Azure', async () => {
-      const manager = makeMcpManager(['azure']);
+    it('calls mcpManager.callTool for Azure documentation when available', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        content: 'Use managed identity for Cosmos DB authentication.',
+      });
+      const manager = makeMcpManager(['azure'], callTool);
       const enricher = new McpContextEnricher(manager);
 
       const result = await enricher.enrich({
@@ -117,6 +159,28 @@ describe('McpContextEnricher', () => {
       });
 
       expect(result.azureGuidance).toBeDefined();
+      expect(result.azureGuidance).toContain('managed identity');
+      expect(callTool).toHaveBeenCalledWith(
+        'azure',
+        'documentation',
+        expect.objectContaining({
+          query: expect.stringContaining('cosmos db'),
+        }),
+      );
+    });
+
+    it('falls back to static guidance when callTool throws', async () => {
+      const callTool = vi.fn().mockRejectedValue(new Error('not wired'));
+      const manager = makeMcpManager(['azure'], callTool);
+      const enricher = new McpContextEnricher(manager);
+
+      const result = await enricher.enrich({
+        mcpManager: manager,
+        architectureNotes: 'Use Azure Cosmos DB for data storage.',
+      });
+
+      expect(result.azureGuidance).toBeDefined();
+      expect(result.azureGuidance).toContain('Detected Azure services');
       expect(result.combined).toContain('Azure');
     });
 
@@ -145,7 +209,8 @@ describe('McpContextEnricher', () => {
     });
 
     it('detects various Azure keywords', async () => {
-      const manager = makeMcpManager(['azure']);
+      const callTool = vi.fn().mockRejectedValue(new Error('not wired'));
+      const manager = makeMcpManager(['azure'], callTool);
       const enricher = new McpContextEnricher(manager);
 
       const azureKeywords = ['cosmos db', 'blob storage', 'service bus', 'key vault'];
@@ -154,7 +219,10 @@ describe('McpContextEnricher', () => {
           mcpManager: manager,
           architectureNotes: `Use ${keyword} for the implementation.`,
         });
-        expect(result.azureGuidance, `Expected Azure guidance for keyword: ${keyword}`).toBeDefined();
+        expect(
+          result.azureGuidance,
+          `Expected Azure guidance for keyword: ${keyword}`,
+        ).toBeDefined();
       }
     });
   });
@@ -230,7 +298,14 @@ describe('McpContextEnricher', () => {
       const { isWebSearchConfigured } = await import('../../../src/mcp/webSearch.js');
       vi.mocked(isWebSearchConfigured).mockReturnValue(true);
 
-      const manager = makeMcpManager(['context7', 'azure']);
+      const callTool = vi
+        .fn()
+        // Context7 resolve + query for 'express'
+        .mockResolvedValueOnce({ libraryId: 'express-id' })
+        .mockResolvedValueOnce({ content: 'Express framework docs' })
+        // Azure documentation
+        .mockResolvedValueOnce({ content: 'Azure Cosmos DB guidance' });
+      const manager = makeMcpManager(['context7', 'azure'], callTool);
       const enricher = new McpContextEnricher(manager);
 
       const result = await enricher.enrich({

@@ -7,14 +7,19 @@
  * - Error messages for invalid sessions
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { existsSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-import {
-  validateSessionForDevelop,
-  developCommand,
-} from '../../../src/cli/developCommand.js';
+// Mock RalphLoop so tests don't run the real loop
+vi.mock('../../../src/develop/ralphLoop.js');
+
+import { validateSessionForDevelop, developCommand } from '../../../src/cli/developCommand.js';
+import { RalphLoop } from '../../../src/develop/ralphLoop.js';
+import type { RalphLoopOptions, RalphLoopResult } from '../../../src/develop/ralphLoop.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../../src/loop/conversationLoop.js';
 import type { CopilotClient } from '../../../src/shared/copilotClient.js';
+import type { McpManager } from '../../../src/mcp/mcpManager.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +72,11 @@ function makeFakeClient(): CopilotClient {
     createSession: vi.fn().mockResolvedValue({
       send: vi.fn().mockReturnValue({
         async *[Symbol.asyncIterator]() {
-          yield { type: 'TextDelta', text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```', timestamp: '' };
+          yield {
+            type: 'TextDelta',
+            text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+            timestamp: '',
+          };
         },
       }),
       getHistory: () => [],
@@ -242,5 +251,175 @@ describe('developCommand', () => {
 
     // Should try to load the last session in the list
     expect(store.load).toHaveBeenCalledWith('test-dev-session');
+  });
+});
+
+// ── McpManager wiring ─────────────────────────────────────────────────────────
+
+describe('developCommand — MCP wiring', () => {
+  let capturedOptions: RalphLoopOptions | undefined;
+  let savedExitCode: number | undefined;
+
+  beforeEach(() => {
+    capturedOptions = undefined;
+    savedExitCode = process.exitCode as number | undefined;
+    process.exitCode = undefined;
+
+    vi.mocked(RalphLoop).mockImplementation(function (options: RalphLoopOptions) {
+      capturedOptions = options;
+      const fakeResult: RalphLoopResult = {
+        session: makeSession(),
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        iterationsCompleted: 1,
+        outputDir: '/tmp/poc-test',
+      };
+      return { run: vi.fn().mockResolvedValue(fakeResult) } as Partial<RalphLoop> as RalphLoop;
+    });
+  });
+
+  afterEach(() => {
+    process.exitCode = savedExitCode;
+    capturedOptions = undefined;
+    vi.mocked(RalphLoop).mockReset();
+  });
+
+  it('passes non-undefined enricher and githubAdapter to RalphLoop when mcpManager provided', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+    const mockMcpManager: McpManager = {
+      isAvailable: (name: string) => name === 'github',
+      listServers: () => ['github'],
+      getServerConfig: () => undefined,
+      markConnected: vi.fn(),
+      markDisconnected: vi.fn(),
+      getAllConfigs: () => [],
+    } as unknown as McpManager;
+
+    const session = makeSession(); // valid — has both selection and plan
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand(
+      { session: 'test-dev-session' },
+      { store, io, client, mcpManager: mockMcpManager },
+    );
+
+    expect(capturedOptions).toBeDefined();
+    expect(capturedOptions?.enricher).toBeDefined();
+    expect(capturedOptions?.githubAdapter).toBeDefined();
+  });
+
+  it('passes undefined enricher and githubAdapter to RalphLoop when no mcpManager provided', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+
+    const session = makeSession(); // valid
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session' }, { store, io, client });
+
+    expect(capturedOptions).toBeDefined();
+    expect(capturedOptions?.enricher).toBeUndefined();
+    expect(capturedOptions?.githubAdapter).toBeUndefined();
+  });
+});
+
+// ── --force option ────────────────────────────────────────────────────────────
+
+describe('developCommand — --force option', () => {
+  let tmpDir: string;
+  let relOutput: string;
+  let _capturedOptions: RalphLoopOptions | undefined;
+  let savedExitCode: number | undefined;
+
+  beforeEach(() => {
+    _capturedOptions = undefined;
+    savedExitCode = process.exitCode as number | undefined;
+    process.exitCode = undefined;
+    relOutput = `tmp/sofia-dev-test-${Date.now()}`;
+    tmpDir = join(process.cwd(), relOutput);
+
+    vi.mocked(RalphLoop).mockImplementation(function (options: RalphLoopOptions) {
+      _capturedOptions = options;
+      const fakeResult: RalphLoopResult = {
+        session: makeSession(),
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        iterationsCompleted: 1,
+        outputDir: options.outputDir ?? tmpDir,
+      };
+      return { run: vi.fn().mockResolvedValue(fakeResult) } as Partial<RalphLoop> as RalphLoop;
+    });
+
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    process.exitCode = savedExitCode;
+    _capturedOptions = undefined;
+    vi.mocked(RalphLoop).mockReset();
+    vi.restoreAllMocks();
+    // Clean up temp dir
+    if (existsSync(tmpDir)) {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('resumes from existing directory when --force is not set', async () => {
+    // Create output directory with metadata
+    mkdirSync(tmpDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({ scaffold: true }));
+
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession();
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session', output: relOutput }, { store, io, client });
+
+    // Should have called writeActivity with "Resuming" message
+    expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Resuming'));
+    // Directory should still exist
+    expect(existsSync(tmpDir)).toBe(true);
+    expect(existsSync(join(tmpDir, '.sofia-metadata.json'))).toBe(true);
+  });
+
+  it('clears directory when --force is set', async () => {
+    // Create output directory with some files
+    mkdirSync(tmpDir, { recursive: true });
+    writeFileSync(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({ scaffold: true }));
+    writeFileSync(join(tmpDir, 'old-file.ts'), 'old code');
+
+    const io = makeIo();
+    const client = makeFakeClient();
+    const session = makeSession();
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand(
+      { session: 'test-dev-session', output: relOutput, force: true },
+      { store, io, client },
+    );
+
+    // Should have called writeActivity with "Cleared" message
+    expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Cleared'));
+    // Old file was removed (RalphLoop mock doesn't recreate it)
+    expect(existsSync(join(tmpDir, 'old-file.ts'))).toBe(false);
   });
 });
