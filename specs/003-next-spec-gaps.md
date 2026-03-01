@@ -45,7 +45,21 @@
 - `queryAzureMcp()` (L158–176) returns hardcoded guidance strings based on keyword detection instead of calling Azure/Microsoft Docs MCP
 - `queryWebSearch()` (L183–195) returns a placeholder "no results" string instead of calling `web.search`
 
+### GAP-005: Web Search Enrichment & WorkIQ usage during the first phase of the discovery.
+
 **Recommendation**: Implement real MCP tool calls via GAP-001's `callTool()`. Add graceful degradation tests with real (but optional) MCP servers.
+
+Add a step in the first step of the discovery phase, just after the company and team information is gathered, to optionally call a web search MCP tool to gather recent news about the company, its competitors, and the industry. This information can be stored in the `DiscoveryState` and used to inform the ideation and planning phases, ensuring that the PoC is aligned with current market trends and challenges.
+
+Use WorkIQ to analyze current internal documentation, codebase, and team expertise to identify potential areas of strength and weakness that the PoC could leverage or address. This analysis can be integrated into the discovery phase to help shape the problem statement and solution approach. Ask for permission to use it as it may require access to sensitive internal information. If permission is granted, WorkIQ can provide insights that enhance the relevance and impact of the PoC.
+
+### GAP-006: MCP Usage with GitHub Copilot SDK
+
+Research how MCP is used in the GitHub Copilot SDK and ensure that our `McpManager` implementation is compatible with the expected patterns for authentication, tool invocation, and result handling. This may involve implementing specific authentication flows (e.g., OAuth) or adhering to certain request/response formats required by the Copilot SDK.
+
+### GAP-007: Agent definition and orchestration with GitHub Copilot SDK
+
+Identify if the defined agents are correctly structured to work with the GitHub Copilot SDK. This includes ensuring that the agents can be invoked, that they can handle the expected input and output formats and have access to the necessary context and tools. It may also involve defining specific agent behaviors or capabilities that align with the features provided by the Copilot SDK.
 
 ---
 
