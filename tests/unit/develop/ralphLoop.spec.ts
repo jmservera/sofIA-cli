@@ -475,7 +475,9 @@ describe('RalphLoop', () => {
         maxIterations: 5,
         testRunner,
         scaffolder,
-        onSessionUpdate: async (s) => { sessionUpdates.push(s); },
+        onSessionUpdate: async (s) => {
+          sessionUpdates.push(s);
+        },
       });
 
       const result = await ralph.run();
@@ -759,13 +761,11 @@ describe('RalphLoop', () => {
         isAvailable: () => true,
         getRepoUrl: () => 'https://github.com/acme/poc-test',
         pushFiles: pushFilesMock,
-        createRepository: vi
-          .fn()
-          .mockResolvedValue({
-            available: true,
-            repoUrl: 'https://github.com/acme/poc-test',
-            repoName: 'poc-test',
-          }),
+        createRepository: vi.fn().mockResolvedValue({
+          available: true,
+          repoUrl: 'https://github.com/acme/poc-test',
+          repoName: 'poc-test',
+        }),
       } as unknown as GitHubMcpAdapter;
 
       const ralph = new RalphLoop({
@@ -781,9 +781,11 @@ describe('RalphLoop', () => {
 
       await ralph.run();
 
-      // pushFiles should have been called with the real file content written by applyChanges
-      expect(pushFilesMock).toHaveBeenCalled();
-      const callArgs = pushFilesMock.mock.calls[0][0] as {
+      // pushFiles should have been called at least twice:
+      // call[0] = scaffold push, call[1+] = iteration pushes
+      expect(pushFilesMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+      // The iteration push (call[1]) should contain the LLM-written file content
+      const callArgs = pushFilesMock.mock.calls[1][0] as {
         files: Array<{ path: string; content: string }>;
       };
       const pushedFile = callArgs.files.find((f) => f.path === 'src/index.ts');
@@ -869,6 +871,125 @@ describe('RalphLoop', () => {
 
       expect(result.finalStatus).toBe('success');
       expect(validatePocOutput).toHaveBeenCalledWith(tmpDir);
+    });
+  });
+
+  describe('post-scaffold push (T024 — US2)', () => {
+    it('pushes scaffold files to GitHub after npm install, before first test iteration', async () => {
+      const session = makeSession();
+      const io = makeIo();
+      const client = makePassingClient();
+      const testRunner = makePassingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const pushOrder: string[] = [];
+      const pushFilesMock = vi.fn().mockImplementation(async () => {
+        pushOrder.push('pushFiles');
+        return { available: true, commitSha: 'scaffold-sha' };
+      });
+      const githubAdapter = {
+        isAvailable: () => true,
+        getRepoUrl: () => 'https://github.com/acme/poc-test',
+        pushFiles: pushFilesMock,
+        createRepository: vi.fn().mockResolvedValue({
+          available: true,
+          repoUrl: 'https://github.com/acme/poc-test',
+          repoName: 'poc-test',
+        }),
+      } as unknown as GitHubMcpAdapter;
+
+      // Wrap testRunner.run to record ordering
+      const originalRun = testRunner.run;
+      (testRunner as { run: typeof testRunner.run }).run = vi
+        .fn()
+        .mockImplementation(async (...args: Parameters<typeof testRunner.run>) => {
+          pushOrder.push('testRun');
+          return originalRun(...args);
+        });
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 3,
+        testRunner,
+        scaffolder,
+        githubAdapter,
+      });
+
+      await ralph.run();
+
+      // pushFiles should have been called at least once for the scaffold
+      expect(pushFilesMock).toHaveBeenCalled();
+      const firstPushArgs = pushFilesMock.mock.calls[0][0] as {
+        repoUrl: string;
+        files: Array<{ path: string; content: string }>;
+        commitMessage: string;
+      };
+
+      // Should push the scaffold files ('package.json', 'src/index.ts')
+      expect(firstPushArgs.files.length).toBeGreaterThanOrEqual(1);
+      const packageJson = firstPushArgs.files.find((f) => f.path === 'package.json');
+      expect(packageJson).toBeDefined();
+      expect(packageJson!.content).not.toBe('');
+
+      const indexTs = firstPushArgs.files.find((f) => f.path === 'src/index.ts');
+      expect(indexTs).toBeDefined();
+      expect(indexTs!.content).not.toBe('');
+
+      // Commit message should indicate scaffold
+      expect(firstPushArgs.commitMessage).toContain('scaffold');
+
+      // The scaffold push should come BEFORE the first test run
+      const firstPush = pushOrder.indexOf('pushFiles');
+      const firstTest = pushOrder.indexOf('testRun');
+      expect(firstPush).toBeLessThan(firstTest);
+    });
+  });
+
+  // ── T054: infiniteSessions config forwarding ──────────────────────────────
+
+  describe('infiniteSessions config (T054)', () => {
+    it('passes infiniteSessions config to createSession for context management', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
+
+      await ralph.run();
+
+      expect(createSessionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          infiniteSessions: {
+            backgroundCompactionThreshold: 0.7,
+            bufferExhaustionThreshold: 0.9,
+          },
+        }),
+      );
     });
   });
 });

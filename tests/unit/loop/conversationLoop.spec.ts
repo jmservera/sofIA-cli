@@ -12,6 +12,7 @@ import {
   type PhaseHandler,
 } from '../../../src/loop/conversationLoop.js';
 import { createFakeCopilotClient } from '../../../src/shared/copilotClient.js';
+import type { SessionOptions } from '../../../src/shared/copilotClient.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 import type { SofiaEvent } from '../../../src/shared/events.js';
 
@@ -133,9 +134,7 @@ describe('ConversationLoop', () => {
     });
 
     it('updates session after each turn via onSessionUpdate callback', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'Response one' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'Response one' }]);
 
       const io = makeIO(['hello']);
       const updates: WorkshopSession[] = [];
@@ -160,9 +159,7 @@ describe('ConversationLoop', () => {
 
   describe('event dispatching', () => {
     it('emits events for TextDelta and Activity', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'Hello!' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'Hello!' }]);
 
       const io = makeIO(['hi']);
       const events: SofiaEvent[] = [];
@@ -188,9 +185,7 @@ describe('ConversationLoop', () => {
 
   describe('streaming output', () => {
     it('writes streamed text to io.write in TTY mode', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'Streaming content' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'Streaming content' }]);
 
       const io = makeIO(['go'], { tty: true, json: false });
       const loop = new ConversationLoop({
@@ -209,9 +204,7 @@ describe('ConversationLoop', () => {
     });
 
     it('outputs JSON envelope in JSON mode', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'Result text' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'Result text' }]);
 
       const io = makeIO(['go'], { json: true });
       const loop = new ConversationLoop({
@@ -263,9 +256,7 @@ describe('ConversationLoop', () => {
 
     it('uses system prompt from handler when creating session', async () => {
       const createSessionSpy = vi.fn();
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'ok' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
 
       // Spy on createSession
       const originalCreateSession = client.createSession.bind(client);
@@ -297,9 +288,7 @@ describe('ConversationLoop', () => {
 
     it('includes references from handler in session options', async () => {
       const createSessionSpy = vi.fn();
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'ok' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
 
       const originalCreateSession = client.createSession.bind(client);
       client.createSession = async (opts) => {
@@ -381,9 +370,7 @@ describe('ConversationLoop', () => {
     });
 
     it('updates updatedAt timestamp after each turn', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'ok' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
 
       const io = makeIO(['hello']);
       const loop = new ConversationLoop({
@@ -400,9 +387,7 @@ describe('ConversationLoop', () => {
 
   describe('edge cases', () => {
     it('handles handler with no getReferences gracefully', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'ok' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
 
       const io = makeIO(['test']);
       const handler = makePhaseHandler();
@@ -422,9 +407,7 @@ describe('ConversationLoop', () => {
 
     it('handles exhausted fake responses gracefully', async () => {
       // Only 1 response configured but 2 messages sent
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'First' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'First' }]);
 
       const io = makeIO(['msg1', 'msg2']);
       const loop = new ConversationLoop({
@@ -471,7 +454,9 @@ describe('ConversationLoop', () => {
       expect(result.turns).toHaveLength(4);
       // First turn pair: system initial message → LLM greeting
       expect(result.turns![0].role).toBe('user');
-      expect(result.turns![0].content).toBe('Introduce the Discover phase and ask the first question.');
+      expect(result.turns![0].content).toBe(
+        'Introduce the Discover phase and ask the first question.',
+      );
       expect(result.turns![1].role).toBe('assistant');
       expect(result.turns![1].content).toBe('Welcome to the Discover phase!');
     });
@@ -523,9 +508,7 @@ describe('ConversationLoop', () => {
     });
 
     it('does NOT auto-start when initialMessage is not provided', async () => {
-      const client = createFakeCopilotClient([
-        { role: 'assistant', content: 'Response' },
-      ]);
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'Response' }]);
 
       const io = makeIO(['user input']);
 
@@ -543,6 +526,194 @@ describe('ConversationLoop', () => {
       expect(result.turns).toHaveLength(2);
       expect(result.turns![0].role).toBe('user');
       expect(result.turns![0].content).toBe('user input');
+    });
+  });
+
+  // ── Session resume: conversation history in system prompt ────────────────
+
+  describe('session resume with prior turns', () => {
+    it('injects prior conversation history into the system prompt on resume', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Welcome back! You told me about widgets.' },
+      ]);
+
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      // Session with existing turns from a prior Discover conversation
+      const session = makeSession({
+        turns: [
+          {
+            phase: 'Discover',
+            sequence: 1,
+            role: 'user',
+            content: 'We sell widgets worldwide',
+            timestamp: '2025-01-01T00:00:00Z',
+          },
+          {
+            phase: 'Discover',
+            sequence: 2,
+            role: 'assistant',
+            content: 'Great, what are your main challenges?',
+            timestamp: '2025-01-01T00:01:00Z',
+          },
+        ],
+      });
+
+      const io = makeIO([]);
+      const handler = makePhaseHandler({
+        buildSystemPrompt: () => 'You are a workshop facilitator.',
+      });
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session,
+        phaseHandler: handler,
+        initialMessage: 'We are resuming. Summarize progress.',
+      });
+
+      await loop.run();
+
+      // The system prompt should contain the prior conversation history
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.systemPrompt).toContain('We sell widgets worldwide');
+      expect(passedOpts.systemPrompt).toContain('Great, what are your main challenges?');
+      expect(passedOpts.systemPrompt).toContain('Previous conversation');
+    });
+
+    it('does NOT inject history when no prior turns exist', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Welcome to the workshop!' },
+      ]);
+
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      const io = makeIO([]);
+      const handler = makePhaseHandler({
+        buildSystemPrompt: () => 'You are a workshop facilitator.',
+      });
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(), // No turns
+        phaseHandler: handler,
+        initialMessage: 'Start the Discover phase.',
+      });
+
+      await loop.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      // System prompt should be exactly what the handler returned
+      expect(passedOpts.systemPrompt).toBe('You are a workshop facilitator.');
+    });
+
+    it('only includes turns for the current phase in the history', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Resuming ideation.' },
+      ]);
+
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      const session = makeSession({
+        phase: 'Ideate',
+        turns: [
+          {
+            phase: 'Discover',
+            sequence: 1,
+            role: 'user',
+            content: 'Discovery message (should NOT appear)',
+            timestamp: '2025-01-01T00:00:00Z',
+          },
+          {
+            phase: 'Ideate',
+            sequence: 2,
+            role: 'user',
+            content: 'Ideation message (should appear)',
+            timestamp: '2025-01-01T01:00:00Z',
+          },
+          {
+            phase: 'Ideate',
+            sequence: 3,
+            role: 'assistant',
+            content: 'Ideation response (should appear)',
+            timestamp: '2025-01-01T01:01:00Z',
+          },
+        ],
+      });
+
+      const io = makeIO([]);
+      const handler = makePhaseHandler({
+        phase: 'Ideate',
+        buildSystemPrompt: () => 'Ideation facilitator.',
+      });
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session,
+        phaseHandler: handler,
+        initialMessage: 'Resume ideation.',
+      });
+
+      await loop.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.systemPrompt).toContain('Ideation message (should appear)');
+      expect(passedOpts.systemPrompt).toContain('Ideation response (should appear)');
+      expect(passedOpts.systemPrompt).not.toContain('Discovery message (should NOT appear)');
+    });
+  });
+
+  // ── T055: SessionOptions.onUsage callback ─────────────────────────────────
+
+  describe('SessionOptions.onUsage (T055)', () => {
+    it('accepts an onUsage callback on SessionOptions', () => {
+      const opts: SessionOptions = {
+        systemPrompt: 'Test',
+        onUsage: vi.fn(),
+      };
+      expect(opts.onUsage).toBeDefined();
+      expect(typeof opts.onUsage).toBe('function');
+    });
+
+    it('onUsage callback is forwarded when passed through createSession', async () => {
+      const usageCb = vi.fn();
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'OK' }]);
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      await client.createSession({
+        systemPrompt: 'Test',
+        onUsage: usageCb,
+      });
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.onUsage).toBe(usageCb);
+    });
+
+    it('omitting onUsage does not set it on SessionOptions', () => {
+      const opts: SessionOptions = { systemPrompt: 'Test' };
+      expect(opts.onUsage).toBeUndefined();
     });
   });
 });

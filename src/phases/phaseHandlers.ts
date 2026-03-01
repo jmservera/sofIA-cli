@@ -8,6 +8,7 @@
  *   - Extracts structured data from LLM responses
  */
 import type { PhaseHandler } from '../loop/conversationLoop.js';
+import type { LoopIO } from '../loop/conversationLoop.js';
 import type { PhaseValue, WorkshopSession } from '../shared/schemas/session.js';
 import { buildSystemPrompt, getPhaseReferences } from '../prompts/promptLoader.js';
 import {
@@ -20,26 +21,38 @@ import {
   extractPocState,
   extractSessionName,
 } from './phaseExtractors.js';
+import { DiscoveryEnricher } from './discoveryEnricher.js';
+import type { WebSearchClient } from './discoveryEnricher.js';
+import type { McpManager } from '../mcp/mcpManager.js';
 
 // ── Initial message helper ──────────────────────────────────────────────────
 
 const PHASE_INTROS: Record<PhaseValue, string> = {
-  Discover: 'Introduce the Discover phase. Ask about the business, its challenges, and what area to focus on.',
-  Ideate: 'Introduce the Ideate phase. Review the business context and workflow, then brainstorm AI-powered ideas.',
-  Design: 'Introduce the Design phase. Review the generated ideas and help evaluate them using a feasibility-value matrix.',
-  Select: 'Introduce the Select phase. Present the top-ranked ideas and help the user choose the best one to implement.',
+  Discover:
+    'Introduce the Discover phase. Ask about the business, its challenges, and what area to focus on.',
+  Ideate:
+    'Introduce the Ideate phase. Review the business context and workflow, then brainstorm AI-powered ideas.',
+  Design:
+    'Introduce the Design phase. Review the generated ideas and help evaluate them using a feasibility-value matrix.',
+  Select:
+    'Introduce the Select phase. Present the top-ranked ideas and help the user choose the best one to implement.',
   Plan: 'Introduce the Plan phase. Create an implementation plan with milestones for the selected idea.',
-  Develop: 'Introduce the Develop phase. Generate proof-of-concept code for the planned implementation.',
+  Develop:
+    'Introduce the Develop phase. Generate proof-of-concept code for the planned implementation.',
   Complete: 'The workshop is complete. Summarize the results.',
 };
 
 const PHASE_RESUMES: Record<PhaseValue, string> = {
-  Discover: 'We are resuming the Discover phase. Summarize what was discussed so far and ask the next question.',
-  Ideate: 'We are resuming the Ideate phase. Summarize the ideas generated so far and continue brainstorming.',
-  Design: 'We are resuming the Design phase. Summarize the evaluation progress and continue with the next step.',
+  Discover:
+    'We are resuming the Discover phase. Summarize what was discussed so far and ask the next question.',
+  Ideate:
+    'We are resuming the Ideate phase. Summarize the ideas generated so far and continue brainstorming.',
+  Design:
+    'We are resuming the Design phase. Summarize the evaluation progress and continue with the next step.',
   Select: 'We are resuming the Select phase. Summarize the selection process so far and continue.',
   Plan: 'We are resuming the Plan phase. Summarize the plan progress and continue with the next milestone.',
-  Develop: 'We are resuming the Develop phase. Summarize the PoC development progress and continue.',
+  Develop:
+    'We are resuming the Develop phase. Summarize the PoC development progress and continue.',
   Complete: 'The workshop is complete. Summarize the results.',
 };
 
@@ -57,9 +70,19 @@ function buildInitialMessage(phase: PhaseValue, session: WorkshopSession): strin
 
 // ── Discover Phase ──────────────────────────────────────────────────────────
 
-function createDiscoverHandler(): PhaseHandler {
+export interface DiscoverHandlerConfig {
+  /** IO for permission prompts */
+  io?: LoopIO;
+  /** MCP manager for WorkIQ tool calls */
+  mcpManager?: McpManager;
+  /** Web search client */
+  webSearchClient?: WebSearchClient;
+}
+
+function createDiscoverHandler(config?: DiscoverHandlerConfig): PhaseHandler {
   let cachedPrompt: string | null = null;
   let cachedRefs: string[] | null = null;
+  let enrichmentDone = false;
 
   return {
     phase: 'Discover',
@@ -67,7 +90,10 @@ function createDiscoverHandler(): PhaseHandler {
     buildSystemPrompt(_session: WorkshopSession): string {
       // Lazy-loaded in run() but we need sync return.
       // The prompt is pre-loaded before the loop starts.
-      return cachedPrompt ?? 'You are an AI Discovery Workshop facilitator helping with the Discover phase.';
+      return (
+        cachedPrompt ??
+        'You are an AI Discovery Workshop facilitator helping with the Discover phase.'
+      );
     },
 
     getReferences(_session: WorkshopSession): string[] {
@@ -86,6 +112,52 @@ function createDiscoverHandler(): PhaseHandler {
         if (sessionName) updates.name = sessionName;
       }
       return updates;
+    },
+
+    async postExtract(session: WorkshopSession): Promise<Partial<WorkshopSession>> {
+      // Trigger enrichment once when businessContext is first available
+      if (enrichmentDone || !session.businessContext) return {};
+      enrichmentDone = true;
+
+      const enricher = new DiscoveryEnricher();
+      const io = config?.io;
+      const mcpManager = config?.mcpManager;
+      const webSearchClient = config?.webSearchClient;
+
+      // Only run enrichment if at least one source is available
+      if (!webSearchClient && (!mcpManager || !mcpManager.isAvailable('workiq'))) {
+        return {};
+      }
+
+      const companySummary = session.businessContext.businessDescription;
+
+      try {
+        const enrichment = await enricher.enrich({
+          companySummary,
+          mcpManager:
+            mcpManager ??
+            ({ isAvailable: () => false, callTool: async () => ({}) } as unknown as McpManager),
+          io: io ?? {
+            write: () => {},
+            writeActivity: () => {},
+            writeToolSummary: () => {},
+            readInput: async () => null,
+            showDecisionGate: async () => ({ choice: 'continue' as const }),
+            isJsonMode: false,
+            isTTY: false,
+          },
+          webSearchClient,
+        });
+
+        return {
+          discovery: {
+            enrichment,
+          },
+        };
+      } catch {
+        // Enrichment failure is non-fatal
+        return {};
+      }
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
@@ -180,7 +252,7 @@ function createDesignHandler(): PhaseHandler & { _preload(): Promise<void> } {
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
-      return !!(session.evaluation);
+      return !!session.evaluation;
     },
 
     getInitialMessage(session: WorkshopSession): string {
@@ -221,7 +293,7 @@ function createSelectHandler(): PhaseHandler & { _preload(): Promise<void> } {
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
-      return !!(session.selection?.confirmedByUser);
+      return !!session.selection?.confirmedByUser;
     },
 
     getInitialMessage(session: WorkshopSession): string {
@@ -262,7 +334,7 @@ function createPlanHandler(): PhaseHandler & { _preload(): Promise<void> } {
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
-      return !!(session.plan?.milestones?.length);
+      return !!session.plan?.milestones?.length;
     },
 
     getInitialMessage(session: WorkshopSession): string {
@@ -307,7 +379,7 @@ function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
     },
 
     isComplete(session: WorkshopSession, _response: string): boolean {
-      return !!(session.poc);
+      return !!session.poc;
     },
 
     getInitialMessage(session: WorkshopSession): string {
@@ -325,26 +397,37 @@ function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
 
 export type PreloadablePhaseHandler = PhaseHandler & { _preload(): Promise<void> };
 
-const PHASE_FACTORIES: Record<PhaseValue, () => PreloadablePhaseHandler> = {
-  Discover: createDiscoverHandler as () => PreloadablePhaseHandler,
-  Ideate: createIdeateHandler,
-  Design: createDesignHandler,
-  Select: createSelectHandler,
-  Plan: createPlanHandler,
-  Develop: createDevelopHandler,
-  Complete: createDiscoverHandler as () => PreloadablePhaseHandler, // Placeholder
+export interface PhaseHandlerConfig {
+  /** Discovery enrichment config (only used for Discover phase) */
+  discover?: DiscoverHandlerConfig;
+}
+
+const PHASE_FACTORIES: Record<
+  PhaseValue,
+  (config?: PhaseHandlerConfig) => PreloadablePhaseHandler
+> = {
+  Discover: (config) => createDiscoverHandler(config?.discover) as PreloadablePhaseHandler,
+  Ideate: () => createIdeateHandler(),
+  Design: () => createDesignHandler(),
+  Select: () => createSelectHandler(),
+  Plan: () => createPlanHandler(),
+  Develop: () => createDevelopHandler(),
+  Complete: () => createDiscoverHandler() as PreloadablePhaseHandler, // Placeholder
 };
 
 /**
  * Create a phase handler for the given phase.
  * Call `_preload()` before using in a ConversationLoop to load prompts.
  */
-export function createPhaseHandler(phase: PhaseValue): PreloadablePhaseHandler {
+export function createPhaseHandler(
+  phase: PhaseValue,
+  config?: PhaseHandlerConfig,
+): PreloadablePhaseHandler {
   const factory = PHASE_FACTORIES[phase];
   if (!factory) {
     throw new Error(`No handler for phase: ${phase}`);
   }
-  const handler = factory();
+  const handler = factory(config);
   // Override the phase to match what was requested
   handler.phase = phase;
   return handler;

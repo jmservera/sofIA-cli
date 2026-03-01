@@ -232,6 +232,42 @@ export type PocDevelopmentState = z.infer<typeof pocDevelopmentStateSchema>;
 
 // ── Artifacts ────────────────────────────────────────────────────────────────
 
+// ── Discovery Enrichment (Feature 003) ───────────────────────────────────────
+
+export const DiscoveryEnrichmentSchema = z.object({
+  /** Raw web search summary text (combined from all queries) */
+  webSearchResults: z.string().optional(),
+  /** Recent news headlines/snippets about the company */
+  companyNews: z.array(z.string()).max(10).optional(),
+  /** Competitor activity summaries */
+  competitorInfo: z.array(z.string()).max(10).optional(),
+  /** Industry trend descriptions */
+  industryTrends: z.array(z.string()).max(10).optional(),
+  /** WorkIQ-derived team insights (only present if user consented) */
+  workiqInsights: z
+    .object({
+      /** Identified team skill areas */
+      teamExpertise: z.array(z.string()).max(10).optional(),
+      /** Meeting/communication patterns identified */
+      collaborationPatterns: z.array(z.string()).max(10).optional(),
+      /** Areas lacking internal documentation */
+      documentationGaps: z.array(z.string()).max(10).optional(),
+    })
+    .optional(),
+  /** ISO 8601 timestamp when enrichment was collected */
+  enrichedAt: z.string().datetime().optional(),
+  /** Which sources were queried ('websearch', 'workiq') */
+  sourcesUsed: z.array(z.string()).optional(),
+});
+export type DiscoveryEnrichment = z.infer<typeof DiscoveryEnrichmentSchema>;
+
+export const DiscoveryStateSchema = z.object({
+  enrichment: DiscoveryEnrichmentSchema.optional(),
+});
+export type DiscoveryState = z.infer<typeof DiscoveryStateSchema>;
+
+// ── Artifacts ────────────────────────────────────────────────────────────────
+
 export const generatedFileSchema = z.object({
   relativePath: z.string(),
   type: z.enum(['markdown', 'json', 'text']),
@@ -300,6 +336,7 @@ export const workshopSessionSchema = z
     selection: selectedIdeaSchema.optional(),
     plan: implementationPlanSchema.optional(),
     poc: pocDevelopmentStateSchema.optional(),
+    discovery: DiscoveryStateSchema.optional(),
     artifacts: artifactIndexSchema,
     turns: z.array(conversationTurnSchema).optional(),
     errors: z.array(errorRecordSchema).optional(),
