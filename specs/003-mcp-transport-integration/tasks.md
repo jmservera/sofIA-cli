@@ -186,27 +186,28 @@ The following items are already implemented and do not require new tasks:
 - **Setup (Phase 1 — T001)**: No dependencies — run immediately
 - **Foundational (Phase 2 — T002–T003)**: Depends on T001 — **BLOCKS all US1 implementation**
 - **US1 Tests (T004–T010)**: Depend on T002–T003 (types must exist to import); can be written before implementation (RED phase)
-- **US1 Implementation (T011–T022)**: Depend on T002–T003; each implementation task may depend on prior transport tasks
-- **US2 (T023–T024)**: Depends only on T001 — independent of US1 transport layer (different module)
-- **US3 (T025–T031)**: Depends on T001 — independent of US1 and US2
-- **US4 (T032–T035)**: Depends on T030 (DiscoveryEnricher class must exist from US3)
-- **US5 (T036)**: Depends on US1 implementation being complete (verifies no regressions)
-- **Polish (T037–T041)**: Depends on all US phases being complete
+- **US1 Integration (T011, T042)**: Depends on T002–T003; can be written early but typically completes after US1 implementation exists
+- **US1 Implementation (T012–T023)**: Depend on T002–T003; each implementation task may depend on prior transport tasks
+- **US2 (T024–T025)**: Depends only on T001 — independent of US1 transport layer (different module)
+- **US3 (T026–T033)**: Depends on T001 — independent of US1 and US2
+- **US4 (T034–T037)**: Depends on T032 (DiscoveryEnricher class must exist from US3)
+- **US5 (T038)**: Depends on US1 implementation being complete (verifies no regressions)
+- **Polish (T039–T048)**: Depends on all US phases being complete
 
 ### User Story Dependencies
 
 - **US1 (P1)**: Depends on Phase 2 (Foundational) — no other story dependency
 - **US2 (P1)**: Independent — can start immediately after T001 in parallel with US1
 - **US3 (P2)**: Independent — can start after T001 in parallel with US1 and US2
-- **US4 (P3)**: Depends on US3 (T030 — DiscoveryEnricher class must exist)
-- **US5 (P2)**: No code needed — T036 verification after US1
+- **US4 (P3)**: Depends on US3 (T032 — DiscoveryEnricher class must exist)
+- **US5 (P2)**: No code needed — T038 verification after US1
 
 ### Within Each User Story
 
 1. Tests MUST be written and confirmed FAILING before implementation
-2. In US1: transport core (T011–T014) before McpManager (T015–T016) before adapter updates (T017–T022)
-3. In US3: schema (T028–T029) before enricher class (T030) before phase handler wiring (T031)
-4. In US4: enricher class must exist (T030) before WorkIQ method (T034) before orchestrator (T035)
+2. In US1: transport core + retry (T012–T015) before McpManager (T016–T017) before adapter/enricher updates (T018–T023)
+3. In US3: schema (T030–T031) before enricher class (T032) before phase handler wiring (T033)
+4. In US4: enricher class must exist (T032) before WorkIQ method (T036) before wiring/storage (T037)
 
 ### Parallel Opportunities
 
@@ -216,15 +217,15 @@ The following items are already implemented and do not require new tasks:
 
 **US1 Tests**:
 
-- T004, T005, T006, T007, T008, T009 can all run in parallel (different test files or additive to existing files with no conflicts)
+- T004, T005, T006, T007, T008, T009, T010 can all run in parallel (different test files or additive to existing files with no conflicts)
 
 **US2 and US1**:
 
-- US2 (T023–T024) can be worked on in parallel with US1 (different modules: `ralphLoop.ts` vs `mcpTransport.ts`)
+- US2 (T024–T025) can be worked on in parallel with US1 (different modules: `ralphLoop.ts` vs `mcpTransport.ts`)
 
 **US3 and US1/US2**:
 
-- US3 (T025–T031) can be worked on in parallel with US1 and US2 (different modules: `session.ts`, `discoveryEnricher.ts`, `phaseHandlers.ts`)
+- US3 (T026–T033) can be worked on in parallel with US1 and US2 (different modules: `session.ts`, `discoveryEnricher.ts`, `phaseHandlers.ts`)
 
 ---
 
@@ -244,13 +245,13 @@ Task: "Add contract test cases to tests/unit/develop/mcpContextEnricher.spec.ts"
 
 ```bash
 # Developer A: US1 transport layer
-Task: "Implement HttpMcpTransport in src/mcp/mcpTransport.ts" (T011)
+Task: "Implement HttpMcpTransport in src/mcp/mcpTransport.ts" (T012)
 
 # Developer B: US2 post-scaffold push (independent module)
-Task: "Add post-scaffold push test to tests/unit/develop/ralphLoop.spec.ts" (T023)
+Task: "Add post-scaffold push test to tests/unit/develop/ralphLoop.spec.ts" (T024)
 
 # Developer C: US3 discovery enrichment schema (independent module)
-Task: "Add DiscoveryEnrichmentSchema to src/shared/schemas/session.ts" (T028)
+Task: "Add DiscoveryEnrichmentSchema to src/shared/schemas/session.ts" (T030)
 ```
 
 ---
@@ -261,8 +262,8 @@ Task: "Add DiscoveryEnrichmentSchema to src/shared/schemas/session.ts" (T028)
 
 1. Complete Phase 1: Verify baseline
 2. Complete Phase 2: Transport abstractions (T002–T003)
-3. Complete US1: Transport layer + real MCP dispatch (T004–T022)
-4. Complete US2: Post-scaffold push fix (T023–T024)
+3. Complete US1: Transport layer + real MCP dispatch (T004–T023) and integration/degradation (T011, T042)
+4. Complete US2: Post-scaffold push fix (T024–T025)
 5. **STOP and VALIDATE**: Run `SOFIA_LIVE_MCP_TESTS=true npm test` in configured environment
 6. Deploy/demo with working GitHub adapter, Context7 enricher, Azure enricher, and web search
 
@@ -279,11 +280,11 @@ Task: "Add DiscoveryEnrichmentSchema to src/shared/schemas/session.ts" (T028)
 
 With three developers after Phase 2 completes:
 
-- **Developer A**: US1 (transport layer — T004–T022)
-- **Developer B**: US2 (post-scaffold push — T023–T024)
-- **Developer C**: US3 (discovery enrichment — T025–T031)
+- **Developer A**: US1 (transport layer — T004–T023)
+- **Developer B**: US2 (post-scaffold push — T024–T025)
+- **Developer C**: US3 (discovery enrichment — T026–T033)
 
-US4 begins when US3's T030 is merged. US5 (verification) runs after US1 merges.
+US4 begins when US3's T032 is merged. US5 (verification) runs after US1 merges.
 
 ---
 
@@ -292,6 +293,6 @@ US4 begins when US3's T030 is merged. US5 (verification) runs after US1 merges.
 - `[P]` tasks = different files, no dependencies on incomplete tasks — safe to parallelize
 - Follow the "Dependencies & Execution Order" section to sequence work; task IDs are unique but may not strictly encode dependency order after updates
 - Adapter unit tests (githubMcpAdapter.spec.ts, mcpContextEnricher.spec.ts) already cover basic `callTool()` integration via mocks — Tasks T008/T009 ADD new contract-specific test cases, not replace existing ones
-- Live smoke tests (T037, T041) require real credentials; they are gated by `SOFIA_LIVE_MCP_TESTS=true` and are NOT run in CI
+- Live smoke tests (T039, T048) require real credentials; they are gated by `SOFIA_LIVE_MCP_TESTS=true` and are NOT run in CI
 - US5 (SDK alignment) requires zero code changes — the existing architecture is already correctly aligned per research.md Topic 7
-- The `DiscoveryState` entity described in data-model.md does not exist yet in `session.ts` — T029 creates it; existing sessions remain valid because the field is `optional()`
+- The `DiscoveryState` entity described in data-model.md does not exist yet in `session.ts` — T031 creates it; existing sessions remain valid because the field is `optional()`
