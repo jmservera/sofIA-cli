@@ -203,8 +203,11 @@ export const pocIterationSchema = z.object({
   /** @deprecated kept for backward compatibility with pre-002 session files */
   testsRun: z.array(z.string()).optional(),
   // New fields for Feature 002
-  outcome: z.enum(['tests-passing', 'tests-failing', 'error', 'scaffold']),
-  filesChanged: z.array(z.string()),
+  outcome: z
+    .enum(['tests-passing', 'tests-failing', 'error', 'scaffold'])
+    .optional()
+    .default('scaffold'),
+  filesChanged: z.array(z.string()).optional().default([]),
   testResults: testResultsSchema.optional(),
   errorMessage: z.string().optional(),
   llmPromptContext: z.string().optional(),
