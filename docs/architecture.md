@@ -7,11 +7,20 @@ src/
 ├── cli/                     # CLI entrypoints and command handlers
 │   ├── index.ts             # Main entrypoint (commander setup)
 │   ├── workshopCommand.ts   # Interactive workshop menu and flow
+│   ├── developCommand.ts    # `sofia dev` — PoC generation handler
 │   ├── statusCommand.ts     # Session status display
 │   ├── exportCommand.ts     # Artifact export handler
 │   ├── directCommands.ts    # Non-interactive direct command mode
 │   ├── ioContext.ts         # TTY/non-TTY detection, JSON mode, I/O
 │   └── preflight.ts         # Pre-flight environment checks
+├── develop/                 # PoC generation & Ralph loop
+│   ├── index.ts             # Barrel export
+│   ├── ralphLoop.ts         # Autonomous iteration orchestrator
+│   ├── pocScaffolder.ts     # PoC project scaffolding + output validation
+│   ├── codeGenerator.ts     # LLM-driven code generation & prompt building
+│   ├── testRunner.ts        # Test execution and result parsing
+│   ├── mcpContextEnricher.ts# MCP-driven context enrichment (Context7, Azure, web search)
+│   └── githubMcpAdapter.ts  # GitHub MCP repo creation adapter
 ├── loop/
 │   └── conversationLoop.ts  # Multi-turn conversation orchestrator
 ├── phases/
@@ -97,6 +106,7 @@ interface PhaseHandler {
 ### ConversationLoop
 
 The `ConversationLoop` orchestrates multi-turn conversations between the user, the Copilot client, and the active `PhaseHandler`. It handles:
+
 - Streaming responses with real-time rendering
 - Activity/telemetry event emission
 - Ctrl+C signal handling for graceful shutdown
@@ -105,6 +115,7 @@ The `ConversationLoop` orchestrates multi-turn conversations between the user, t
 ### LoopIO Interface
 
 I/O is abstracted behind `LoopIO` for testability:
+
 - **TTY mode:** Interactive prompts via terminal
 - **Non-TTY mode:** Reads from stdin, writes JSON to stdout
 - **JSON mode:** Activity events go to stderr, structured data to stdout
@@ -113,21 +124,22 @@ I/O is abstracted behind `LoopIO` for testability:
 
 Errors are classified into 9 categories with recovery hints:
 
-| Category | Recoverable | Example |
-|----------|-------------|---------|
-| `connection` | Yes | Network unreachable |
-| `dns` | Yes | DNS resolution failed |
-| `timeout` | Yes | Request timed out |
-| `auth` | No | Invalid credentials |
-| `rate-limit` | Yes | Too many requests |
-| `not-found` | No | Resource not found |
-| `validation` | No | Invalid input |
-| `mcp` | Yes | MCP server down |
-| `internal` | No | Unexpected error |
+| Category     | Recoverable | Example               |
+| ------------ | ----------- | --------------------- |
+| `connection` | Yes         | Network unreachable   |
+| `dns`        | Yes         | DNS resolution failed |
+| `timeout`    | Yes         | Request timed out     |
+| `auth`       | No          | Invalid credentials   |
+| `rate-limit` | Yes         | Too many requests     |
+| `not-found`  | No          | Resource not found    |
+| `validation` | No          | Invalid input         |
+| `mcp`        | Yes         | MCP server down       |
+| `internal`   | No          | Unexpected error      |
 
 ### Pre-flight Checks
 
 Before starting a workshop, `runPreflightChecks()` runs environment validations in parallel:
+
 - Copilot SDK connectivity
 - MCP server readiness
 - Web search tool availability
@@ -150,6 +162,8 @@ tests/
 
 ## Related
 
-- Specification: [specs/001-cli-workshop-rebuild/spec.md](../specs/001-cli-workshop-rebuild/spec.md)
-- Technical plan: [specs/001-cli-workshop-rebuild/plan.md](../specs/001-cli-workshop-rebuild/plan.md)
+- Feature 001 spec: [specs/001-cli-workshop-rebuild/spec.md](../specs/001-cli-workshop-rebuild/spec.md)
+- Feature 001 plan: [specs/001-cli-workshop-rebuild/plan.md](../specs/001-cli-workshop-rebuild/plan.md)
+- Feature 002 spec: [specs/002-poc-generation/spec.md](../specs/002-poc-generation/spec.md)
+- Feature 002 plan: [specs/002-poc-generation/plan.md](../specs/002-poc-generation/plan.md)
 - Research notes: [specs/001-cli-workshop-rebuild/research.md](../specs/001-cli-workshop-rebuild/research.md)

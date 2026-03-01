@@ -1,0 +1,141 @@
+{
+  "sessionId": "fixture-session-001",
+  "schemaVersion": "1.0.0",
+  "createdAt": "2026-01-15T09:00:00Z",
+  "updatedAt": "2026-01-15T11:30:00Z",
+  "name": "ACME AI Delivery Tracker Workshop",
+  "phase": "Develop",
+  "status": "Active",
+  "participants": [
+    { "id": "p1", "displayName": "Alice Facilitator", "role": "Facilitator" },
+    { "id": "p2", "displayName": "Bob Customer", "role": "Attendee" }
+  ],
+  "businessContext": {
+    "businessDescription": "ACME Logistics Corp provides last-mile delivery services for e-commerce.",
+    "challenges": [
+      "Delivery delays due to poor route optimization",
+      "Customer satisfaction dropping due to lack of real-time tracking",
+      "High fuel costs from inefficient routing"
+    ],
+    "constraints": ["Must integrate with existing SAP ERP system", "GDPR compliance required"],
+    "successMetrics": [
+      { "name": "On-time delivery rate", "value": "95", "unit": "%" },
+      { "name": "Customer satisfaction score", "value": "4.5", "unit": "/5" }
+    ]
+  },
+  "topic": {
+    "topicArea": "Last-mile delivery optimization",
+    "scopeNotes": "Focus on AI-powered route optimization and real-time tracking"
+  },
+  "workflow": {
+    "activities": [
+      { "id": "a1", "name": "Order Received" },
+      { "id": "a2", "name": "Route Planning" },
+      { "id": "a3", "name": "Delivery Execution" },
+      { "id": "a4", "name": "Proof of Delivery" }
+    ],
+    "edges": [
+      { "fromStepId": "a1", "toStepId": "a2" },
+      { "fromStepId": "a2", "toStepId": "a3" },
+      { "fromStepId": "a3", "toStepId": "a4" }
+    ]
+  },
+  "ideas": [
+    {
+      "id": "idea-1",
+      "title": "AI-Powered Route Optimizer",
+      "description": "Use machine learning to optimize delivery routes in real-time based on traffic, weather, and package priority.",
+      "workflowStepIds": ["a2", "a3"],
+      "aspirationalScope": "Reduce delivery times by 20% and fuel costs by 15%",
+      "assumptions": ["Traffic data available via API", "Driver apps can receive updated routes"]
+    },
+    {
+      "id": "idea-2",
+      "title": "Predictive Delivery Window",
+      "description": "Predict accurate 1-hour delivery windows for customers using AI.",
+      "workflowStepIds": ["a3"],
+      "aspirationalScope": "95% accuracy on delivery time predictions"
+    }
+  ],
+  "evaluation": {
+    "ideas": [
+      {
+        "ideaId": "idea-1",
+        "feasibility": 8,
+        "value": 9,
+        "risks": ["Data quality dependency", "Driver adoption"],
+        "dataNeeded": ["Historical delivery data", "Traffic API access"],
+        "humanValue": ["Reduces driver stress", "Improves work-life balance"],
+        "kpisInfluenced": ["On-time delivery rate", "Fuel costs"]
+      },
+      {
+        "ideaId": "idea-2",
+        "feasibility": 7,
+        "value": 8,
+        "risks": ["Last-mile unpredictability"],
+        "dataNeeded": ["Historical delivery times", "Traffic patterns"],
+        "humanValue": ["Customer peace of mind"],
+        "kpisInfluenced": ["Customer satisfaction score"]
+      }
+    ],
+    "method": "feasibility-value-matrix"
+  },
+  "selection": {
+    "ideaId": "idea-1",
+    "selectionRationale": "Highest feasibility-value score. Directly addresses the primary business challenge of route inefficiency and has clear ROI through fuel cost reduction.",
+    "confirmedByUser": true,
+    "confirmedAt": "2026-01-15T11:00:00Z"
+  },
+  "plan": {
+    "milestones": [
+      {
+        "id": "m1",
+        "title": "Data Pipeline Setup",
+        "items": [
+          "Ingest historical delivery data from CSV",
+          "Connect to traffic API (mocked for PoC)",
+          "Data normalization and feature engineering"
+        ]
+      },
+      {
+        "id": "m2",
+        "title": "Route Optimization Model",
+        "items": [
+          "Implement nearest-neighbor heuristic baseline",
+          "Add traffic-weighted distance calculation",
+          "Expose optimization as TypeScript function"
+        ]
+      },
+      {
+        "id": "m3",
+        "title": "REST API & Demo",
+        "items": [
+          "Simple Express server exposing /optimize-route endpoint",
+          "Sample data for 5 delivery stops",
+          "README with curl examples"
+        ]
+      }
+    ],
+    "architectureNotes": "Node.js 20 + TypeScript. Simple in-process route optimizer (no external ML service for PoC). Express for HTTP layer. Vitest for testing. Dependencies: express, typescript, vitest.",
+    "dependencies": ["express", "typescript", "vitest", "@types/express", "@types/node"]
+  },
+  "artifacts": {
+    "generatedFiles": []
+  },
+  "turns": [
+    {
+      "phase": "Discover",
+      "sequence": 1,
+      "role": "user",
+      "content": "We are ACME Logistics and we struggle with delivery route optimization.",
+      "timestamp": "2026-01-15T09:05:00Z"
+    },
+    {
+      "phase": "Plan",
+      "sequence": 10,
+      "role": "assistant",
+      "content": "Here is the implementation plan for the AI-Powered Route Optimizer PoC.",
+      "timestamp": "2026-01-15T11:25:00Z"
+    }
+  ]
+}

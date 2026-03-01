@@ -199,6 +199,7 @@ describe('workshopSessionSchema', () => {
     const result = workshopSessionSchema.parse(
       validSession({
         poc: {
+          repoSource: 'local',
           iterations: [],
         },
       }),

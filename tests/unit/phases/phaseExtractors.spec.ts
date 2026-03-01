@@ -247,10 +247,13 @@ describe('extractPocState', () => {
   it('extracts PoC development state', () => {
     const response = `\`\`\`json
 {
+  "repoSource": "local",
   "iterations": [
     {
       "iteration": 1,
       "startedAt": "2025-01-01T00:00:00Z",
+      "outcome": "scaffold",
+      "filesChanged": ["package.json", "src/index.ts"],
       "changesSummary": "Initial scaffold"
     }
   ]

@@ -63,7 +63,7 @@
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
 - [x] T020 [P] [US1] Add integration test in tests/integration/newSessionFlow.spec.ts to cover happy-path New Session through Plan with decision gates
-- [ ] T021 [P] [US1] Add PTY-based E2E test in tests/e2e/newSession.e2e.spec.ts to validate streaming output and interactive prompts
+- [x] T021 [P] [US1] Add PTY-based E2E test in tests/e2e/newSession.e2e.spec.ts to validate streaming output and interactive prompts
 
 ### Implementation for User Story 1
 

@@ -148,6 +148,73 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
       await exportCommand({ ...globalOpts, ...opts });
     });
 
+  // ── Dev command ───────────────────────────────────────────────────────
+
+  program
+    .command('dev')
+    .description('Generate a proof-of-concept repository for a completed workshop session')
+    .option('--max-iterations <n>', 'Maximum Ralph loop iterations (default: 10)', parseInt)
+    .option('--output <dir>', 'Output directory for the PoC (default: ./poc/<sessionId>/)')
+    .option('--force', 'Overwrite existing output directory and start fresh')
+    .action(async (opts) => {
+      const { developCommand } = await import('./developCommand.js');
+      const { createDefaultStore } = await import('../sessions/sessionStore.js');
+      const { createLoopIO } = await import('./ioContext.js');
+      const { createCopilotClient } = await import('../shared/copilotClient.js');
+      const { getLogger } = await import('../logging/logger.js');
+      const { loadMcpConfig, McpManager } = await import('../mcp/mcpManager.js');
+      const { join: pathJoin } = await import('node:path');
+
+      const globalOpts = program.opts();
+      const merged = { ...globalOpts, ...opts };
+
+      const store = createDefaultStore();
+      const io = createLoopIO({
+        json: merged.json as boolean,
+        nonInteractive: merged.nonInteractive as boolean,
+      });
+
+      let client;
+      try {
+        client = await createCopilotClient();
+      } catch (err: unknown) {
+        const logger = getLogger();
+        logger.error({ err }, 'Failed to create Copilot client');
+        const msg = err instanceof Error ? err.message : 'Unknown error creating Copilot client';
+        if (merged.json) {
+          process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+        } else {
+          process.stderr.write(`Error: ${msg}\n`);
+        }
+        process.exitCode = 1;
+        return;
+      }
+
+      // Load MCP config and wire adapters when MCP servers are configured
+      const mcpConfigPath = pathJoin(process.cwd(), '.vscode', 'mcp.json');
+      let mcpManager: import('../mcp/mcpManager.js').McpManager | undefined;
+      try {
+        const mcpConfig = await loadMcpConfig(mcpConfigPath);
+        if (Object.keys(mcpConfig.servers).length > 0) {
+          mcpManager = new McpManager(mcpConfig);
+          // Mark all configured servers as connected (optimistic: actual MCP failures
+          // degrade gracefully inside GitHubMcpAdapter / McpContextEnricher)
+          for (const name of mcpManager.listServers()) {
+            mcpManager.markConnected(name);
+          }
+        }
+      } catch {
+        // MCP config is optional — proceed without it
+      }
+
+      await developCommand(merged as Parameters<typeof developCommand>[0], {
+        store,
+        io,
+        client,
+        mcpManager,
+      });
+    });
+
   return program;
 }
 

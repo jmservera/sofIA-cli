@@ -158,19 +158,75 @@ export type ImplementationPlan = z.infer<typeof implementationPlanSchema>;
 
 // ── PoC ──────────────────────────────────────────────────────────────────────
 
+// T007: New schemas for TechStack, TestFailure, TestResults
+
+export const techStackSchema = z.object({
+  language: z.string(),
+  framework: z.string().optional(),
+  testRunner: z.string(),
+  buildCommand: z.string().optional(),
+  runtime: z.string(),
+});
+export type TechStack = z.infer<typeof techStackSchema>;
+
+export const testFailureSchema = z.object({
+  testName: z.string(),
+  message: z.string(),
+  expected: z.string().optional(),
+  actual: z.string().optional(),
+  file: z.string().optional(),
+  line: z.number().optional(),
+});
+export type TestFailure = z.infer<typeof testFailureSchema>;
+
+export const testResultsSchema = z
+  .object({
+    passed: z.number(),
+    failed: z.number(),
+    skipped: z.number(),
+    total: z.number(),
+    durationMs: z.number(),
+    failures: z.array(testFailureSchema),
+    rawOutput: z.string().optional(),
+  })
+  .refine((d) => d.total === d.passed + d.failed + d.skipped, {
+    message: 'total must equal passed + failed + skipped',
+  });
+export type TestResults = z.infer<typeof testResultsSchema>;
+
+// T005: Extended pocIterationSchema
 export const pocIterationSchema = z.object({
   iteration: z.number(),
   startedAt: z.string(),
   endedAt: z.string().optional(),
   changesSummary: z.string().optional(),
+  /** @deprecated kept for backward compatibility with pre-002 session files */
   testsRun: z.array(z.string()).optional(),
+  // New fields for Feature 002
+  outcome: z
+    .enum(['tests-passing', 'tests-failing', 'error', 'scaffold'])
+    .optional()
+    .default('scaffold'),
+  filesChanged: z.array(z.string()).default([]),
+  testResults: testResultsSchema.optional(),
+  errorMessage: z.string().optional(),
+  llmPromptContext: z.string().optional(),
 });
 export type PocIteration = z.infer<typeof pocIterationSchema>;
 
+// T006: Extended pocDevelopmentStateSchema
 export const pocDevelopmentStateSchema = z.object({
   repoPath: z.string().optional(),
+  repoUrl: z.string().optional(),
+  repoSource: z.enum(['local', 'github-mcp']),
+  techStack: techStackSchema.optional(),
   iterations: z.array(pocIterationSchema),
-  finalStatus: z.enum(['success', 'failed']).optional(),
+  finalStatus: z.enum(['success', 'failed', 'partial']).optional(),
+  terminationReason: z
+    .enum(['tests-passing', 'max-iterations', 'user-stopped', 'error'])
+    .optional(),
+  totalDurationMs: z.number().optional(),
+  finalTestResults: testResultsSchema.optional(),
 });
 export type PocDevelopmentState = z.infer<typeof pocDevelopmentStateSchema>;
 

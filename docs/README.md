@@ -22,8 +22,14 @@ npm run start -- workshop
 # Check session status
 npm run start -- status
 
+# Generate a PoC from a completed session
+npm run start -- dev --session <id>
+
 # Export session artifacts
 npm run start -- export --session <id>
 ```
 
-For the full specification, see [specs/001-cli-workshop-rebuild/](../specs/001-cli-workshop-rebuild/).
+For the full specification, see:
+
+- Workshop phases (Discover → Plan): [specs/001-cli-workshop-rebuild/](../specs/001-cli-workshop-rebuild/)
+- PoC generation & Ralph loop (Develop): [specs/002-poc-generation/](../specs/002-poc-generation/)

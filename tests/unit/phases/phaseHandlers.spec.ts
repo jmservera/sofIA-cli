@@ -273,7 +273,7 @@ describe('phaseHandlers', () => {
     it('Develop handler extracts poc state from response', () => {
       const handler = createPhaseHandler('Develop');
       const session = makeSession();
-      const response = '```json\n{"iterations": [{"iteration": 1, "startedAt": "2025-01-01T00:00:00Z"}]}\n```';
+      const response = '```json\n{"repoSource": "local", "iterations": [{"iteration": 1, "startedAt": "2025-01-01T00:00:00Z", "outcome": "scaffold", "filesChanged": []}]}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.poc).toBeDefined();
       expect(result.poc!.iterations).toHaveLength(1);

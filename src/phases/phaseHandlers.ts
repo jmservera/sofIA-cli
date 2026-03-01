@@ -277,6 +277,10 @@ function createPlanHandler(): PhaseHandler & { _preload(): Promise<void> } {
 }
 
 // ── Develop Boundary Phase ──────────────────────────────────────────────────
+// T021: This handler covers the boundary (requirements capture) phase.
+// For full PoC generation, use `sofia dev` which invokes the RalphLoop
+// (src/develop/ralphLoop.ts) directly. The develop-boundary.md prompt is
+// kept for backward compatibility.
 
 function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
   let cachedPrompt: string | null = null;

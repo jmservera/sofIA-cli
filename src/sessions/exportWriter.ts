@@ -14,8 +14,8 @@ import type { WorkshopSession } from '../shared/schemas/session.js';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ExportFile {
-  path: string;  // Relative to export directory
-  type: string;  // 'markdown' | 'json'
+  path: string; // Relative to export directory
+  type: string; // 'markdown' | 'json'
 }
 
 export interface ExportResult {
@@ -64,7 +64,7 @@ function generateDiscoverMarkdown(session: WorkshopSession): string | null {
   }
 
   // Include conversation turns for this phase
-  const discoverTurns = session.turns?.filter(t => t.phase === 'Discover') ?? [];
+  const discoverTurns = session.turns?.filter((t) => t.phase === 'Discover') ?? [];
   if (discoverTurns.length > 0) {
     lines.push('## Conversation\n');
     for (const turn of discoverTurns) {
@@ -88,7 +88,7 @@ function generateIdeateMarkdown(session: WorkshopSession): string | null {
     }
   }
 
-  const ideateTurns = session.turns?.filter(t => t.phase === 'Ideate') ?? [];
+  const ideateTurns = session.turns?.filter((t) => t.phase === 'Ideate') ?? [];
   if (ideateTurns.length > 0) {
     lines.push('## Conversation\n');
     for (const turn of ideateTurns) {
@@ -107,7 +107,9 @@ function generateDesignMarkdown(session: WorkshopSession): string | null {
   lines.push(`**Method**: ${session.evaluation.method}\n`);
   lines.push('### Evaluated Ideas\n');
   for (const eval_ of session.evaluation.ideas) {
-    lines.push(`- **${eval_.ideaId}**: Feasibility=${eval_.feasibility ?? 'N/A'}, Value=${eval_.value ?? 'N/A'}`);
+    lines.push(
+      `- **${eval_.ideaId}**: Feasibility=${eval_.feasibility ?? 'N/A'}, Value=${eval_.value ?? 'N/A'}`,
+    );
   }
   lines.push('');
 
@@ -148,13 +150,90 @@ function generatePlanMarkdown(session: WorkshopSession): string | null {
 function generateDevelopMarkdown(session: WorkshopSession): string | null {
   if (!session.poc) return null;
 
+  const poc = session.poc;
   const lines: string[] = ['# Develop Phase\n'];
-  lines.push('## PoC Requirements\n');
-  if (session.poc.repoPath) {
-    lines.push(`**Repository**: ${session.poc.repoPath}\n`);
+
+  // Repository location
+  lines.push('## PoC Repository\n');
+  if (poc.repoUrl) {
+    lines.push(`**Repository URL**: ${poc.repoUrl}\n`);
+  } else if (poc.repoPath) {
+    lines.push(`**Repository Path**: ${poc.repoPath}\n`);
   }
-  if (session.poc.finalStatus) {
-    lines.push(`**Status**: ${session.poc.finalStatus}\n`);
+  if (poc.repoSource) {
+    lines.push(`**Source**: ${poc.repoSource}\n`);
+  }
+
+  // Technology stack
+  if (poc.techStack) {
+    lines.push('## Technology Stack\n');
+    lines.push(`- **Language**: ${poc.techStack.language}`);
+    lines.push(`- **Runtime**: ${poc.techStack.runtime}`);
+    lines.push(`- **Test Runner**: ${poc.techStack.testRunner}`);
+    if (poc.techStack.framework) {
+      lines.push(`- **Framework**: ${poc.techStack.framework}`);
+    }
+    if (poc.techStack.buildCommand) {
+      lines.push(`- **Build Command**: ${poc.techStack.buildCommand}`);
+    }
+    lines.push('');
+  }
+
+  // Final status and termination
+  if (poc.finalStatus) {
+    lines.push('## Result\n');
+    lines.push(`**Status**: ${poc.finalStatus}\n`);
+    if (poc.terminationReason) {
+      lines.push(`**Termination Reason**: ${poc.terminationReason}\n`);
+    }
+    if (poc.totalDurationMs !== undefined) {
+      lines.push(`**Total Duration**: ${(poc.totalDurationMs / 1000).toFixed(1)}s\n`);
+    }
+  }
+
+  // Final test results
+  if (poc.finalTestResults) {
+    const tr = poc.finalTestResults;
+    lines.push('## Final Test Results\n');
+    lines.push(`- **Passed**: ${tr.passed}`);
+    lines.push(`- **Failed**: ${tr.failed}`);
+    lines.push(`- **Skipped**: ${tr.skipped}`);
+    lines.push(`- **Total**: ${tr.total}`);
+    lines.push(`- **Duration**: ${tr.durationMs}ms`);
+    if (tr.failures.length > 0) {
+      lines.push('\n### Failures\n');
+      for (const f of tr.failures) {
+        lines.push(`#### ${f.testName}`);
+        lines.push(`\`\`\`\n${f.message}\n\`\`\`\n`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Iteration timeline
+  if (poc.iterations.length > 0) {
+    lines.push('## Iteration Timeline\n');
+    for (const iter of poc.iterations) {
+      const duration = iter.endedAt
+        ? `${((new Date(iter.endedAt).getTime() - new Date(iter.startedAt).getTime()) / 1000).toFixed(1)}s`
+        : 'in progress';
+      lines.push(`### Iteration ${iter.iteration} — ${iter.outcome} (${duration})\n`);
+      if (iter.changesSummary) {
+        lines.push(`${iter.changesSummary}\n`);
+      }
+      if (iter.filesChanged.length > 0) {
+        lines.push(`**Files changed**: ${iter.filesChanged.join(', ')}\n`);
+      }
+      if (iter.testResults) {
+        const tr = iter.testResults;
+        lines.push(
+          `**Tests**: ${tr.passed} passed, ${tr.failed} failed, ${tr.skipped} skipped (${tr.durationMs}ms)\n`,
+        );
+      }
+      if (iter.errorMessage) {
+        lines.push(`**Error**: ${iter.errorMessage}\n`);
+      }
+    }
   }
 
   return lines.join('\n');
@@ -206,6 +285,19 @@ export async function exportSession(
   if (session.plan?.milestones?.length) {
     highlights.push(`${session.plan.milestones.length} milestones planned`);
   }
+  // PoC highlights
+  if (session.poc) {
+    const poc = session.poc;
+    if (poc.finalStatus) {
+      highlights.push(`PoC status: ${poc.finalStatus}`);
+    }
+    if (poc.iterations?.length) {
+      highlights.push(`PoC iterations: ${poc.iterations.length}`);
+    }
+    if (poc.terminationReason) {
+      highlights.push(`PoC termination: ${poc.terminationReason}`);
+    }
+  }
 
   // Generate summary.json
   const summary: ExportSummary = {
@@ -218,11 +310,7 @@ export async function exportSession(
   };
 
   const summaryFileName = 'summary.json';
-  await writeFile(
-    join(exportDir, summaryFileName),
-    JSON.stringify(summary, null, 2),
-    'utf-8',
-  );
+  await writeFile(join(exportDir, summaryFileName), JSON.stringify(summary, null, 2), 'utf-8');
   files.push({ path: summaryFileName, type: 'json' });
 
   return { exportDir, files };

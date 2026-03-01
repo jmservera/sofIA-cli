@@ -17,14 +17,14 @@ npm run sofia -- <command> [options]
 
 ## Global Options
 
-| Flag | Description |
-|------|-------------|
-| `--version` | Print version and exit |
-| `--help` | Print help and exit |
-| `--session <id>` | Target a specific session by ID |
-| `--json` | Machine-readable JSON output only on stdout |
-| `--debug` | Enable debug telemetry |
-| `--log-file <path>` | Write structured logs to the specified file |
+| Flag                | Description                                                         |
+| ------------------- | ------------------------------------------------------------------- |
+| `--version`         | Print version and exit                                              |
+| `--help`            | Print help and exit                                                 |
+| `--session <id>`    | Target a specific session by ID                                     |
+| `--json`            | Machine-readable JSON output only on stdout                         |
+| `--debug`           | Enable debug telemetry                                              |
+| `--log-file <path>` | Write structured logs to the specified file                         |
 | `--non-interactive` | Disallow prompts; fail with an actionable error if input is missing |
 
 ## Commands
@@ -49,15 +49,16 @@ npm run start -- workshop --session <id> --phase Ideate --retry 3
 
 **Workshop-specific flags:**
 
-| Flag | Description |
-|------|-------------|
-| `--new-session` | Skip menu and start a new session |
-| `--phase <phase>` | Jump to a specific phase (requires `--session`) |
+| Flag              | Description                                            |
+| ----------------- | ------------------------------------------------------ |
+| `--new-session`   | Skip menu and start a new session                      |
+| `--phase <phase>` | Jump to a specific phase (requires `--session`)        |
 | `--retry <count>` | Retry transient failures N times (direct command mode) |
 
 **Phases** (in order): `Discover`, `Ideate`, `Design`, `Select`, `Plan`, `Develop`
 
 **Direct command mode** is activated when both `--session` and `--phase` are specified. In this mode:
+
 - The workshop runs the specified phase without the interactive menu
 - Supports `--non-interactive` for automation (fails fast if input is missing)
 - Supports `--retry` to retry recoverable errors with exponential backoff
@@ -80,6 +81,76 @@ npm run start -- status --session <id> --json
 - **TTY (human):** A table showing session ID, current phase, status, and last update time
 - **JSON mode:** `{ "sessions": [{ "sessionId", "phase", "status", "updatedAt" }] }` or `{ "session": { ... } }` for a single session
 
+### `dev`
+
+Run the **Develop** phase for a completed workshop session. Generates a proof-of-concept (PoC) repository using a Ralph loop — an autonomous, iterative cycle where code is generated, tests run, failures fed back to the LLM, and fixes applied until tests pass or the iteration limit is reached.
+
+```bash
+# Generate a PoC from a completed session (uses most recent session by default)
+npm run start -- dev
+
+# Target a specific session
+npm run start -- dev --session <id>
+
+# Limit iterations and specify output directory
+npm run start -- dev --session <id> --max-iterations 5 --output ./my-poc
+
+# Overwrite existing output and start fresh
+npm run start -- dev --session <id> --force
+
+# Machine-readable JSON output
+npm run start -- dev --session <id> --json
+```
+
+**Dev-specific flags:**
+
+| Flag                   | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| `--session <id>`       | Session ID (defaults to most recent session)                 |
+| `--max-iterations <n>` | Maximum Ralph loop iterations (default: 10)                  |
+| `--output <dir>`       | Output directory for the PoC (default: `./poc/<sessionId>/`) |
+| `--force`              | Overwrite existing output directory and start fresh          |
+| `--json`               | Machine-readable JSON output                                 |
+| `--debug`              | Show iteration events during execution                       |
+
+**Lifecycle:**
+
+1. **Validate** — Checks the session has `selection` and `plan` populated (from Select and Plan phases)
+2. **Scaffold** — Creates the initial PoC project structure (README, package.json, tsconfig.json, tests, etc.)
+3. **Install** — Runs `npm install` in the PoC directory
+4. **Iterate** — Runs tests → feeds failures to LLM → applies code changes → repeats
+5. **Terminate** — Stops when tests pass, max iterations reached, or user presses Ctrl+C
+
+**GitHub MCP integration:**
+When GitHub MCP is available and authorized, the PoC is also pushed to a GitHub repository. When unavailable, it falls back to local-only output with a clear log message.
+
+**JSON output format** (with `--json`):
+
+```json
+{
+  "sessionId": "abc123",
+  "finalStatus": "success",
+  "terminationReason": "tests-passing",
+  "iterationsCompleted": 4,
+  "repoSource": "local",
+  "repoPath": "./poc/abc123/",
+  "outputDir": "/absolute/path/to/poc/abc123"
+}
+```
+
+**Recovery options** (shown on non-success outcomes):
+
+```bash
+# Resume from where you left off
+sofia dev --session <id>
+
+# Allow more iterations
+sofia dev --session <id> --max-iterations 20
+
+# Start fresh
+sofia dev --session <id> --force
+```
+
 ### `export`
 
 Export workshop artifacts for a session.
@@ -94,16 +165,16 @@ npm run start -- export --session <id> --output ./my-export/
 
 **Export-specific flags:**
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
 | `--output <dir>` | Custom output directory (default: `./exports/<sessionId>/`) |
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | General error (invalid input, session not found, etc.) |
+| Code | Meaning                                                |
+| ---- | ------------------------------------------------------ |
+| `0`  | Success                                                |
+| `1`  | General error (invalid input, session not found, etc.) |
 
 In JSON mode, errors are emitted as JSON objects with a consistent envelope:
 

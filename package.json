@@ -26,7 +26,8 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "sofia": "node --enable-source-maps dist/cli/index.js"
+    "sofiacli": "node --enable-source-maps dist/cli/index.js",
+    "sofia": "npm run sofiacli"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
