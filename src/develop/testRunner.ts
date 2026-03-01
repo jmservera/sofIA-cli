@@ -52,13 +52,17 @@ interface VitestJsonReport {
 export interface TestRunnerOptions {
   /** Timeout in milliseconds (default: 60000) */
   timeoutMs?: number;
+  /** Custom test command (default: 'npm test -- --reporter=json') */
+  testCommand?: string;
 }
 
 export class TestRunner {
   private readonly timeoutMs: number;
+  private readonly testCommand: string;
 
   constructor(options: TestRunnerOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.testCommand = options.testCommand ?? 'npm test -- --reporter=json';
   }
 
   /**
@@ -96,7 +100,7 @@ export class TestRunner {
   }
 
   /**
-   * Spawn npm test and collect output.
+   * Spawn test process and collect output.
    */
   private spawnTests(
     outputDir: string,
@@ -106,7 +110,11 @@ export class TestRunner {
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];
 
-      const child = spawn('npm', ['test', '--', '--reporter=json'], {
+      const parts = this.testCommand.split(/\s+/);
+      const cmd = parts[0];
+      const args = parts.slice(1);
+
+      const child = spawn(cmd, args, {
         cwd: outputDir,
         shell: false,
         env: {
@@ -196,8 +204,9 @@ export class TestRunner {
 
   /**
    * Extract JSON object from potentially mixed output.
+   * Protected for subclass testing.
    */
-  private extractJson(output: string): VitestJsonReport | null {
+  protected extractJson(output: string): VitestJsonReport | null {
     // Try to find a JSON object/array in the output
     const lines = output.split('\n');
 
@@ -251,8 +260,9 @@ export class TestRunner {
 
   /**
    * Build an error result (timeout or spawn failure).
+   * Protected for subclass testing.
    */
-  private buildErrorResult(startTime: number, errorMessage: string): TestResults {
+  protected buildErrorResult(startTime: number, errorMessage: string): TestResults {
     return {
       passed: 0,
       failed: 0,

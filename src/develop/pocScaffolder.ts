@@ -12,6 +12,7 @@ import { join, dirname } from 'node:path';
 
 import type { TechStack } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
+import type { TemplateEntry } from './templateRegistry.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -276,14 +277,23 @@ describe('${ctx.projectName}', () => {
 export class PocScaffolder {
   private readonly template: TemplateFile[];
 
-  constructor(template?: TemplateFile[]) {
-    this.template = template ?? NODE_TS_VITEST_TEMPLATE;
+  constructor(templateOrFiles?: TemplateEntry | TemplateFile[]) {
+    if (templateOrFiles && 'files' in templateOrFiles && 'id' in templateOrFiles) {
+      // TemplateEntry
+      this.template = (templateOrFiles as TemplateEntry).files;
+    } else {
+      this.template = (templateOrFiles as TemplateFile[] | undefined) ?? NODE_TS_VITEST_TEMPLATE;
+    }
   }
 
   /**
    * Build a ScaffoldContext from a workshop session.
    */
-  static buildContext(session: WorkshopSession, outputDir: string): ScaffoldContext {
+  static buildContext(
+    session: WorkshopSession,
+    outputDir: string,
+    templateEntry?: TemplateEntry,
+  ): ScaffoldContext {
     const idea = session.ideas?.find((i) => i.id === session.selection?.ideaId);
     const ideaTitle = idea?.title ?? 'AI PoC';
     const ideaDescription = idea?.description ?? 'A proof-of-concept AI application.';
@@ -292,13 +302,15 @@ export class PocScaffolder {
       ? session.plan.architectureNotes
       : session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details';
 
-    const techStack: TechStack = {
-      language: 'TypeScript',
-      runtime: 'Node.js 20',
-      testRunner: 'npm test',
-      buildCommand: 'npm run build',
-      framework: undefined,
-    };
+    const techStack: TechStack = templateEntry?.techStack
+      ? { ...templateEntry.techStack }
+      : {
+          language: 'TypeScript',
+          runtime: 'Node.js 20',
+          testRunner: 'npm test',
+          buildCommand: 'npm run build',
+          framework: undefined,
+        };
 
     // Infer framework from plan if present
     if (session.plan?.architectureNotes) {

@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['tests/**/*.{test,spec}.ts'],
-    exclude: ['tests/live/**'],
+    exclude: ['tests/live/**', 'tests/fixtures/**'],
     coverage: {
       enabled: true,
       provider: 'v8',

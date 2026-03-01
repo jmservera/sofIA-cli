@@ -375,13 +375,31 @@ describe('developCommand — --force option', () => {
   });
 
   it('resumes from existing directory when --force is not set', async () => {
-    // Create output directory with metadata
+    // Create output directory with metadata matching the session
     mkdirSync(tmpDir, { recursive: true });
-    writeFileSync(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({ scaffold: true }));
+    writeFileSync(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({ sessionId: 'test-dev-session' }),
+    );
 
     const io = makeIo();
     const client = makeFakeClient();
-    const session = makeSession();
+    // Session with prior iterations to trigger resume
+    const session = makeSession({
+      poc: {
+        repoSource: 'local',
+        repoPath: tmpDir,
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'scaffold',
+            filesChanged: [],
+          },
+        ],
+      },
+    });
     const store = {
       load: vi.fn().mockResolvedValue(session),
       save: vi.fn(),
