@@ -83,9 +83,9 @@ A user who has finished a workshop or testing session wants to remove all deploy
 ### Functional Requirements
 
 - **FR-001**: The project MUST include an infrastructure template that defines all Azure resources needed for the AI Foundry web search capability (Foundry account, project, model deployment, and agent capability).
-- **FR-002**: The project MUST include a deployment script that provisions the infrastructure with a single command, accepting the target Azure subscription, resource group, and region as inputs.
+- **FR-002**: The project MUST include a deployment script that provisions the infrastructure with a single command, accepting the target Azure subscription, resource group, and region as inputs. If the specified resource group does not exist, the script MUST create it automatically.
 - **FR-003**: The deployment script MUST output the Foundry project endpoint URL and model deployment name needed to configure the sofIA CLI (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`). Authentication uses the caller's Azure login credentials — no separate API key is needed.
-- **FR-004**: The infrastructure template MUST be parameterized, allowing users to customize the deployment name, region, and model selection without modifying the template.
+- **FR-004**: The infrastructure template MUST be parameterized, allowing users to customize the deployment name, region, and model selection without modifying the template. The default region MUST be `swedencentral`.
 - **FR-005**: The deployment script MUST validate prerequisites before attempting deployment (Azure CLI installed, user logged in, correct subscription selected, sufficient permissions).
 - **FR-006**: The deployment script MUST provide clear, actionable error messages when a deployment fails, including the specific failure reason and suggested remediation.
 - **FR-007**: The project MUST include a teardown command that removes all deployed resources by deleting the resource group.
@@ -93,16 +93,18 @@ A user who has finished a workshop or testing session wants to remove all deploy
 - **FR-009**: The deployed agent MUST support the `web_search_preview` tool type to provide real-time web search grounded with citations.
 - **FR-010**: The deployment script MUST be executable from common development environments (Linux, macOS, Windows via WSL or Git Bash).
 - **FR-011**: The infrastructure template MUST include documentation (parameter descriptions, comments) explaining each resource and its purpose.
-- **FR-012**: The deployment MUST configure the Foundry agent with web search enabled and an appropriate model deployment for handling search queries.
+- **FR-012**: The deployment MUST configure the Foundry agent with web search enabled and an appropriate model deployment for handling search queries. The default model deployment MUST be `gpt-4.1-mini`.
 - **FR-013**: The sofIA CLI MUST authenticate to the Foundry Agent Service using the user's Azure login credentials (e.g., via Azure Identity), eliminating the need for separate API key management.
 - **FR-014**: Search responses MUST include inline URL citations so the user can verify the sources of information surfaced during the workshop.
+- **FR-015**: The web search agent MUST follow an ephemeral lifecycle — created when a sofIA CLI session starts and automatically deleted when the session ends. The Bicep template provisions only the Foundry account, project, and model deployment; agent creation/deletion is handled at runtime by the CLI.
+- **FR-016**: If the CLI detects the legacy environment variables (`SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY`), it MUST display a clear error message instructing the user to migrate to the new variables (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`). The old variables MUST NOT be used for authentication.
 
 ### Key Entities
 
 - **Foundry Account**: The top-level Azure AI Foundry resource that hosts projects and model deployments. Identified by a unique name within a resource group.
 - **Foundry Project**: A project within the Foundry account where the web search agent operates. Provides the endpoint URL used by the sofIA CLI.
-- **Model Deployment**: A deployed language model (e.g., GPT-4o) within the Foundry account that processes search queries and generates grounded responses with citations.
-- **Web Search Agent**: The Foundry agent configured with the `web_search_preview` tool that performs real-time web searches for company, competitor, and industry research.
+- **Model Deployment**: A deployed language model (default: `gpt-4.1-mini`) within the Foundry account that processes search queries and generates grounded responses with citations.
+- **Web Search Agent**: A Foundry agent configured with the `web_search_preview` tool that performs real-time web searches. The agent is ephemeral — created when a sofIA CLI session starts and deleted when the session ends. No agent resource is managed in the Bicep template.
 - **Deployment Configuration**: The set of parameters (subscription, resource group, region, naming, model choice) that define a specific infrastructure deployment.
 
 ## Success Criteria *(mandatory)*
@@ -116,13 +118,23 @@ A user who has finished a workshop or testing session wants to remove all deploy
 - **SC-005**: The infrastructure template is fully self-documented — a user can understand every resource and parameter by reading the template file alone, without external documentation.
 - **SC-006**: The deployment is reproducible — running the deployment script twice with the same parameters on different machines produces functionally equivalent environments.
 
+## Clarifications
+
+### Session 2026-03-01
+
+- Q: What should the default Azure region be for the deployment template? → A: `swedencentral`
+- Q: What should the default model deployment for the web search agent be? → A: `gpt-4.1-mini`
+- Q: Should the Foundry agent be persistent or ephemeral? → A: Ephemeral per CLI session (created on session start, deleted on session end)
+- Q: Should the deployment script auto-create the resource group if it doesn't exist? → A: Yes, auto-create it (subscription-level deployment)
+- Q: Should the CLI support both old and new env vars during migration? → A: Clean break — only new env vars, with error message if old ones detected
+
 ## Assumptions
 
 - Users have an active Azure subscription with Owner or Contributor permissions on the target resource group.
 - The Azure CLI is installed and the user is already authenticated (`az login`). This same Azure login is used for both deploying the infrastructure and authenticating the sofIA CLI to the Foundry Agent Service at runtime.
 - The target Azure region supports Azure AI Foundry and the Grounding with Bing Search capability (uses Bing Search behind the scenes — governed by [Grounding with Bing terms of use](https://www.microsoft.com/bing/apis/grounding-legal-enterprise)).
 - The basic agent setup (Microsoft-managed infrastructure) is sufficient for workshop and PoC use cases — standard agent setup with BYO resources is out of scope for this feature.
-- The sofIA CLI's existing `webSearch.ts` module uses raw HTTP POST with a bearer token (`SOFIA_FOUNDRY_AGENT_ENDPOINT` + `SOFIA_FOUNDRY_AGENT_KEY`). This feature will migrate the web search integration to the Foundry Agent Service SDK pattern, which authenticates via Azure Identity credentials and uses the `web_search_preview` tool type. The environment variables will change from `SOFIA_FOUNDRY_AGENT_ENDPOINT`/`SOFIA_FOUNDRY_AGENT_KEY` to `FOUNDRY_PROJECT_ENDPOINT`/`FOUNDRY_MODEL_DEPLOYMENT_NAME`.
+- The sofIA CLI's existing `webSearch.ts` module uses raw HTTP POST with a bearer token (`SOFIA_FOUNDRY_AGENT_ENDPOINT` + `SOFIA_FOUNDRY_AGENT_KEY`). This feature will migrate the web search integration to the Foundry Agent Service SDK pattern, which authenticates via Azure Identity credentials and uses the `web_search_preview` tool type. The environment variables will change from `SOFIA_FOUNDRY_AGENT_ENDPOINT`/`SOFIA_FOUNDRY_AGENT_KEY` to `FOUNDRY_PROJECT_ENDPOINT`/`FOUNDRY_MODEL_DEPLOYMENT_NAME`. This is a clean break — old env vars will trigger an error message guiding migration; they will not be silently ignored or used as fallback.
 - The Foundry web search agent returns responses with inline URL citations (annotations of type `url_citation`), which the sofIA CLI should surface to the user.
 - Cost for Grounding with Bing Search is usage-based and acceptable for workshop scenarios (typically a small number of queries per session). See [pricing](https://www.microsoft.com/bing/apis/grounding-pricing).
 - The infrastructure files will live in a new `infra/` directory at the project root, following Azure conventions.
