@@ -1306,7 +1306,7 @@ describe('RalphLoop', () => {
 
       await ralph.run();
 
-      // scanAndRecordTodos should have been called for each failing iteration
+      // scanAndRecordTodos should have been called after failing iterations
       expect(scanSpy).toHaveBeenCalled();
       expect(scanSpy).toHaveBeenCalledWith(tmpDir);
 

@@ -424,5 +424,7 @@ describe('TODO tracking integration (T074)', () => {
     expect(typeof metadata.todos.totalInitial).toBe('number');
     expect(typeof metadata.todos.remaining).toBe('number');
     expect(Array.isArray(metadata.todos.markers)).toBe(true);
+    // After LLM fix removes TODOs from src/index.ts, remaining count should be ≤ initial scaffold count (2)
+    expect(metadata.todos.remaining).toBeLessThanOrEqual(2);
   });
 });

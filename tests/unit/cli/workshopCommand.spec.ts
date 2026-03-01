@@ -345,4 +345,34 @@ describe('workshopCommand auto-transition prompt (T053)', () => {
     // FR-021: readInput was called with the auto-transition prompt
     expect(ioReadInputPrompts.some((p) => p.includes('Would you like to start PoC development'))).toBe(true);
   });
+
+  it('exits workshop when user accepts auto-transition prompt (FR-021)', async () => {
+    const session: WorkshopSession = {
+      sessionId: 'auto-transition-001',
+      schemaVersion: '1.0.0',
+      createdAt: '2026-01-01T12:00:00Z',
+      updatedAt: '2026-01-01T12:30:00Z',
+      phase: 'Plan',
+      status: 'Active',
+      participants: [],
+      artifacts: { generatedFiles: [] },
+      turns: [],
+    };
+
+    mockStore.exists.mockResolvedValue(true);
+    mockStore.load.mockResolvedValue(session);
+
+    // Continue from Plan → user answers 'y' to auto-transition
+    decisionGateResponses = [{ choice: 'continue' }];
+    // First null exits the conversation loop; 'y' answers the auto-transition prompt
+    ioReadResponses = [null, 'y'];
+
+    const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
+    await workshopCommand({ session: 'auto-transition-001' });
+
+    const allOutput = ioWrites.join(' ');
+    // Workshop should show transition message and exit (returning early)
+    expect(allOutput).toContain('Starting PoC development');
+    expect(allOutput).toContain('sofia dev --session auto-transition-001');
+  });
 });
