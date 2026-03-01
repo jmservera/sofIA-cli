@@ -2,13 +2,16 @@
  * MCP Manager.
  *
  * Loads .vscode/mcp.json configuration, manages MCP server connections,
- * lists available tools, and classifies errors for user-friendly messages.
- *
- * This module does NOT spawn or connect to MCP servers itself — it provides
- * the configuration and connection-status layer that the Copilot SDK uses
- * to route tool calls.
+ * lists available tools, classifies errors, and dispatches real MCP tool calls
+ * via the transport layer.
  */
 import { readFile } from 'node:fs/promises';
+
+import type { Logger } from 'pino';
+
+import { createTransport, StdioMcpTransport } from './mcpTransport.js';
+import type { McpTransport } from './mcpTransport.js';
+import { withRetry } from './retryPolicy.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,14 +193,29 @@ export function toSdkMcpServers(config: McpConfig): Record<string, SdkMcpServerC
   return result;
 }
 
+// ── Default Timeouts ─────────────────────────────────────────────────────────
+
+const DEFAULT_TIMEOUTS: Record<string, number> = {
+  github: 60_000,
+  context7: 30_000,
+  azure: 30_000,
+  workiq: 30_000,
+  'microsoftdocs/mcp': 30_000,
+};
+
+const FALLBACK_TIMEOUT = 30_000;
+
 // ── McpManager ───────────────────────────────────────────────────────────────
 
 export class McpManager {
   private readonly config: McpConfig;
   private readonly connectedServers = new Set<string>();
+  private readonly transports = new Map<string, McpTransport>();
+  private readonly logger?: Logger;
 
-  constructor(config: McpConfig) {
+  constructor(config: McpConfig, logger?: Logger) {
     this.config = config;
+    this.logger = logger;
   }
 
   /** List all configured server names. */
@@ -235,29 +253,106 @@ export class McpManager {
   /**
    * Call a tool on a named MCP server.
    *
-   * This is a low-level hook for adapters (GitHubMcpAdapter, McpContextEnricher)
-   * to invoke server-side tools. In production, the Copilot SDK integration layer
-   * should replace this with real MCP tool dispatch. Currently returns a
-   * structured response from a placeholder implementation.
+   * Dispatches to the correct transport (stdio or HTTP), applies retry policy
+   * for transient errors, and normalizes the response.
    *
    * @param serverName The MCP server name (e.g., 'github', 'context7', 'azure')
    * @param toolName The tool to call on that server
    * @param args Arguments for the tool
-   * @returns The tool response as a parsed object, or throws if unavailable
+   * @param options Optional timeout and retry configuration
+   * @returns The tool response as a parsed object
    */
   async callTool(
     serverName: string,
     toolName: string,
     args: Record<string, unknown>,
+    options?: { timeoutMs?: number; retryOnTransient?: boolean },
   ): Promise<Record<string, unknown>> {
     if (!this.isAvailable(serverName)) {
       throw new Error(`MCP server '${serverName}' is not available`);
     }
 
-    // Placeholder: In production, this dispatches to the real MCP transport.
-    // For now, throw to indicate the call was attempted but not implemented.
-    throw new Error(
-      `MCP callTool not yet wired to transport: ${serverName}.${toolName}(${JSON.stringify(args)})`,
-    );
+    const serverConfig = this.config.servers[serverName];
+    if (!serverConfig) {
+      throw new Error(`Unknown MCP server: ${serverName}`);
+    }
+
+    // Get or create transport
+    const transport = this.getOrCreateTransport(serverName, serverConfig);
+
+    // Connect stdio transports on first use
+    if (transport instanceof StdioMcpTransport && !transport.isConnected()) {
+      await transport.connect();
+    }
+
+    const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUTS[serverName] ?? FALLBACK_TIMEOUT;
+
+    try {
+      let response;
+      if (options?.retryOnTransient !== false) {
+        response = await withRetry(() => transport.callTool(toolName, args, timeoutMs), {
+          serverName,
+          toolName,
+          logger: this.logger,
+        });
+      } else {
+        response = await transport.callTool(toolName, args, timeoutMs);
+      }
+
+      // Normalize content to Record<string, unknown>
+      const content = response.content;
+      if (typeof content === 'string') {
+        // Try to parse JSON string; if not JSON, wrap as { text: content }
+        try {
+          const parsed = JSON.parse(content);
+          if (typeof parsed === 'object' && parsed !== null) {
+            return parsed as Record<string, unknown>;
+          }
+          return { text: content };
+        } catch {
+          return { text: content };
+        }
+      }
+      return content;
+    } catch (err) {
+      this.markDisconnected(serverName);
+      throw err;
+    }
+  }
+
+  /**
+   * Disconnect all cached transports and clear the registry.
+   */
+  async disconnectAll(): Promise<void> {
+    const disconnections: Promise<void>[] = [];
+    for (const transport of this.transports.values()) {
+      disconnections.push(transport.disconnect());
+    }
+    await Promise.allSettled(disconnections);
+    this.transports.clear();
+  }
+
+  /**
+   * Get or lazily create a transport for the given server.
+   */
+  private getOrCreateTransport(serverName: string, config: McpServerConfig): McpTransport {
+    let transport = this.transports.get(serverName);
+    if (!transport) {
+      const logger =
+        this.logger ??
+        ({
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          debug: () => {},
+          trace: () => {},
+          fatal: () => {},
+          child: () => logger,
+          level: 'silent',
+        } as unknown as Logger);
+      transport = createTransport(config, logger);
+      this.transports.set(serverName, transport);
+    }
+    return transport;
   }
 }

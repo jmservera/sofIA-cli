@@ -47,6 +47,30 @@ export interface SessionOptions {
       headers?: Record<string, string>;
     }
   >;
+  /**
+   * Optional hooks for SDK tool-call visibility (FR-021, FR-022).
+   * Forwarded to SDK `createSession({ hooks })` so tool-call activity
+   * is emitted to the CLI spinner via the activity event system.
+   *
+   * Shapes match the SDK's `SessionHooks` signatures:
+   * - `onPreToolUse(input: { toolName, toolArgs }, invocation)`
+   * - `onPostToolUse(input: { toolName, toolArgs, toolResult }, invocation)`
+   * - `onErrorOccurred(input: { error }, invocation)`
+   */
+  hooks?: {
+    onPreToolUse?: (
+      input: { toolName: string; toolArgs: unknown },
+      invocation: { sessionId: string },
+    ) => Promise<{ permissionDecision?: 'allow' | 'deny' | 'ask' } | void> | void;
+    onPostToolUse?: (
+      input: { toolName: string; toolArgs: unknown; toolResult: unknown },
+      invocation: { sessionId: string },
+    ) => Promise<void> | void;
+    onErrorOccurred?: (
+      input: { error: string; errorContext?: string; recoverable?: boolean },
+      invocation: { sessionId: string },
+    ) => Promise<void> | void;
+  };
 }
 
 /**
@@ -176,6 +200,8 @@ export async function createCopilotClient(): Promise<CopilotClient> {
               >,
             }
           : {}),
+        // Forward SDK hooks for tool-call visibility (FR-021, FR-022).
+        ...(options.hooks ? { hooks: options.hooks } : {}),
       };
 
       const sdkSession = await sdkClient.createSession(sessionConfig);

@@ -11,7 +11,12 @@
  * Single entry point for all phase-based conversations to avoid
  * duplicate inline multi-turn loops (FR-015).
  */
-import type { ConversationSession, CopilotClient, CopilotMessage, SessionOptions } from '../shared/copilotClient.js';
+import type {
+  ConversationSession,
+  CopilotClient,
+  CopilotMessage,
+  SessionOptions,
+} from '../shared/copilotClient.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { createActivityEvent } from '../shared/events.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
@@ -20,15 +25,9 @@ import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
 
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type DecisionGateChoice =
-  | 'continue'
-  | 'refine'
-  | 'choose-phase'
-  | 'menu'
-  | 'exit';
+export type DecisionGateChoice = 'continue' | 'refine' | 'choose-phase' | 'menu' | 'exit';
 
 export interface DecisionGateResult {
   choice: DecisionGateChoice;
@@ -41,7 +40,11 @@ export interface LoopIO {
   /** Write activity/telemetry to stderr. */
   writeActivity(text: string): void;
   /** Write a tool completion summary to stderr. */
-  writeToolSummary(toolName: string, summary: string, details?: { args?: Record<string, unknown>; result?: unknown }): void;
+  writeToolSummary(
+    toolName: string,
+    summary: string,
+    details?: { args?: Record<string, unknown>; result?: unknown },
+  ): void;
   /** Read user input. Returns the input string or null on EOF/Ctrl+D. */
   readInput(prompt?: string): Promise<string | null>;
   /** Show the decision gate and get user choice. */
@@ -61,6 +64,8 @@ export interface PhaseHandler {
   getReferences?(session: WorkshopSession): string[];
   /** Post-process the phase result (extract structured data, update session). */
   extractResult(session: WorkshopSession, response: string): Partial<WorkshopSession>;
+  /** Optional async hook called after extractResult to perform async enrichment. */
+  postExtract?(session: WorkshopSession): Promise<Partial<WorkshopSession>>;
   /** Optional: determine if the phase is complete based on conversation. */
   isComplete?(session: WorkshopSession, response: string): boolean;
   /** Generate the initial message to send to the LLM at phase start. */
@@ -150,6 +155,12 @@ export class ConversationLoop {
         updatedAt: now,
       };
 
+      // Run async post-extraction hook if present (e.g., discovery enrichment)
+      if (this.handler.postExtract) {
+        const postUpdates = await this.handler.postExtract(this.session);
+        this.session = { ...this.session, ...postUpdates, updatedAt: new Date().toISOString() };
+      }
+
       await this.onSessionUpdate(this.session);
     }
 
@@ -207,6 +218,12 @@ export class ConversationLoop {
         updatedAt: now,
       };
 
+      // Run async post-extraction hook if present (e.g., discovery enrichment)
+      if (this.handler.postExtract) {
+        const postUpdates = await this.handler.postExtract(this.session);
+        this.session = { ...this.session, ...postUpdates, updatedAt: new Date().toISOString() };
+      }
+
       // Persist after every turn (FR-039a)
       await this.onSessionUpdate(this.session);
     }
@@ -253,9 +270,10 @@ export class ConversationLoop {
         } else if (event.type === 'ToolCall') {
           this.spinner.startToolCall(event.toolName);
         } else if (event.type === 'ToolResult') {
-          const summary = typeof event.result === 'string'
-            ? event.result
-            : JSON.stringify(event.result).slice(0, 120);
+          const summary =
+            typeof event.result === 'string'
+              ? event.result
+              : JSON.stringify(event.result).slice(0, 120);
           this.spinner.completeToolCall(event.toolName, summary);
           this.io.writeToolSummary(event.toolName, summary);
           // Resume thinking spinner in case more processing follows

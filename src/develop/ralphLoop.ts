@@ -276,6 +276,35 @@ export class RalphLoop {
       io.writeActivity('npm install complete');
     }
 
+    // Push scaffold files to GitHub after install
+    if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+      const filesWithContent = await Promise.all(
+        scaffoldResult.createdFiles.map(async (f) => {
+          if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
+            io.writeActivity(`Warning: skipping out-of-bounds file path for push: ${f}`);
+            return null;
+          }
+          try {
+            const content = await readFile(resolve(outputDir, f), 'utf-8');
+            return { path: f, content };
+          } catch (err) {
+            io.writeActivity(
+              `Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`,
+            );
+            return { path: f, content: '' };
+          }
+        }),
+      );
+      const validFiles = filesWithContent.filter(
+        (file): file is { path: string; content: string } => file !== null,
+      );
+      await githubAdapter.pushFiles({
+        repoUrl: githubAdapter.getRepoUrl()!,
+        files: validFiles,
+        commitMessage: 'chore: initial scaffold',
+      });
+    }
+
     // ── Iteration 2..max ──────────────────────────────────────────────────
     const testRunner = this.options.testRunner ?? new TestRunner();
     const codeGenerator = new CodeGenerator(outputDir);
@@ -594,7 +623,7 @@ export class RalphLoop {
         outputDir,
         githubAdapter?.getRepoUrl(),
         techStack,
-        undefined,        // finalStatus deliberately omitted on user-stop
+        undefined, // finalStatus deliberately omitted on user-stop
         'user-stopped',
         Date.now() - startTime,
         lastTestsForAbort,
