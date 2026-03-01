@@ -37,9 +37,12 @@ function generateSessionId(): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return [
     d.getFullYear(),
-    '-', pad(d.getMonth() + 1),
-    '-', pad(d.getDate()),
-    '_', pad(d.getHours()),
+    '-',
+    pad(d.getMonth() + 1),
+    '-',
+    pad(d.getDate()),
+    '_',
+    pad(d.getHours()),
     pad(d.getMinutes()),
     pad(d.getSeconds()),
   ].join('');
@@ -50,9 +53,7 @@ function generateSessionId(): string {
  * Shows "name (id)" when a name exists, otherwise just the id.
  */
 function sessionDisplayName(session: { sessionId: string; name?: string }): string {
-  return session.name
-    ? `${session.name} (${session.sessionId})`
-    : session.sessionId;
+  return session.name ? `${session.name} (${session.sessionId})` : session.sessionId;
 }
 
 /**
@@ -188,9 +189,12 @@ async function runWorkshop(
           await store.save(session);
 
           io.write(
-            renderMarkdown('\n## Workshop Complete!\n\nUse `sofia export` to generate artifacts.\n', {
-              isTTY: io.isTTY,
-            }),
+            renderMarkdown(
+              '\n## Workshop Complete!\n\nUse `sofia export` to generate artifacts.\n',
+              {
+                isTTY: io.isTTY,
+              },
+            ),
           );
           return;
         }
@@ -205,7 +209,12 @@ async function runWorkshop(
         session.status = 'Paused';
         session.updatedAt = new Date().toISOString();
         await store.save(session);
-        io.write(renderMarkdown(`\nSession **${sessionDisplayName(session)}** paused. Resume later with \`sofia workshop --session ${session.sessionId}\`.\n`, { isTTY: io.isTTY }));
+        io.write(
+          renderMarkdown(
+            `\nSession **${sessionDisplayName(session)}** paused. Resume later with \`sofia workshop --session ${session.sessionId}\`.\n`,
+            { isTTY: io.isTTY },
+          ),
+        );
         return;
     }
   }
@@ -213,7 +222,11 @@ async function runWorkshop(
 
 export async function workshopCommand(opts: WorkshopCommandOptions): Promise<void> {
   const store = createDefaultStore();
-  const io = createLoopIO({ json: opts.json, nonInteractive: opts.nonInteractive, debug: opts.debug });
+  const io = createLoopIO({
+    json: opts.json,
+    nonInteractive: opts.nonInteractive,
+    debug: opts.debug,
+  });
 
   // Get Copilot client
   let client: CopilotClient;
@@ -236,7 +249,11 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
   if (opts.session) {
     if (await store.exists(opts.session)) {
       const session = await store.load(opts.session);
-      io.write(renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, { isTTY: io.isTTY }));
+      io.write(
+        renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, {
+          isTTY: io.isTTY,
+        }),
+      );
       await runWorkshop(session, client, io, store, opts);
     } else {
       const msg = `Session "${opts.session}" not found.`;
@@ -255,9 +272,13 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
     const session = createNewSession();
     await store.save(session);
     if (opts.json) {
-      process.stdout.write(JSON.stringify({ sessionId: session.sessionId, phase: session.phase }) + '\n');
+      process.stdout.write(
+        JSON.stringify({ sessionId: session.sessionId, phase: session.phase }) + '\n',
+      );
     } else {
-      io.write(renderMarkdown(`\nNew session created: **${session.sessionId}**\n`, { isTTY: io.isTTY }));
+      io.write(
+        renderMarkdown(`\nNew session created: **${session.sessionId}**\n`, { isTTY: io.isTTY }),
+      );
     }
     await runWorkshop(session, client, io, store, opts);
     return;
@@ -266,7 +287,10 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
   // Interactive menu
   if (opts.nonInteractive) {
     if (opts.json) {
-      process.stdout.write(JSON.stringify({ error: 'Non-interactive mode requires --session or --new-session.' }) + '\n');
+      process.stdout.write(
+        JSON.stringify({ error: 'Non-interactive mode requires --session or --new-session.' }) +
+          '\n',
+      );
     } else {
       console.error('Error: Non-interactive mode requires --session or --new-session.');
     }
@@ -291,17 +315,33 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
         io.write('No existing sessions found.\n');
         break;
       }
+      const sessionEntries = await Promise.all(
+        sessions.map(async (id) => {
+          try {
+            const session = await store.load(id);
+            return { id, display: sessionDisplayName(session), session };
+          } catch {
+            return { id, display: id, session: undefined };
+          }
+        }),
+      );
+
       // Show session list
       io.write('\nAvailable sessions:\n');
-      sessions.forEach((id, idx) => {
-        io.write(`  ${idx + 1}. ${id}\n`);
+      sessionEntries.forEach((entry, idx) => {
+        io.write(`  ${idx + 1}. ${entry.display}\n`);
       });
       const answer = await io.readInput('Choose session number: ');
       if (answer === null) break;
       const idx = parseInt(answer.trim(), 10) - 1;
-      if (idx >= 0 && idx < sessions.length) {
-        const session = await store.load(sessions[idx]);
-        io.write(renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, { isTTY: io.isTTY }));
+      if (idx >= 0 && idx < sessionEntries.length) {
+        const entry = sessionEntries[idx];
+        const session = entry.session ?? (await store.load(entry.id));
+        io.write(
+          renderMarkdown(`\nResuming session: **${sessionDisplayName(session)}**\n`, {
+            isTTY: io.isTTY,
+          }),
+        );
         await runWorkshop(session, client, io, store, opts);
       } else {
         io.write('Invalid selection.\n');

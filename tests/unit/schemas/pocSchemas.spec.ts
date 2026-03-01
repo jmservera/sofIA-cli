@@ -258,9 +258,7 @@ describe('pocIterationSchema (extended)', () => {
         skipped: 0,
         total: 3,
         durationMs: 600,
-        failures: [
-          { testName: 'optimizer test', message: 'wrong output' },
-        ],
+        failures: [{ testName: 'optimizer test', message: 'wrong output' }],
       },
     });
     expect(result.success).toBe(true);
@@ -290,22 +288,28 @@ describe('pocIterationSchema (extended)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects missing outcome field', () => {
+  it('defaults outcome to scaffold when omitted', () => {
     const result = pocIterationSchema.safeParse({
       iteration: 1,
       startedAt: '2026-01-15T10:00:00Z',
       filesChanged: [],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.outcome).toBe('scaffold');
+    }
   });
 
-  it('rejects missing filesChanged field', () => {
+  it('defaults filesChanged to empty array when omitted', () => {
     const result = pocIterationSchema.safeParse({
       iteration: 1,
       startedAt: '2026-01-15T10:00:00Z',
       outcome: 'scaffold',
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.filesChanged).toEqual([]);
+    }
   });
 
   it('preserves optional testsRun field for backward compatibility', () => {
