@@ -442,6 +442,51 @@ describe('RalphLoop', () => {
       expect(result.terminationReason).toBe('max-iterations');
       expect(result.finalStatus).toBe('failed');
     });
+
+    it('leaves session.poc.finalStatus unset when user stops (Ctrl+C)', async () => {
+      const session = makeSession();
+      const io = makeIo();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      // Client that emits SIGINT mid-generation to simulate Ctrl+C
+      const client: CopilotClient = {
+        createSession: vi.fn().mockResolvedValue({
+          send: vi.fn().mockReturnValue({
+            async *[Symbol.asyncIterator]() {
+              process.emit('SIGINT');
+              yield {
+                type: 'TextDelta',
+                text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+                timestamp: '',
+              };
+            },
+          }),
+          getHistory: () => [],
+        }),
+      };
+
+      const sessionUpdates: import('../../../src/shared/schemas/session.js').WorkshopSession[] = [];
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 5,
+        testRunner,
+        scaffolder,
+        onSessionUpdate: async (s) => { sessionUpdates.push(s); },
+      });
+
+      const result = await ralph.run();
+
+      expect(result.terminationReason).toBe('user-stopped');
+      // Contract: finalStatus must NOT be persisted to the session on user abort
+      expect(result.session.poc?.finalStatus).toBeUndefined();
+      // The persisted session updates should also not have finalStatus set
+      const lastUpdate = sessionUpdates[sessionUpdates.length - 1];
+      expect(lastUpdate?.poc?.finalStatus).toBeUndefined();
+    });
   });
 
   describe('event emission', () => {
