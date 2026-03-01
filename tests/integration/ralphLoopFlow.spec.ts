@@ -297,3 +297,132 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
     expect(capturedPrompt).toContain('specific-error-message');
   });
 });
+
+// ── T074: TODO tracking writes and updates .sofia-metadata.json ────────────
+
+describe('TODO tracking integration (T074)', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-todo-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('writes TODO counts to .sofia-metadata.json during scaffold and updates after iteration', async () => {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+
+    // Create a scaffolder that writes files with TODO markers
+    const todoScaffolder: PocScaffolder = {
+      scaffold: vi.fn().mockImplementation(async () => {
+        await mkdir(join(tmpDir, 'src'), { recursive: true });
+        await mkdir(join(tmpDir, 'tests'), { recursive: true });
+        await writeFile(
+          join(tmpDir, 'package.json'),
+          JSON.stringify({
+            name: 'todo-test-poc',
+            scripts: { test: 'vitest run' },
+            dependencies: {},
+            devDependencies: {},
+          }),
+          'utf-8',
+        );
+        await writeFile(
+          join(tmpDir, 'src', 'index.ts'),
+          '// TODO: Implement the main logic\nexport function main() { return []; }\n// TODO: Add validation\n',
+          'utf-8',
+        );
+        await writeFile(
+          join(tmpDir, '.sofia-metadata.json'),
+          JSON.stringify({
+            sessionId: fixtureSession.sessionId,
+            scaffoldedAt: new Date().toISOString(),
+          }),
+          'utf-8',
+        );
+        return {
+          createdFiles: ['package.json', 'src/index.ts', '.sofia-metadata.json'],
+          skippedFiles: [],
+          context: {
+            projectName: 'todo-test-poc',
+            ideaTitle: 'Test',
+            ideaDescription: 'Test',
+            techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
+            planSummary: 'Test',
+            sessionId: fixtureSession.sessionId,
+            outputDir: tmpDir,
+          },
+        };
+      }),
+      getTemplateFiles: () => ['package.json', 'src/index.ts'],
+    } as unknown as PocScaffolder;
+
+    // Test runner that fails on first call (triggering TODO rescan), then passes
+    let runCount = 0;
+    const failThenPassRunner: TestRunner = {
+      run: vi.fn().mockImplementation(async (): Promise<TestResults> => {
+        runCount++;
+        if (runCount <= 1) {
+          return {
+            passed: 0,
+            failed: 1,
+            skipped: 0,
+            total: 1,
+            durationMs: 100,
+            failures: [{ testName: 'test', message: 'fail' }],
+            rawOutput: 'FAIL',
+          };
+        }
+        return {
+          passed: 1,
+          failed: 0,
+          skipped: 0,
+          total: 1,
+          durationMs: 100,
+          failures: [],
+          rawOutput: 'pass',
+        };
+      }),
+    } as unknown as TestRunner;
+
+    const io = makeIo();
+    const session = { ...fixtureSession };
+
+    const client: CopilotClient = {
+      createSession: vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return [1, 2]; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      }),
+    };
+
+    const ralph = new RalphLoop({
+      client,
+      io,
+      session,
+      outputDir: tmpDir,
+      maxIterations: 3,
+      testRunner: failThenPassRunner,
+      scaffolder: todoScaffolder,
+    });
+
+    await ralph.run();
+
+    // Verify .sofia-metadata.json has todos section (written by rescan after failing iteration)
+    const metaRaw = await readFile(join(tmpDir, '.sofia-metadata.json'), 'utf-8');
+    const metadata = JSON.parse(metaRaw);
+    expect(metadata.todos).toBeDefined();
+    expect(typeof metadata.todos.totalInitial).toBe('number');
+    expect(typeof metadata.todos.remaining).toBe('number');
+    expect(Array.isArray(metadata.todos.markers)).toBe(true);
+  });
+});

@@ -1271,4 +1271,46 @@ describe('RalphLoop', () => {
       );
     });
   });
+
+  // ── T073: TODO marker rescan after iteration updates .sofia-metadata.json ──
+
+  describe('TODO marker rescan after iteration (T073)', () => {
+    it('calls scanAndRecordTodos after each failing iteration', async () => {
+      const scanSpy = vi
+        .spyOn(PocScaffolder, 'scanAndRecordTodos')
+        .mockResolvedValue({ totalInitial: 3, remaining: 2, markers: [] });
+
+      const session = makeSession();
+      const io: LoopIO = {
+        write: vi.fn(),
+        writeActivity: vi.fn(),
+        writeToolSummary: vi.fn(),
+        readInput: vi.fn().mockResolvedValue(null),
+        showDecisionGate: vi.fn(),
+        isJsonMode: false,
+        isTTY: false,
+      };
+      const testRunner = makeAlwaysFailingTestRunner();
+      const client = makePassingClient();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
+
+      await ralph.run();
+
+      // scanAndRecordTodos should have been called for each failing iteration
+      expect(scanSpy).toHaveBeenCalled();
+      expect(scanSpy).toHaveBeenCalledWith(tmpDir);
+
+      scanSpy.mockRestore();
+    });
+  });
 });

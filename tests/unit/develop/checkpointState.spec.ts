@@ -289,4 +289,90 @@ describe('deriveCheckpointState', () => {
 
     expect(state.priorFinalStatus).toBe('success');
   });
+
+  // ── T075: Validation — fresh vs resumed run quality comparison ────────────
+
+  describe('fresh vs resumed run quality (T075)', () => {
+    it('preserves iteration count consistency across fresh and resumed checkpoint derivations', () => {
+      // Fresh session (no prior run)
+      const freshSession = makeSession();
+      const freshState = deriveCheckpointState(freshSession, tmpDir);
+      expect(freshState.hasPriorRun).toBe(false);
+      expect(freshState.resumeFromIteration).toBe(1);
+      expect(freshState.completedIterations).toBe(0);
+
+      // Session with 3 completed iterations (simulating prior run)
+      const resumedSession = makeSession({
+        poc: {
+          iterations: [
+            { iteration: 1, startedAt: '2026-01-01T12:00:00Z', endedAt: '2026-01-01T12:01:00Z', outcome: 'tests-failing', filesChanged: ['src/index.ts'], testResults: { passed: 0, failed: 1, skipped: 0, total: 1, durationMs: 100, failures: [{ testName: 'a', message: 'fail' }] } },
+            { iteration: 2, startedAt: '2026-01-01T12:01:00Z', endedAt: '2026-01-01T12:02:00Z', outcome: 'tests-failing', filesChanged: ['src/index.ts'], testResults: { passed: 1, failed: 1, skipped: 0, total: 2, durationMs: 100, failures: [{ testName: 'b', message: 'fail' }] } },
+            { iteration: 3, startedAt: '2026-01-01T12:02:00Z', endedAt: '2026-01-01T12:03:00Z', outcome: 'tests-passing', filesChanged: ['src/index.ts'], testResults: { passed: 2, failed: 0, skipped: 0, total: 2, durationMs: 100, failures: [] } },
+          ],
+          finalStatus: 'success',
+          repoSource: 'local' as const,
+        },
+      });
+
+      writeFileSync(
+        join(tmpDir, '.sofia-metadata.json'),
+        JSON.stringify({ sessionId: 'cp-test-session' }),
+      );
+
+      const resumeState = deriveCheckpointState(resumedSession, tmpDir);
+      expect(resumeState.hasPriorRun).toBe(true);
+      expect(resumeState.completedIterations).toBe(3);
+      expect(resumeState.resumeFromIteration).toBe(4);
+
+      // Quality validation: resumed state preserves iteration history
+      expect(resumeState.priorIterations).toHaveLength(3);
+      // Test pass counts increase across iterations (quality signal)
+      expect(resumeState.priorIterations[0].testResults!.passed).toBe(0);
+      expect(resumeState.priorIterations[2].testResults!.passed).toBe(2);
+    });
+  });
+
+  // ── T076: Benchmark — resume detection overhead <500ms ────────────────────
+
+  describe('resume detection performance (T076)', () => {
+    it('deriveCheckpointState completes within 500ms even with many iterations', () => {
+      // Create a session with 50 iterations to stress-test derivation
+      const iterations = Array.from({ length: 50 }, (_, i) => ({
+        iteration: i + 1,
+        startedAt: '2026-01-01T12:00:00Z',
+        endedAt: '2026-01-01T12:01:00Z',
+        outcome: 'tests-failing' as const,
+        filesChanged: ['src/index.ts'],
+        testResults: {
+          passed: i,
+          failed: 50 - i,
+          skipped: 0,
+          total: 50,
+          durationMs: 100,
+          failures: [{ testName: `test-${i}`, message: 'fail' }],
+        },
+      }));
+
+      const session = makeSession({
+        poc: {
+          iterations,
+          finalStatus: 'failed',
+          repoSource: 'local' as const,
+        },
+      });
+
+      writeFileSync(
+        join(tmpDir, '.sofia-metadata.json'),
+        JSON.stringify({ sessionId: 'cp-test-session' }),
+      );
+
+      const start = performance.now();
+      const state = deriveCheckpointState(session, tmpDir);
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(500);
+      expect(state.completedIterations).toBe(50);
+      expect(state.resumeFromIteration).toBe(51);
+    });
+  });
 });

@@ -194,6 +194,25 @@ async function runWorkshop(
                 { isTTY: io.isTTY },
               ),
             );
+
+            // FR-021: Offer auto-transition in interactive mode
+            if (!options.nonInteractive && io.isTTY) {
+              const answer = await io.readInput(
+                'Would you like to start PoC development now? (y/N): ',
+              );
+              if (answer?.trim().toLowerCase() === 'y') {
+                io.write(
+                  renderMarkdown(
+                    `\nStarting PoC development. Run the following command:\n\n` +
+                      '```\n' +
+                      `sofia dev --session ${session.sessionId}\n` +
+                      '```\n',
+                    { isTTY: io.isTTY },
+                  ),
+                );
+                return;
+              }
+            }
           }
           currentPhaseIdx = phaseOrder.indexOf(next);
         } else {

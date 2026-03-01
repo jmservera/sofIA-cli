@@ -156,7 +156,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] If any coverage gaps remain after writing the above tests, add targeted unit tests to reach 80%+ coverage for `src/develop/testRunner.ts` (run `npm test -- --coverage` to verify)
+- [x] T048 [US4] If any coverage gaps remain after writing the above tests, add targeted unit tests to reach 80%+ coverage for `src/develop/testRunner.ts` (run `npm test -- --coverage` to verify)
 
 **Checkpoint**: `testRunner.ts` coverage is at or above 80%. All critical code paths (spawn, parse, timeout, fallback) have automated tests using real fixtures.
 
@@ -192,13 +192,13 @@
 
 ### Tests for User Story 6 (REQUIRED) ⚠️
 
-- [ ] T052 [P] [US6] Unit test: workshop command displays "sofia dev --session {id}" after Plan phase completes per FR-020 in `tests/unit/cli/workshopCommand.spec.ts`
-- [ ] T053 [P] [US6] Unit test: workshop command offers auto-transition prompt in interactive mode per FR-021 in `tests/unit/cli/workshopCommand.spec.ts`
+- [x] T052 [P] [US6] Unit test: workshop command displays "sofia dev --session {id}" after Plan phase completes per FR-020 in `tests/unit/cli/workshopCommand.spec.ts`
+- [x] T053 [P] [US6] Unit test: workshop command offers auto-transition prompt in interactive mode per FR-021 in `tests/unit/cli/workshopCommand.spec.ts`
 
 ### Implementation for User Story 6
 
 - [x] T054 [US6] Add transition guidance message in `src/cli/workshopCommand.ts` when `getNextPhase(phase) === 'Develop'` — display exact `sofia dev --session ${session.sessionId}` command per contracts/cli.md
-- [ ] T055 [US6] Add interactive mode offer ("Would you like to start PoC development now?") in `src/cli/workshopCommand.ts` per FR-021 (SHOULD — use `@inquirer/prompts` confirm)
+- [x] T055 [US6] Add interactive mode offer ("Would you like to start PoC development now?") in `src/cli/workshopCommand.ts` per FR-021 (SHOULD — use `@inquirer/prompts` confirm)
 
 **Checkpoint**: Workshop users see clear next-step guidance including the exact command to run after Plan phase.
 
@@ -210,11 +210,11 @@
 
 **TDD note**: Complete T072–T074 (tests) before implementing T056–T058 (FR-022) to satisfy the constitution's Red → Green requirement.
 
-- [ ] T072 [P] Unit test: scaffold TODO marker scanning records `totalInitial`, `remaining`, and `markers` in `.sofia-metadata.json` per FR-022 in `tests/unit/develop/pocScaffolder.spec.ts`
-- [ ] T073 [P] Unit test: TODO marker rescan after an iteration updates `.sofia-metadata.json.todos.remaining` per FR-022 in `tests/unit/develop/ralphLoop.spec.ts`
-- [ ] T074 [P] Integration test: TODO tracking writes and updates `.sofia-metadata.json` in a real scaffold output directory per FR-022 in `tests/integration/ralphLoopFlow.spec.ts` (new describe block "todo tracking")
-- [ ] T075 Validation task: compare fresh vs resumed run PoC quality (test pass counts) on the same plan/session to satisfy SC-004-005; capture results in test output or quickstart notes
-- [ ] T076 [P] Benchmark/validation task: measure resume detection overhead (derive checkpoint + metadata checks) and ensure <500ms per SC-004-007 (can be a small integration test with timing guard or a quickstart step)
+- [x] T072 [P] Unit test: scaffold TODO marker scanning records `totalInitial`, `remaining`, and `markers` in `.sofia-metadata.json` per FR-022 in `tests/unit/develop/pocScaffolder.spec.ts`
+- [x] T073 [P] Unit test: TODO marker rescan after an iteration updates `.sofia-metadata.json.todos.remaining` per FR-022 in `tests/unit/develop/ralphLoop.spec.ts`
+- [x] T074 [P] Integration test: TODO tracking writes and updates `.sofia-metadata.json` in a real scaffold output directory per FR-022 in `tests/integration/ralphLoopFlow.spec.ts` (new describe block "todo tracking")
+- [x] T075 Validation task: compare fresh vs resumed run PoC quality (test pass counts) on the same plan/session to satisfy SC-004-005; capture results in test output or quickstart notes
+- [x] T076 [P] Benchmark/validation task: measure resume detection overhead (derive checkpoint + metadata checks) and ensure <500ms per SC-004-007 (can be a small integration test with timing guard or a quickstart step)
 - [x] T056 [P] Extend `.sofia-metadata.json` schema in `src/develop/pocScaffolder.ts` to include `templateId` and `todos` fields per FR-022 and contracts/cli.md extended schema
 - [x] T057 [P] Add TODO marker scanning logic to `src/develop/pocScaffolder.ts` — scan scaffold files at scaffold time for `TODO:` markers, record in `.sofia-metadata.json`
 - [x] T058 Add TODO marker rescan after each iteration in `src/develop/ralphLoop.ts` — update `.sofia-metadata.json` with remaining TODO count per FR-022
@@ -222,8 +222,8 @@
 - [x] T060 Run `npm run typecheck` and fix any type errors across all modified files
 - [x] T061 Run `npm run lint` and fix any lint warnings (especially `import/order`) across all modified files
 - [x] T062 Run full test suite `npm test` and verify all tests pass (no regressions)
-- [ ] T063 Run `npm test -- --coverage` on `src/develop/testRunner.ts` and verify coverage ≥ 80% per SC-004-004
-- [ ] T064 Run quickstart.md validation — execute the quick verification steps from `specs/004-dev-resume-hardening/quickstart.md`
+- [x] T063 Run `npm test -- --coverage` on `src/develop/testRunner.ts` and verify coverage ≥ 80% per SC-004-004
+- [x] T064 Run quickstart.md validation — execute the quick verification steps from `specs/004-dev-resume-hardening/quickstart.md`
 
 ---
 
