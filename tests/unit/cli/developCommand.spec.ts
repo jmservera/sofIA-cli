@@ -8,10 +8,15 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock RalphLoop so tests don't run the real loop
+vi.mock('../../../src/develop/ralphLoop.js');
+
 import {
   validateSessionForDevelop,
   developCommand,
 } from '../../../src/cli/developCommand.js';
+import { RalphLoop } from '../../../src/develop/ralphLoop.js';
+import type { RalphLoopOptions, RalphLoopResult } from '../../../src/develop/ralphLoop.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../../src/loop/conversationLoop.js';
 import type { CopilotClient } from '../../../src/shared/copilotClient.js';
@@ -249,11 +254,36 @@ describe('developCommand', () => {
 // ── McpManager wiring ─────────────────────────────────────────────────────────
 
 describe('developCommand — MCP wiring', () => {
-  it('passes enricher and githubAdapter to RalphLoop when mcpManager is provided', async () => {
+  let capturedOptions: RalphLoopOptions | undefined;
+  let savedExitCode: number | undefined;
+
+  beforeEach(() => {
+    capturedOptions = undefined;
+    savedExitCode = process.exitCode as number | undefined;
+    process.exitCode = undefined;
+
+    vi.mocked(RalphLoop).mockImplementation(function (options: RalphLoopOptions) {
+      capturedOptions = options;
+      const fakeResult: RalphLoopResult = {
+        session: makeSession(),
+        finalStatus: 'success',
+        terminationReason: 'tests-passing',
+        iterationsCompleted: 1,
+        outputDir: '/tmp/poc-test',
+      };
+      return { run: vi.fn().mockResolvedValue(fakeResult) } as Partial<RalphLoop> as RalphLoop;
+    });
+  });
+
+  afterEach(() => {
+    process.exitCode = savedExitCode;
+    capturedOptions = undefined;
+    vi.mocked(RalphLoop).mockReset();
+  });
+
+  it('passes non-undefined enricher and githubAdapter to RalphLoop when mcpManager provided', async () => {
     const io = makeIo();
     const client = makeFakeClient();
-
-    // Mock mcpManager with GitHub available
     const mockMcpManager: McpManager = {
       isAvailable: (name: string) => name === 'github',
       listServers: () => ['github'],
@@ -263,27 +293,35 @@ describe('developCommand — MCP wiring', () => {
       getAllConfigs: () => [],
     } as unknown as McpManager;
 
-    // Use a session that fails validation so we don't need a real RalphLoop run
-    const session = makeSession({ plan: undefined });
+    const session = makeSession(); // valid — has both selection and plan
     const store = {
       load: vi.fn().mockResolvedValue(session),
       save: vi.fn(),
       list: vi.fn().mockResolvedValue(['test-dev-session']),
     };
 
-    // Spy on GitHubMcpAdapter constructor to verify it was created with mcpManager
-    const { GitHubMcpAdapter } = await import('../../../src/develop/githubMcpAdapter.js');
-    const adapterSpy = vi.spyOn(GitHubMcpAdapter.prototype, 'isAvailable');
-
     await developCommand({ session: 'test-dev-session' }, { store, io, client, mcpManager: mockMcpManager });
 
-    // Even though validation fails, GitHubMcpAdapter is constructed before RalphLoop.
-    // Verify a fresh adapter built from the same mcpManager correctly reports availability.
-    const adapter = new GitHubMcpAdapter(mockMcpManager);
-    expect(adapter.isAvailable()).toBe(true);
+    expect(capturedOptions).toBeDefined();
+    expect(capturedOptions?.enricher).toBeDefined();
+    expect(capturedOptions?.githubAdapter).toBeDefined();
+  });
 
-    // isAvailable was called at least during our verification above
-    expect(adapterSpy.mock.calls.length).toBeGreaterThan(0);
-    adapterSpy.mockRestore();
+  it('passes undefined enricher and githubAdapter to RalphLoop when no mcpManager provided', async () => {
+    const io = makeIo();
+    const client = makeFakeClient();
+
+    const session = makeSession(); // valid
+    const store = {
+      load: vi.fn().mockResolvedValue(session),
+      save: vi.fn(),
+      list: vi.fn().mockResolvedValue(['test-dev-session']),
+    };
+
+    await developCommand({ session: 'test-dev-session' }, { store, io, client });
+
+    expect(capturedOptions).toBeDefined();
+    expect(capturedOptions?.enricher).toBeUndefined();
+    expect(capturedOptions?.githubAdapter).toBeUndefined();
   });
 });
