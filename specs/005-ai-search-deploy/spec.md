@@ -9,7 +9,7 @@
 
 ### User Story 1 — One-Command Search Service Deployment (Priority: P1)
 
-A developer or workshop facilitator wants to provision the Azure AI Search infrastructure that powers sofIA's `web.search` tool. They run a single deployment script, provide their Azure subscription details, and receive a fully deployed Search service with the endpoint URL and API key ready to use. They copy these values into their environment variables (`SOFIA_FOUNDRY_AGENT_ENDPOINT`, `SOFIA_FOUNDRY_AGENT_KEY`) and the sofIA CLI immediately has web search capabilities.
+A developer or workshop facilitator wants to provision the Azure AI Foundry infrastructure that powers sofIA's `web.search` tool. They run a single deployment script, provide their Azure subscription details, and receive a fully deployed Foundry project with a web-search-enabled agent. The script outputs the project endpoint URL and model deployment name. Since the Foundry Agent Service uses the caller's Azure login credentials for authentication (no separate API key), the user simply sets the project endpoint and model deployment name as environment variables (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`) and the sofIA CLI immediately has web search capabilities.
 
 **Why this priority**: Without the deployed Search service, the `web.search` tool has no backend. This is the foundational story — every other story depends on a working deployment.
 
@@ -18,7 +18,7 @@ A developer or workshop facilitator wants to provision the Azure AI Search infra
 **Acceptance Scenarios**:
 
 1. **Given** a user with an active Azure subscription and Owner/Contributor permissions, **When** they run the deployment script providing their subscription ID and a resource group name, **Then** all required Azure AI Foundry resources are provisioned, and the script outputs the project endpoint URL and model deployment name.
-2. **Given** the deployment script has completed successfully, **When** the user sets the output values as environment variables (`SOFIA_FOUNDRY_AGENT_ENDPOINT`, `SOFIA_FOUNDRY_AGENT_KEY`), **Then** the sofIA CLI's `web.search` tool is enabled and returns search results for a test query.
+2. **Given** the deployment script has completed successfully, **When** the user sets the output values as environment variables (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`) and is logged in to Azure, **Then** the sofIA CLI's `web.search` tool is enabled and returns search results with inline citations for a test query.
 3. **Given** a user provides an Azure region that does not support the required services, **When** they run the deployment script, **Then** the script fails with a clear error message explaining which services are unavailable in that region and suggests supported alternatives.
 
 ---
@@ -84,7 +84,7 @@ A user who has finished a workshop or testing session wants to remove all deploy
 
 - **FR-001**: The project MUST include an infrastructure template that defines all Azure resources needed for the AI Foundry web search capability (Foundry account, project, model deployment, and agent capability).
 - **FR-002**: The project MUST include a deployment script that provisions the infrastructure with a single command, accepting the target Azure subscription, resource group, and region as inputs.
-- **FR-003**: The deployment script MUST output the Foundry project endpoint URL and authentication credentials needed to configure the sofIA CLI (`SOFIA_FOUNDRY_AGENT_ENDPOINT`, `SOFIA_FOUNDRY_AGENT_KEY`).
+- **FR-003**: The deployment script MUST output the Foundry project endpoint URL and model deployment name needed to configure the sofIA CLI (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`). Authentication uses the caller's Azure login credentials — no separate API key is needed.
 - **FR-004**: The infrastructure template MUST be parameterized, allowing users to customize the deployment name, region, and model selection without modifying the template.
 - **FR-005**: The deployment script MUST validate prerequisites before attempting deployment (Azure CLI installed, user logged in, correct subscription selected, sufficient permissions).
 - **FR-006**: The deployment script MUST provide clear, actionable error messages when a deployment fails, including the specific failure reason and suggested remediation.
@@ -94,6 +94,8 @@ A user who has finished a workshop or testing session wants to remove all deploy
 - **FR-010**: The deployment script MUST be executable from common development environments (Linux, macOS, Windows via WSL or Git Bash).
 - **FR-011**: The infrastructure template MUST include documentation (parameter descriptions, comments) explaining each resource and its purpose.
 - **FR-012**: The deployment MUST configure the Foundry agent with web search enabled and an appropriate model deployment for handling search queries.
+- **FR-013**: The sofIA CLI MUST authenticate to the Foundry Agent Service using the user's Azure login credentials (e.g., via Azure Identity), eliminating the need for separate API key management.
+- **FR-014**: Search responses MUST include inline URL citations so the user can verify the sources of information surfaced during the workshop.
 
 ### Key Entities
 
@@ -117,9 +119,11 @@ A user who has finished a workshop or testing session wants to remove all deploy
 ## Assumptions
 
 - Users have an active Azure subscription with Owner or Contributor permissions on the target resource group.
-- The Azure CLI is installed and the user is already authenticated (`az login`).
-- The target Azure region supports Azure AI Foundry and the Grounding with Bing Search capability.
+- The Azure CLI is installed and the user is already authenticated (`az login`). This same Azure login is used for both deploying the infrastructure and authenticating the sofIA CLI to the Foundry Agent Service at runtime.
+- The target Azure region supports Azure AI Foundry and the Grounding with Bing Search capability (uses Bing Search behind the scenes — governed by [Grounding with Bing terms of use](https://www.microsoft.com/bing/apis/grounding-legal-enterprise)).
 - The basic agent setup (Microsoft-managed infrastructure) is sufficient for workshop and PoC use cases — standard agent setup with BYO resources is out of scope for this feature.
-- The sofIA CLI's existing `webSearch.ts` module and `web.search` tool interface will be updated if needed to work with the Foundry Agent Service's TypeScript SDK (using `@azure/ai-projects` and `@azure/identity`), specifically the `web_search_preview` tool type.
-- Cost for Grounding with Bing Search is usage-based and acceptable for workshop scenarios (typically a small number of queries per session).
+- The sofIA CLI's existing `webSearch.ts` module uses raw HTTP POST with a bearer token (`SOFIA_FOUNDRY_AGENT_ENDPOINT` + `SOFIA_FOUNDRY_AGENT_KEY`). This feature will migrate the web search integration to the Foundry Agent Service SDK pattern, which authenticates via Azure Identity credentials and uses the `web_search_preview` tool type. The environment variables will change from `SOFIA_FOUNDRY_AGENT_ENDPOINT`/`SOFIA_FOUNDRY_AGENT_KEY` to `FOUNDRY_PROJECT_ENDPOINT`/`FOUNDRY_MODEL_DEPLOYMENT_NAME`.
+- The Foundry web search agent returns responses with inline URL citations (annotations of type `url_citation`), which the sofIA CLI should surface to the user.
+- Cost for Grounding with Bing Search is usage-based and acceptable for workshop scenarios (typically a small number of queries per session). See [pricing](https://www.microsoft.com/bing/apis/grounding-pricing).
 - The infrastructure files will live in a new `infra/` directory at the project root, following Azure conventions.
+- An Azure admin may need to ensure web search is not disabled at the subscription level (see `az feature unregister --name OpenAI.BlockedTools.web_search --namespace Microsoft.CognitiveServices`).
