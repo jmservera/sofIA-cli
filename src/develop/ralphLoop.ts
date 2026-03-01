@@ -579,7 +579,9 @@ export class RalphLoop {
     if (this.aborted) {
       this.cleanupSigint();
 
-      // Compute finalStatus from the latest test results instead of hardcoding 'failed' (F012)
+      // Compute finalStatus for the result, but do NOT persist it to the session.
+      // Contract: on user abort, session.poc.finalStatus must remain unset so the
+      // session can be resumed later without a stale terminal status. (F012)
       const lastIterForAbort = iterations[iterations.length - 1];
       const lastTestsForAbort = lastIterForAbort?.testResults;
       const abortFinalStatus =
@@ -592,7 +594,7 @@ export class RalphLoop {
         outputDir,
         githubAdapter?.getRepoUrl(),
         techStack,
-        abortFinalStatus,
+        undefined,        // finalStatus deliberately omitted on user-stop
         'user-stopped',
         Date.now() - startTime,
         lastTestsForAbort,
