@@ -44,6 +44,8 @@ export interface IterationPromptOptions {
   testResults: TestResults;
   filesInPoc: string[];
   mcpContext?: string;
+  /** Actual file contents to include in the prompt so the LLM can inspect existing code */
+  fileContents?: Array<{ path: string; content: string }>;
 }
 
 // ── Code block parsing ────────────────────────────────────────────────────────
@@ -230,6 +232,23 @@ export class CodeGenerator {
       lines.push('');
     }
 
+    if (options.fileContents && options.fileContents.length > 0) {
+      lines.push('## Current Code');
+      lines.push('');
+      for (const file of options.fileContents) {
+        const lang = file.path.endsWith('.ts')
+          ? 'typescript'
+          : file.path.endsWith('.json')
+            ? 'json'
+            : 'text';
+        lines.push(`### ${file.path}`);
+        lines.push(`\`\`\`${lang} file=${file.path}`);
+        lines.push(file.content);
+        lines.push('```');
+        lines.push('');
+      }
+    }
+
     if (mcpContext) {
       lines.push('## MCP Context');
       lines.push(mcpContext);
@@ -360,10 +379,7 @@ export class CodeGenerator {
   /**
    * Check if dependencies changed between two snapshots.
    */
-  private depsChanged(
-    prev: Record<string, string>,
-    next: Record<string, string>,
-  ): boolean {
+  private depsChanged(prev: Record<string, string>, next: Record<string, string>): boolean {
     const prevKeys = Object.keys(prev).sort();
     const nextKeys = Object.keys(next).sort();
 

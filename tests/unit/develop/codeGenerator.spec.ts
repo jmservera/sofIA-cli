@@ -291,6 +291,37 @@ describe('CodeGenerator', () => {
 
       expect(prompt).toContain('0 failing tests');
     });
+
+    it('includes file contents in ## Current Code section when fileContents provided', () => {
+      const prompt = generator.buildIterationPrompt({
+        iteration: 2,
+        maxIterations: 5,
+        previousOutcome: 'tests-failing',
+        testResults: makeTestResults(),
+        filesInPoc: ['src/index.ts'],
+        fileContents: [
+          { path: 'src/index.ts', content: 'export function main() { return 42; }' },
+          { path: 'tests/index.test.ts', content: 'import { test } from "vitest";' },
+        ],
+      });
+
+      expect(prompt).toContain('## Current Code');
+      expect(prompt).toContain('### src/index.ts');
+      expect(prompt).toContain('export function main() { return 42; }');
+      expect(prompt).toContain('### tests/index.test.ts');
+    });
+
+    it('omits ## Current Code section when fileContents is empty or absent', () => {
+      const prompt = generator.buildIterationPrompt({
+        iteration: 2,
+        maxIterations: 5,
+        previousOutcome: 'tests-failing',
+        testResults: makeTestResults(),
+        filesInPoc: ['src/index.ts'],
+      });
+
+      expect(prompt).not.toContain('## Current Code');
+    });
   });
 
   describe('buildPromptContextSummary', () => {

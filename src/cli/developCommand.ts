@@ -9,6 +9,7 @@
  * Contract: specs/002-poc-generation/tasks.md (T019, T029, T038)
  */
 import { join } from 'node:path';
+import { existsSync, rmSync } from 'node:fs';
 
 import type { WorkshopSession } from '../shared/schemas/session.js';
 import type { McpManager } from '../mcp/mcpManager.js';
@@ -134,6 +135,38 @@ export async function developCommand(
     ? join(process.cwd(), opts.output)
     : join(process.cwd(), 'poc', sessionId);
 
+  // ── Handle --force and existing output directory ─────────────────────────
+  const dirExists = existsSync(outputDir);
+
+  if (dirExists && opts.force) {
+    // --force: clear the directory and scaffold fresh
+    try {
+      rmSync(outputDir, { recursive: true, force: true });
+    } catch (err: unknown) {
+      const msg = `Failed to clear output directory: ${err instanceof Error ? err.message : String(err)}`;
+      if (json) {
+        process.stdout.write(JSON.stringify({ error: msg }) + '\n');
+      } else {
+        process.stderr.write(`Error: ${msg}\n`);
+      }
+      process.exitCode = 1;
+      return;
+    }
+    if (!json) {
+      io.writeActivity(`Cleared existing output directory (--force): ${outputDir}`);
+    }
+  } else if (dirExists && !opts.force) {
+    // Detect existing metadata to resume from last iteration
+    const metadataPath = join(outputDir, '.sofia-metadata.json');
+    if (existsSync(metadataPath)) {
+      if (!json) {
+        io.writeActivity(
+          `Resuming from existing output directory: ${outputDir}\n` + 'Use --force to start fresh.',
+        );
+      }
+    }
+  }
+
   // ── Create RalphLoop ─────────────────────────────────────────────────────
   const spinner = createNoOpSpinner();
 
@@ -196,10 +229,9 @@ export async function developCommand(
     };
     process.stdout.write(JSON.stringify(output) + '\n');
   } else {
-    const repoInfo =
-      result.session.poc?.repoUrl
-        ? `Repository URL: ${result.session.poc.repoUrl}`
-        : `Repository Path: ${result.session.poc?.repoPath ?? outputDir}`;
+    const repoInfo = result.session.poc?.repoUrl
+      ? `Repository URL: ${result.session.poc.repoUrl}`
+      : `Repository Path: ${result.session.poc?.repoPath ?? outputDir}`;
 
     io.write(
       [

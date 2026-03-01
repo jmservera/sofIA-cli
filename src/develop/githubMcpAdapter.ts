@@ -71,7 +71,9 @@ export class GitHubMcpAdapter {
   /**
    * Create a GitHub repository via MCP.
    *
-   * Returns `{ available: false }` if GitHub MCP is unavailable or if creation fails.
+   * Calls `mcpManager.callTool('github', 'create_repository', ...)` and parses
+   * the response for `html_url`. Returns `{ available: false }` if GitHub MCP
+   * is unavailable or if creation fails.
    */
   async createRepository(options: CreateRepositoryOptions): Promise<CreateRepositoryResult> {
     if (!this.isAvailable()) {
@@ -79,10 +81,18 @@ export class GitHubMcpAdapter {
     }
 
     try {
-      // In production this would call the `create_repository` MCP tool.
-      // For now, simulate a successful creation.
-      const repoName = options.name;
-      const repoUrl = `https://github.com/poc-owner/${repoName}`;
+      const response = await this.mcpManager.callTool('github', 'create_repository', {
+        name: options.name,
+        description: options.description ?? '',
+        private: options.private ?? true,
+      });
+
+      const repoUrl = (response.html_url as string) ?? (response.url as string);
+      const repoName = (response.name as string) ?? options.name;
+
+      if (!repoUrl) {
+        return { available: false, reason: 'MCP response missing repository URL' };
+      }
 
       this._repoUrl = repoUrl;
 
@@ -100,22 +110,28 @@ export class GitHubMcpAdapter {
   /**
    * Push files to a GitHub repository via MCP.
    *
-   * Returns `{ available: false }` if GitHub MCP is unavailable or if push fails.
+   * Calls `mcpManager.callTool('github', 'push_files', ...)` with file paths
+   * and contents. Returns `{ available: false }` if GitHub MCP is unavailable
+   * or if push fails.
    */
-  async pushFiles(_options: PushFilesOptions): Promise<PushFilesResult> {
+  async pushFiles(options: PushFilesOptions): Promise<PushFilesResult> {
     if (!this.isAvailable()) {
       return { available: false, reason: 'GitHub MCP not available' };
     }
 
     try {
-      // In production this would call the `push_files` or `create_or_update_file`
-      // MCP tool for each file, then commit.
-      // For now, simulate a successful push.
-      const fakeSha = Math.random().toString(16).slice(2, 10);
+      const response = await this.mcpManager.callTool('github', 'push_files', {
+        repoUrl: options.repoUrl,
+        files: options.files,
+        message: options.commitMessage,
+        branch: options.branch ?? 'main',
+      });
+
+      const commitSha = response.sha as string | undefined;
 
       return {
         available: true,
-        commitSha: fakeSha,
+        commitSha,
       };
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : 'Unknown error';

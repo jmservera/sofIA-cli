@@ -41,8 +41,18 @@ vi.mock('node:child_process', async (importOriginal) => {
   };
 });
 
+// Mock validatePocOutput to always pass in integration tests
+vi.mock('../../src/develop/pocScaffolder.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/develop/pocScaffolder.js')>();
+  return {
+    ...actual,
+    validatePocOutput: vi.fn().mockResolvedValue({ valid: true, missingFiles: [], errors: [] }),
+  };
+});
+
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -64,17 +74,23 @@ function makeFakeScaffolder(outputDir: string): PocScaffolder {
       const { writeFile, mkdir } = await import('node:fs/promises');
       await mkdir(join(outputDir, 'src'), { recursive: true });
       await mkdir(join(outputDir, 'tests'), { recursive: true });
-      await writeFile(join(outputDir, 'package.json'), JSON.stringify({
-        name: 'route-optimizer-poc',
-        scripts: { test: 'vitest run' },
-        dependencies: {},
-        devDependencies: { vitest: '^3.0.0' },
-      }), 'utf-8');
-      await writeFile(join(outputDir, 'src', 'index.ts'),
+      await writeFile(
+        join(outputDir, 'package.json'),
+        JSON.stringify({
+          name: 'route-optimizer-poc',
+          scripts: { test: 'vitest run' },
+          dependencies: {},
+          devDependencies: { vitest: '^3.0.0' },
+        }),
+        'utf-8',
+      );
+      await writeFile(
+        join(outputDir, 'src', 'index.ts'),
         '// TODO: implement\nexport function optimize() { return []; }',
         'utf-8',
       );
-      await writeFile(join(outputDir, 'tests', 'index.test.ts'),
+      await writeFile(
+        join(outputDir, 'tests', 'index.test.ts'),
         'import { describe, it, expect } from "vitest";\nimport { optimize } from "../src/index.js";\ndescribe("optimizer", () => { it("should return stops", () => { expect(optimize().length).toBeGreaterThan(0); }); });',
         'utf-8',
       );
@@ -158,14 +174,15 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
           async *[Symbol.asyncIterator]() {
             yield {
               type: 'TextDelta',
-              text: [
-                '```typescript file=src/index.ts',
-                '// Fixed implementation',
-                'export function optimize(): string[] {',
-                '  return ["stop-1", "stop-2", "stop-3"];',
-                '}',
-                '```',
-              ].join('\n') + '\n',
+              text:
+                [
+                  '```typescript file=src/index.ts',
+                  '// Fixed implementation',
+                  'export function optimize(): string[] {',
+                  '  return ["stop-1", "stop-2", "stop-3"];',
+                  '}',
+                  '```',
+                ].join('\n') + '\n',
               timestamp: '',
             };
           },

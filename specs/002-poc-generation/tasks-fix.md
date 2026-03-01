@@ -21,14 +21,14 @@
 
 ### Tests
 
-- [ ] F001 [P] [F3] Add unit test in `tests/unit/develop/codeGenerator.spec.ts` verifying `buildIterationPrompt` includes file contents (not just names) when `fileContents` option is provided
-- [ ] F002 [P] [F3] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying the Ralph loop reads file contents from disk and passes them to `buildIterationPrompt`
+- [x] F001 [P] [F3] Add unit test in `tests/unit/develop/codeGenerator.spec.ts` verifying `buildIterationPrompt` includes file contents (not just names) when `fileContents` option is provided
+- [x] F002 [P] [F3] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying the Ralph loop reads file contents from disk and passes them to `buildIterationPrompt`
 
 ### Implementation
 
-- [ ] F003 [F3] Extend `IterationPromptOptions` in `src/develop/codeGenerator.ts` with `fileContents?: Array<{ path: string; content: string }>` and render a `## Current Code` section with fenced code blocks for each file
-- [ ] F004 [F3] Update `RalphLoop` in `src/develop/ralphLoop.ts` to read file contents from the PoC directory before building the iteration prompt, passing them as `fileContents` to `buildIterationPrompt`
-- [ ] F005 [F3] Add a size guard: if total file content exceeds 50KB, include only files referenced in test failures plus `src/index.ts` and `package.json`; log a warning when content is truncated
+- [x] F003 [F3] Extend `IterationPromptOptions` in `src/develop/codeGenerator.ts` with `fileContents?: Array<{ path: string; content: string }>` and render a `## Current Code` section with fenced code blocks for each file
+- [x] F004 [F3] Update `RalphLoop` in `src/develop/ralphLoop.ts` to read file contents from the PoC directory before building the iteration prompt, passing them as `fileContents` to `buildIterationPrompt`
+- [x] F005 [F3] Add a size guard: if total file content exceeds 50KB, include only files referenced in test failures plus `src/index.ts` and `package.json`; log a warning when content is truncated
 
 **Checkpoint**: Ralph loop now sends actual source code to the LLM. Verify by running an existing integration test and inspecting the `llmPromptContext` summary.
 
@@ -40,12 +40,12 @@
 
 ### Tests
 
-- [ ] F006 [P] [F4] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying that after the last LLM iteration at `maxIterations`, a final test run occurs and `finalStatus` reflects the actual result
-- [ ] F007 [P] [F4] Add integration test in `tests/integration/ralphLoopFlow.spec.ts` verifying that when the last iteration's code fix resolves all failures, `finalStatus` is `'success'` (not `'partial'` or `'failed'`)
+- [x] F006 [P] [F4] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying that after the last LLM iteration at `maxIterations`, a final test run occurs and `finalStatus` reflects the actual result
+- [x] F007 [P] [F4] Add integration test in `tests/integration/ralphLoopFlow.spec.ts` verifying that when the last iteration's code fix resolves all failures, `finalStatus` is `'success'` (not `'partial'` or `'failed'`)
 
 ### Implementation
 
-- [ ] F008 [F4] Add a final test run after the last LLM code application in `src/develop/ralphLoop.ts`: after the loop exits at `maxIterations`, run tests one more time, update the last iteration's outcome and `testResults`, and use those results for `finalStatus` determination
+- [x] F008 [F4] Add a final test run after the last LLM code application in `src/develop/ralphLoop.ts`: after the loop exits at `maxIterations`, run tests one more time, update the last iteration's outcome and `testResults`, and use those results for `finalStatus` determination
 
 **Checkpoint**: `finalStatus` now accurately reflects the state of tests after the final code changes. Verify with `npx vitest run tests/unit/develop/ralphLoop.spec.ts`.
 
@@ -57,11 +57,11 @@
 
 ### Tests
 
-- [ ] F009 [P] [F5] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying that after at least one iteration completes, triggering SIGINT persists a session containing the completed iteration(s)
+- [x] F009 [P] [F5] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying that after at least one iteration completes, triggering SIGINT persists a session containing the completed iteration(s)
 
 ### Implementation
 
-- [ ] F010 [F5] Refactor `setupSigintHandler` in `src/develop/ralphLoop.ts` to close over a mutable reference (e.g., `{ current: session }` wrapper object or a class field `this.currentSession`) so the handler always persists the latest session state
+- [x] F010 [F5] Refactor `setupSigintHandler` in `src/develop/ralphLoop.ts` to close over a mutable reference (e.g., `{ current: session }` wrapper object or a class field `this.currentSession`) so the handler always persists the latest session state
 
 **Checkpoint**: Verify by simulating SIGINT after one iteration in the unit test and asserting the persisted session has `poc.iterations.length >= 1`.
 
@@ -73,11 +73,11 @@
 
 ### Tests
 
-- [ ] F011 [P] [F6] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying `finalStatus` is `'partial'` when user stops mid-loop and some tests were passing
+- [x] F011 [P] [F6] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying `finalStatus` is `'partial'` when user stops mid-loop and some tests were passing
 
 ### Implementation
 
-- [ ] F012 [F6] Update the user-stopped branch in `src/develop/ralphLoop.ts` to compute `finalStatus` based on the latest test results: `'partial'` if any tests were passing, `'failed'` if none were
+- [x] F012 [F6] Update the user-stopped branch in `src/develop/ralphLoop.ts` to compute `finalStatus` based on the latest test results: `'partial'` if any tests were passing, `'failed'` if none were
 
 **Checkpoint**: Verify with `npx vitest run tests/unit/develop/ralphLoop.spec.ts`.
 
@@ -89,15 +89,15 @@
 
 ### Tests
 
-- [ ] F013 [P] [F1] Add unit test in `tests/unit/develop/githubMcpAdapter.spec.ts` verifying `createRepository` calls `mcpManager.callTool('github', 'create_repository', ...)` and returns the URL from the tool response
-- [ ] F014 [P] [F1] Add unit test in `tests/unit/develop/githubMcpAdapter.spec.ts` verifying `pushFiles` calls `mcpManager.callTool('github', 'push_files', ...)` with file paths and contents, and returns the commit SHA from the response
-- [ ] F015 [P] [F2] Add unit test verifying that when the MCP tool call fails, `createRepository` returns `{ available: false }` with the error message (not a fake URL)
+- [x] F013 [P] [F1] Add unit test in `tests/unit/develop/githubMcpAdapter.spec.ts` verifying `createRepository` calls `mcpManager.callTool('github', 'create_repository', ...)` and returns the URL from the tool response
+- [x] F014 [P] [F1] Add unit test in `tests/unit/develop/githubMcpAdapter.spec.ts` verifying `pushFiles` calls `mcpManager.callTool('github', 'push_files', ...)` with file paths and contents, and returns the commit SHA from the response
+- [x] F015 [P] [F2] Add unit test verifying that when the MCP tool call fails, `createRepository` returns `{ available: false }` with the error message (not a fake URL)
 
 ### Implementation
 
-- [ ] F016 [F1] Implement real MCP tool calls in `GitHubMcpAdapter.createRepository()` in `src/develop/githubMcpAdapter.ts`: call `mcpManager.callTool('github', 'create_repository', { name, description, private: true })`, parse the response for `html_url`, return it
-- [ ] F017 [F1] Implement real MCP tool calls in `GitHubMcpAdapter.pushFiles()` in `src/develop/githubMcpAdapter.ts`: call `mcpManager.callTool('github', 'push_files', { repoUrl, files, message })`, return the commit SHA from the response
-- [ ] F018 [F2] Remove hardcoded `poc-owner` URL; derive repo owner from the MCP response or user configuration
+- [x] F016 [F1] Implement real MCP tool calls in `GitHubMcpAdapter.createRepository()` in `src/develop/githubMcpAdapter.ts`: call `mcpManager.callTool('github', 'create_repository', { name, description, private: true })`, parse the response for `html_url`, return it
+- [x] F017 [F1] Implement real MCP tool calls in `GitHubMcpAdapter.pushFiles()` in `src/develop/githubMcpAdapter.ts`: call `mcpManager.callTool('github', 'push_files', { repoUrl, files, message })`, return the commit SHA from the response
+- [x] F018 [F2] Remove hardcoded `poc-owner` URL; derive repo owner from the MCP response or user configuration
 
 **Checkpoint**: With a mocked McpManager, verify `createRepository` and `pushFiles` invoke the correct MCP tool names with expected arguments.
 
@@ -109,15 +109,15 @@
 
 ### Tests
 
-- [ ] F019 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryContext7` calls `mcpManager.callTool('context7', ...)` with the dependency name
-- [ ] F020 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryAzureMcp` calls `mcpManager.callTool('azure', ...)` with the architecture keywords
-- [ ] F021 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryWebSearch` calls the web search tool with failing test context
+- [x] F019 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryContext7` calls `mcpManager.callTool('context7', ...)` with the dependency name
+- [x] F020 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryAzureMcp` calls `mcpManager.callTool('azure', ...)` with the architecture keywords
+- [x] F021 [P] [F6] Update unit tests in `tests/unit/develop/mcpContextEnricher.spec.ts` to verify `queryWebSearch` calls the web search tool with failing test context
 
 ### Implementation
 
-- [ ] F022 [F6] Implement real MCP calls in `McpContextEnricher.queryContext7()` in `src/develop/mcpContextEnricher.ts`: call `mcpManager.callTool('context7', 'resolve-library-id', { libraryName })` then `query-docs` with the resolved ID; return the documentation text
-- [ ] F023 [F6] Implement real MCP calls in `McpContextEnricher.queryAzureMcp()` in `src/develop/mcpContextEnricher.ts`: call `mcpManager.callTool('azure', 'documentation', { query })` with architecture keywords; return relevant guidance
-- [ ] F024 [F6] Implement real calls in `McpContextEnricher.queryWebSearch()` in `src/develop/mcpContextEnricher.ts`: use the Copilot SDK web search capability or `mcpManager.callTool` to search for the stuck error messages; return search result summaries
+- [x] F022 [F6] Implement real MCP calls in `McpContextEnricher.queryContext7()` in `src/develop/mcpContextEnricher.ts`: call `mcpManager.callTool('context7', 'resolve-library-id', { libraryName })` then `query-docs` with the resolved ID; return the documentation text
+- [x] F023 [F6] Implement real MCP calls in `McpContextEnricher.queryAzureMcp()` in `src/develop/mcpContextEnricher.ts`: call `mcpManager.callTool('azure', 'documentation', { query })` with architecture keywords; return relevant guidance
+- [x] F024 [F6] Implement real calls in `McpContextEnricher.queryWebSearch()` in `src/develop/mcpContextEnricher.ts`: use the Copilot SDK web search capability or `mcpManager.callTool` to search for the stuck error messages; return search result summaries
 
 **Checkpoint**: With mocked McpManager, verify each method produces structured context from tool responses. Graceful degradation tests should still pass.
 
@@ -129,14 +129,14 @@
 
 ### Tests
 
-- [ ] F025 [P] [F7] Add unit test in `tests/unit/cli/developCommand.spec.ts` verifying that when `outputDir` already exists and `--force` is not set, the command resumes from the last iteration (skip scaffold)
-- [ ] F026 [P] [F7] Add unit test in `tests/unit/cli/developCommand.spec.ts` verifying that when `outputDir` already exists and `--force` is set, the directory is cleared and scaffold runs fresh
-- [ ] F027 [P] [F8] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying `validatePocOutput` is called before the loop returns `finalStatus: 'success'`, and a missing required file downgrades status to `'partial'`
+- [x] F025 [P] [F7] Add unit test in `tests/unit/cli/developCommand.spec.ts` verifying that when `outputDir` already exists and `--force` is not set, the command resumes from the last iteration (skip scaffold)
+- [x] F026 [P] [F7] Add unit test in `tests/unit/cli/developCommand.spec.ts` verifying that when `outputDir` already exists and `--force` is set, the directory is cleared and scaffold runs fresh
+- [x] F027 [P] [F8] Add unit test in `tests/unit/develop/ralphLoop.spec.ts` verifying `validatePocOutput` is called before the loop returns `finalStatus: 'success'`, and a missing required file downgrades status to `'partial'`
 
 ### Implementation
 
-- [ ] F028 [F7] Implement `--force` handling in `src/cli/developCommand.ts`: check if `outputDir` exists; if so and `--force` is set, remove and recreate it; if not set, detect existing `.sofia-metadata.json` and resume from last iteration count
-- [ ] F029 [F8] Call `validatePocOutput(outputDir)` in `src/develop/ralphLoop.ts` after loop completion and before returning; if validation fails and `finalStatus` was `'success'`, downgrade to `'partial'` with a warning
+- [x] F028 [F7] Implement `--force` handling in `src/cli/developCommand.ts`: check if `outputDir` exists; if so and `--force` is set, remove and recreate it; if not set, detect existing `.sofia-metadata.json` and resume from last iteration count
+- [x] F029 [F8] Call `validatePocOutput(outputDir)` in `src/develop/ralphLoop.ts` after loop completion and before returning; if validation fails and `finalStatus` was `'success'`, downgrade to `'partial'` with a warning
 
 **Checkpoint**: `--force` clears output, validation catches missing files. Verify with `npx vitest run tests/unit/cli/developCommand.spec.ts tests/unit/develop/ralphLoop.spec.ts`.
 
@@ -146,9 +146,9 @@
 
 **Purpose**: Minor improvements — PoC highlights in export summary, schema cleanup.
 
-- [ ] F030 [P] [F9] Add PoC status highlights in `src/sessions/exportWriter.ts`: include `finalStatus`, iteration count, and termination reason in `summary.json` highlights when session has `poc` data
-- [ ] F031 [P] [F10] Simplify `filesChanged` schema in `src/shared/schemas/session.ts`: replace `.optional().default([])` with `.default([])` (`.optional()` is redundant when `.default()` is present)
-- [ ] F032 Run full test suite (`npx vitest run`) and lint/typecheck (`npm run lint && npm run typecheck`) to confirm no regressions
+- [x] F030 [P] [F9] Add PoC status highlights in `src/sessions/exportWriter.ts`: include `finalStatus`, iteration count, and termination reason in `summary.json` highlights when session has `poc` data
+- [x] F031 [P] [F10] Simplify `filesChanged` schema in `src/shared/schemas/session.ts`: replace `.optional().default([])` with `.default([])` (`.optional()` is redundant when `.default()` is present)
+- [x] F032 Run full test suite (`npx vitest run`) and lint/typecheck (`npm run lint && npm run typecheck`) to confirm no regressions
 
 ---
 

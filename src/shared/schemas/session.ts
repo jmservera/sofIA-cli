@@ -207,7 +207,7 @@ export const pocIterationSchema = z.object({
     .enum(['tests-passing', 'tests-failing', 'error', 'scaffold'])
     .optional()
     .default('scaffold'),
-  filesChanged: z.array(z.string()).optional().default([]),
+  filesChanged: z.array(z.string()).default([]),
   testResults: testResultsSchema.optional(),
   errorMessage: z.string().optional(),
   llmPromptContext: z.string().optional(),
