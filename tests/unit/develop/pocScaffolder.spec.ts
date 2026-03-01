@@ -336,3 +336,46 @@ describe('validatePocOutput', () => {
     expect(result.errors).toContain('package.json is missing "test" script');
   });
 });
+
+// ── Template entry construction (T036) ────────────────────────────────────
+
+describe('PocScaffolder with TemplateEntry', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'scaffolder-template-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('uses TemplateEntry.files when constructed with a template entry (T036)', async () => {
+    const { PYTHON_PYTEST_TEMPLATE } = await import('../../../src/develop/templateRegistry.js');
+    const scaffolder = new PocScaffolder(PYTHON_PYTEST_TEMPLATE);
+
+    // The template should contain Python-specific file paths
+    const filePaths = scaffolder.getTemplateFiles();
+    expect(filePaths).toContain('requirements.txt');
+    expect(filePaths).toContain('src/main.py');
+    expect(filePaths).toContain('tests/test_main.py');
+    // Should NOT contain TypeScript files
+    expect(filePaths).not.toContain('tsconfig.json');
+    expect(filePaths).not.toContain('src/index.ts');
+  });
+
+  it('uses TemplateEntry.techStack in buildContext (T010)', async () => {
+    const { PYTHON_PYTEST_TEMPLATE } = await import('../../../src/develop/templateRegistry.js');
+    const session = makeSession();
+    const ctx = PocScaffolder.buildContext(session, tmpDir, PYTHON_PYTEST_TEMPLATE);
+    expect(ctx.techStack.language).toBe('Python');
+    expect(ctx.techStack.runtime).toBe('Python 3.11');
+  });
+
+  it('falls back to default TypeScript techStack when no template entry provided', () => {
+    const session = makeSession();
+    const ctx = PocScaffolder.buildContext(session, tmpDir);
+    expect(ctx.techStack.language).toBe('TypeScript');
+    expect(ctx.techStack.runtime).toBe('Node.js 20');
+  });
+});

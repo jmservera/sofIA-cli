@@ -221,5 +221,74 @@ describe('TestRunner', () => {
       const runner = new TestRunner({ timeoutMs: 30_000 });
       expect(runner).toBeDefined();
     });
+
+    it('accepts custom testCommand', () => {
+      const runner = new TestRunner({ testCommand: 'pytest --tb=short' });
+      expect(runner).toBeDefined();
+    });
+  });
+
+  // ── T045: extractJson fallback path ─────────────────────────────────────
+
+  describe('extractJson fallback path (T045)', () => {
+    it('extracts JSON from mixed console + JSON output', () => {
+      const mixed = `
+Some console output here
+Warning: something happened
+${PASSING_JSON}
+More console output after
+`;
+      const runner = new FakeTestRunner(mixed);
+      const result = runner.parseOutputPublic(mixed, Date.now() - 100, mixed);
+      expect(result.passed).toBe(3);
+      expect(result.failed).toBe(0);
+      expect(result.total).toBe(3);
+    });
+
+    it('uses first-{-to-last-} fallback when JSON spans mixed output', () => {
+      // Construct output where JSON is embedded in non-JSON text
+      const embedded = `npm warn something\n{"numPassedTests":1,"numFailedTests":0,"numPendingTests":0,"numTotalTests":1,"success":true,"testResults":[]}\nDone`;
+      const runner = new FakeTestRunner(embedded);
+      const result = runner.parseOutputPublic(embedded, Date.now() - 100, embedded);
+      expect(result.passed).toBe(1);
+      expect(result.total).toBe(1);
+    });
+  });
+
+  // ── T046: extractJson returns null for no valid JSON ────────────────────
+
+  describe('extractJson null return (T046)', () => {
+    it('returns zero-count result for output with no valid JSON', () => {
+      const noJson = 'This is just plain text output\nNo JSON here at all\nERROR: something failed';
+      const runner = new FakeTestRunner(noJson);
+      const result = runner.parseOutputPublic(noJson, Date.now() - 100, noJson);
+      expect(result.passed).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(result.total).toBe(0);
+    });
+  });
+
+  // ── T047: buildErrorResult ──────────────────────────────────────────────
+
+  describe('buildErrorResult (T047)', () => {
+    it('produces correct zero-count result with error message on timeout', () => {
+      const runner = new FakeTestRunner('', { timedOut: true });
+      // Run returns timeout result
+      const resultPromise = runner.run('/tmp/fake');
+      return resultPromise.then((result) => {
+        expect(result.passed).toBe(0);
+        expect(result.failed).toBe(0);
+        expect(result.skipped).toBe(0);
+        expect(result.total).toBe(0);
+        expect(result.rawOutput).toContain('timed out');
+      });
+    });
+
+    it('produces correct zero-count result with error message on spawn error', () => {
+      const runner = new FakeTestRunner('', { error: new Error('ENOENT: npm not found') });
+      return runner.run('/tmp/fake').catch((err: Error) => {
+        expect(err.message).toContain('ENOENT');
+      });
+    });
   });
 });

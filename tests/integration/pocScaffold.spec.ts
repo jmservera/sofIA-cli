@@ -172,3 +172,49 @@ describe('PoC Scaffold Integration', () => {
     expect(testContent).toContain('expect');
   });
 });
+
+// ── python-pytest template integration (T037) ────────────────────────────
+
+describe('python-pytest template', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-python-scaffold-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('scaffolds expected Python project structure (T037)', async () => {
+    const { PYTHON_PYTEST_TEMPLATE } = await import('../../src/develop/templateRegistry.js');
+
+    const scaffolder = new PocScaffolder(PYTHON_PYTEST_TEMPLATE);
+    const ctx = PocScaffolder.buildContext(fixtureSession, tmpDir, PYTHON_PYTEST_TEMPLATE);
+
+    const result = await scaffolder.scaffold(ctx);
+
+    expect(result.createdFiles).toContain('requirements.txt');
+    expect(result.createdFiles).toContain('pytest.ini');
+    expect(result.createdFiles).toContain('src/__init__.py');
+    expect(result.createdFiles).toContain('src/main.py');
+    expect(result.createdFiles).toContain('tests/test_main.py');
+    expect(result.createdFiles).toContain('.sofia-metadata.json');
+    expect(result.createdFiles).toContain('README.md');
+
+    // Verify files exist on disk
+    expect(existsSync(join(tmpDir, 'requirements.txt'))).toBe(true);
+    expect(existsSync(join(tmpDir, 'src', 'main.py'))).toBe(true);
+    expect(existsSync(join(tmpDir, 'tests', 'test_main.py'))).toBe(true);
+
+    // Verify content
+    const reqContent = await readFile(join(tmpDir, 'requirements.txt'), 'utf-8');
+    expect(reqContent).toContain('pytest');
+
+    const mainContent = await readFile(join(tmpDir, 'src', 'main.py'), 'utf-8');
+    expect(mainContent).toContain('def main');
+
+    // Verify techStack uses Python
+    expect(ctx.techStack.language).toBe('Python');
+  });
+});
