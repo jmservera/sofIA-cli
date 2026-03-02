@@ -60,15 +60,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T007 [P] [US1] Unit test for deploy script prerequisite validation (az CLI check, login check) in tests/unit/infraDeploy.spec.ts — test parameter parsing, missing required args, default values
-- [ ] T008 [P] [US1] Unit test verifying Bicep template structure (validate JSON compilation output has all 5 expected resource types) in tests/unit/infraBicep.spec.ts
+- [x] T007 [P] [US1] Unit test for deploy script prerequisite validation (az CLI check, login check) in tests/unit/infraDeploy.spec.ts — test parameter parsing, missing required args, default values
+- [x] T008 [P] [US1] Unit test verifying Bicep template structure (validate JSON compilation output has all 5 expected resource types) in tests/unit/infraBicep.spec.ts
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Create Bicep template `infra/main.bicep` with all 5 resources: `Microsoft.CognitiveServices/accounts` (kind: AIServices, allowProjectManagement: true, customSubDomainName), `accounts/deployments` (gpt-4.1-mini, GlobalStandard), `accounts/projects`, `accounts/capabilityHosts` (Agents), `accounts/projects/capabilityHosts` (Agents). Use `targetScope = 'subscription'` with resource group creation per research.md R1
-- [ ] T010 [US1] Create Bicep parameter file `infra/main.bicepparam` with defaults: location=swedencentral, modelDeploymentName=gpt-4.1-mini, modelName=gpt-4.1-mini, modelVersion=2025-04-14, modelSkuName=GlobalStandard per data-model.md FoundryDeploymentConfig
-- [ ] T011 [US1] Implement deployment script `infra/deploy.sh` — parse CLI flags (--subscription, --resource-group, --location, --account-name, --model), validate prerequisites (az CLI installed, user logged in, subscription accessible), run `az deployment sub create`, query Bicep outputs (projectEndpoint, modelDeploymentName), print env var export instructions per contracts/web-search-tool.md deploy.sh contract
-- [ ] T012 [US1] Make `infra/deploy.sh` executable (chmod +x) and add shebang `#!/usr/bin/env bash`, set error handling (`set -euo pipefail`), add clear error messages with exit codes (0=success, 1=prereq fail, 2=deploy fail) per FR-006 and contracts
+- [x] T009 [US1] Create Bicep template `infra/main.bicep` with all 5 resources: `Microsoft.CognitiveServices/accounts` (kind: AIServices, allowProjectManagement: true, customSubDomainName), `accounts/deployments` (gpt-4.1-mini, GlobalStandard), `accounts/projects`, `accounts/capabilityHosts` (Agents), `accounts/projects/capabilityHosts` (Agents). Use `targetScope = 'subscription'` with resource group creation per research.md R1
+- [x] T010 [US1] Create Bicep parameter file `infra/main.bicepparam` with defaults: location=swedencentral, modelDeploymentName=gpt-4.1-mini, modelName=gpt-4.1-mini, modelVersion=2025-04-14, modelSkuName=GlobalStandard per data-model.md FoundryDeploymentConfig
+- [x] T011 [US1] Implement deployment script `infra/deploy.sh` — parse CLI flags (--subscription, --resource-group, --location, --account-name, --model), validate prerequisites (az CLI installed, user logged in, subscription accessible), run `az deployment sub create`, query Bicep outputs (projectEndpoint, modelDeploymentName), print env var export instructions per contracts/web-search-tool.md deploy.sh contract
+- [x] T012 [US1] Make `infra/deploy.sh` executable (chmod +x) and add shebang `#!/usr/bin/env bash`, set error handling (`set -euo pipefail`), add clear error messages with exit codes (0=success, 1=prereq fail, 2=deploy fail) per FR-006 and contracts
 
 **Checkpoint**: User Story 1 complete — `./infra/deploy.sh -s <sub> -g <rg>` provisions all resources and prints working env var values. Tests in T007/T008 pass.
 
