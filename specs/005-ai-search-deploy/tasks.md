@@ -26,9 +26,9 @@
 
 **Purpose**: Install new dependencies, create directory structure, establish foundational config
 
-- [ ] T001 Install `@azure/ai-projects@beta` and `@azure/identity` as production dependencies in package.json
-- [ ] T002 [P] Create `infra/` directory structure with placeholder files: `infra/main.bicep`, `infra/main.bicepparam`, `infra/deploy.sh`, `infra/teardown.sh`
-- [ ] T003 [P] Add TypeScript ambient module declarations for `@azure/ai-projects` and `@azure/identity` if needed in src/types/
+- [x] T001 Install `@azure/ai-projects@beta` and `@azure/identity` as production dependencies in package.json
+- [x] T002 [P] Create `infra/` directory structure with placeholder files: `infra/main.bicep`, `infra/main.bicepparam`, `infra/deploy.sh`, `infra/teardown.sh`
+- [x] T003 [P] Add TypeScript ambient module declarations for `@azure/ai-projects` and `@azure/identity` if needed in src/types/
 
 **Checkpoint**: Dependencies installed, directory structure ready, `npm run typecheck` passes
 
