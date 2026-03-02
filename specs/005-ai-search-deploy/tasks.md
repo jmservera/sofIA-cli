@@ -86,14 +86,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T013 [P] [US2] Unit test verifying all Bicep parameters have `@description()` decorators in tests/unit/infraBicep.spec.ts — parse main.bicep and confirm every `param` has a preceding `@description` annotation
-- [ ] T014 [P] [US2] Unit test verifying Bicep parameters have defaults where specified in data-model.md FoundryDeploymentConfig — location defaults to swedencentral, model to gpt-4.1-mini
+- [x] T013 [P] [US2] Unit test verifying all Bicep parameters have `@description()` decorators in tests/unit/infraBicep.spec.ts — parse main.bicep and confirm every `param` has a preceding `@description` annotation
+- [x] T014 [P] [US2] Unit test verifying Bicep parameters have defaults where specified in data-model.md FoundryDeploymentConfig — location defaults to swedencentral, model to gpt-4.1-mini
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Add `@description()` decorators to all Bicep parameters in infra/main.bicep — location, accountName, projectName, modelDeploymentName, modelName, modelVersion, modelSkuName, modelSkuCapacity, resourceGroupName per FR-011
-- [ ] T016 [US2] Add inline comments to each Bicep resource in infra/main.bicep explaining its purpose (Foundry account, model deployment, project, account capability host, project capability host) per FR-011 and SC-005
-- [ ] T017 [US2] Ensure deploy.sh passes parameter overrides through to Bicep deployment — `--location`, `--account-name`, and `--model` flags map to Bicep parameter overrides via `az deployment sub create --parameters` per FR-004
+- [x] T015 [US2] Add `@description()` decorators to all Bicep parameters in infra/main.bicep — location, accountName, projectName, modelDeploymentName, modelName, modelVersion, modelSkuName, modelSkuCapacity, resourceGroupName per FR-011
+- [x] T016 [US2] Add inline comments to each Bicep resource in infra/main.bicep explaining its purpose (Foundry account, model deployment, project, account capability host, project capability host) per FR-011 and SC-005
+- [x] T017 [US2] Ensure deploy.sh passes parameter overrides through to Bicep deployment — `--location`, `--account-name`, and `--model` flags map to Bicep parameter overrides via `az deployment sub create --parameters` per FR-004
 
 **Checkpoint**: User Story 2 complete — template is self-documenting (SC-005), customizable region/model/naming (FR-004) works via CLI flag overrides. Tests in T013/T014 pass.
 
@@ -111,23 +111,23 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US3] Unit test for updated `WebSearchConfig` validation (projectEndpoint format, modelDeploymentName non-empty) in tests/unit/webSearch.spec.ts per data-model.md validation rules
-- [ ] T019 [P] [US3] Unit test for legacy env var detection — `isWebSearchConfigured()` returns false when only old vars set, returns true when new vars set in tests/unit/webSearch.spec.ts
-- [ ] T020 [P] [US3] Unit test for `createWebSearchTool()` graceful degradation — returns `{ results: [], degraded: true, error }` when credential fails, agent creation fails, or network error in tests/unit/webSearch.spec.ts per contracts/web-search-tool.md degradation scenarios
-- [ ] T021 [P] [US3] Unit test for citation extraction — parses `url_citation` annotations from Foundry response into `WebSearchResultItem[]` with title, url, snippet and deduplicates sources in tests/unit/webSearch.spec.ts per contracts/web-search-tool.md output format
-- [ ] T022 [P] [US3] Integration test for ephemeral agent lifecycle (create → query → cleanup) using faked `AIProjectClient` in tests/integration/webSearchAgent.spec.ts — verify agent created on first call, reused on second call, deleted on `destroyWebSearchSession()` per data-model.md AgentSession state transitions
-- [ ] T023 [P] [US3] Unit test for preflight legacy env var check — verify preflight fails with clear migration message when `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` are set in tests/unit/preflight.spec.ts per data-model.md LegacyEnvVarError
+- [x] T018 [P] [US3] Unit test for updated `WebSearchConfig` validation (projectEndpoint format, modelDeploymentName non-empty) in tests/unit/webSearch.spec.ts per data-model.md validation rules
+- [x] T019 [P] [US3] Unit test for legacy env var detection — `isWebSearchConfigured()` returns false when only old vars set, returns true when new vars set in tests/unit/webSearch.spec.ts
+- [x] T020 [P] [US3] Unit test for `createWebSearchTool()` graceful degradation — returns `{ results: [], degraded: true, error }` when credential fails, agent creation fails, or network error in tests/unit/webSearch.spec.ts per contracts/web-search-tool.md degradation scenarios
+- [x] T021 [P] [US3] Unit test for citation extraction — parses `url_citation` annotations from Foundry response into `WebSearchResultItem[]` with title, url, snippet and deduplicates sources in tests/unit/webSearch.spec.ts per contracts/web-search-tool.md output format
+- [x] T022 [P] [US3] Integration test for ephemeral agent lifecycle (create → query → cleanup) using faked `AIProjectClient` in tests/integration/webSearchAgent.spec.ts — verify agent created on first call, reused on second call, deleted on `destroyWebSearchSession()` per data-model.md AgentSession state transitions
+- [x] T023 [P] [US3] Unit test for preflight legacy env var check — verify preflight fails with clear migration message when `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` are set in tests/unit/preflight.spec.ts per data-model.md LegacyEnvVarError
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Update `WebSearchConfig` interface in src/mcp/webSearch.ts — replace `endpoint`/`apiKey`/`fetchFn` with `projectEndpoint`/`modelDeploymentName` per data-model.md entity 3
-- [ ] T025 [US3] Implement `AgentSession` class in src/mcp/webSearch.ts — lazy initialization with `AIProjectClient` + `DefaultAzureCredential`, `agents.createVersion()` for web_search_preview agent, conversation creation, state tracking (uninitialized → initialized → cleaned up) per data-model.md entity 4 and research.md R4/R8
-- [ ] T026 [US3] Implement citation extraction in src/mcp/webSearch.ts — parse `response.output` for `url_citation` annotations, map to `WebSearchResultItem[]` (title, url, snippet), deduplicate into `sources[]` per contracts/web-search-tool.md output format and FR-014
-- [ ] T027 [US3] Rewrite `createWebSearchTool()` in src/mcp/webSearch.ts — replace raw HTTP POST with `AgentSession.initialize()` on first call, `openAIClient.responses.create()` for queries, return structured `WebSearchResult` with citations. Handle all degradation scenarios per contracts/web-search-tool.md degradation table
-- [ ] T028 [US3] Implement `destroyWebSearchSession()` in src/mcp/webSearch.ts — delete conversation and agent version, register `process.on('beforeExit', ...)` handler, log warnings on cleanup failure (no throw) per research.md R8 lifecycle contract
-- [ ] T029 [US3] Update `isWebSearchConfigured()` in src/mcp/webSearch.ts — check `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` (not legacy vars)
-- [ ] T030 [US3] Wire `destroyWebSearchSession()` cleanup into workshop session teardown in src/cli/workshopCommand.ts — call on workshop exit/completion to ensure ephemeral agent is deleted per FR-015
-- [ ] T031 [US3] Update src/develop/mcpContextEnricher.ts — ensure `isWebSearchConfigured()` import path is correct and behavior aligns with new env var check
+- [x] T024 [US3] Update `WebSearchConfig` interface in src/mcp/webSearch.ts — replace `endpoint`/`apiKey`/`fetchFn` with `projectEndpoint`/`modelDeploymentName` per data-model.md entity 3
+- [x] T025 [US3] Implement `AgentSession` class in src/mcp/webSearch.ts — lazy initialization with `AIProjectClient` + `DefaultAzureCredential`, `agents.createVersion()` for web_search_preview agent, conversation creation, state tracking (uninitialized → initialized → cleaned up) per data-model.md entity 4 and research.md R4/R8
+- [x] T026 [US3] Implement citation extraction in src/mcp/webSearch.ts — parse `response.output` for `url_citation` annotations, map to `WebSearchResultItem[]` (title, url, snippet), deduplicate into `sources[]` per contracts/web-search-tool.md output format and FR-014
+- [x] T027 [US3] Rewrite `createWebSearchTool()` in src/mcp/webSearch.ts — replace raw HTTP POST with `AgentSession.initialize()` on first call, `openAIClient.responses.create()` for queries, return structured `WebSearchResult` with citations. Handle all degradation scenarios per contracts/web-search-tool.md degradation table
+- [x] T028 [US3] Implement `destroyWebSearchSession()` in src/mcp/webSearch.ts — delete conversation and agent version, register `process.on('beforeExit', ...)` handler, log warnings on cleanup failure (no throw) per research.md R8 lifecycle contract
+- [x] T029 [US3] Update `isWebSearchConfigured()` in src/mcp/webSearch.ts — check `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` (not legacy vars)
+- [x] T030 [US3] Wire `destroyWebSearchSession()` cleanup into workshop session teardown in src/cli/workshopCommand.ts — call on workshop exit/completion to ensure ephemeral agent is deleted per FR-015
+- [x] T031 [US3] Update src/develop/mcpContextEnricher.ts — ensure `isWebSearchConfigured()` import path is correct and behavior aligns with new env var check
 
 **Checkpoint**: User Story 3 complete — sofIA CLI uses Foundry Agent Service SDK for web search, ephemeral agent lifecycle works, citations displayed, graceful degradation on failure. All tests in T018-T023 pass. `npm run typecheck` and `npm run lint` pass.
 
