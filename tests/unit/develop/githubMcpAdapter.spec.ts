@@ -66,11 +66,16 @@ describe('GitHubMcpAdapter', () => {
         expect(result.repoUrl).toBe('https://github.com/acme/poc-route-optimizer');
         expect(result.repoName).toBe('poc-route-optimizer');
       }
-      expect(callTool).toHaveBeenCalledWith('github', 'create_repository', {
-        name: 'poc-route-optimizer',
-        description: 'AI route optimization PoC',
-        private: true,
-      });
+      expect(callTool).toHaveBeenCalledWith(
+        'github',
+        'create_repository',
+        {
+          name: 'poc-route-optimizer',
+          description: 'AI route optimization PoC',
+          private: true,
+        },
+        { timeoutMs: 60_000 },
+      );
     });
 
     it('returns { available: false } when GitHub MCP is unavailable', async () => {
@@ -137,15 +142,21 @@ describe('GitHubMcpAdapter', () => {
       if (result.available) {
         expect(result.commitSha).toBe('abc123ff');
       }
-      expect(callTool).toHaveBeenCalledWith('github', 'push_files', {
-        repoUrl: 'https://github.com/acme/my-poc',
-        files: [
-          { path: 'src/index.ts', content: 'export function main() {}' },
-          { path: 'package.json', content: '{"name":"my-poc"}' },
-        ],
-        message: 'chore: initial scaffold',
-        branch: 'main',
-      });
+      expect(callTool).toHaveBeenCalledWith(
+        'github',
+        'push_files',
+        {
+          owner: 'acme',
+          repo: 'my-poc',
+          files: [
+            { path: 'src/index.ts', content: 'export function main() {}' },
+            { path: 'package.json', content: '{"name":"my-poc"}' },
+          ],
+          message: 'chore: initial scaffold',
+          branch: 'main',
+        },
+        { timeoutMs: 60_000 },
+      );
     });
 
     it('returns { available: false } when GitHub MCP is unavailable', async () => {
@@ -201,6 +212,72 @@ describe('GitHubMcpAdapter', () => {
       const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
       await adapter.createRepository({ name: 'test-poc' });
       expect(adapter.getRepoUrl()).toBe('https://github.com/acme/test-poc');
+    });
+  });
+
+  // ── T008: Contract tests per contracts/github-adapter.md ────────────────
+
+  describe('createRepository() — contract: URL fallback chain', () => {
+    it('falls back to response.url when html_url is missing', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        url: 'https://api.github.com/repos/acme/poc',
+        name: 'poc',
+      });
+      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
+      const result = await adapter.createRepository({ name: 'poc' });
+
+      expect(result.available).toBe(true);
+      if (result.available) {
+        expect(result.repoUrl).toBe('https://api.github.com/repos/acme/poc');
+      }
+    });
+
+    it('falls back to response.clone_url when html_url and url are missing', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        clone_url: 'https://github.com/acme/poc.git',
+        name: 'poc',
+      });
+      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
+      const result = await adapter.createRepository({ name: 'poc' });
+
+      expect(result.available).toBe(true);
+      if (result.available) {
+        expect(result.repoUrl).toBe('https://github.com/acme/poc.git');
+      }
+    });
+
+    it('extracts repoName from response.full_name as fallback', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        html_url: 'https://github.com/acme/poc',
+        full_name: 'acme/poc',
+      });
+      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
+      const result = await adapter.createRepository({ name: 'poc' });
+
+      expect(result.available).toBe(true);
+      if (result.available) {
+        // name not in response → full_name fallback returns 'acme/poc'
+        expect(result.repoName).toBe('acme/poc');
+      }
+    });
+  });
+
+  describe('pushFiles() — contract: commitSha extraction', () => {
+    it('extracts commitSha from response.commit.sha as fallback', async () => {
+      const callTool = vi.fn().mockResolvedValue({
+        commit: { sha: 'nested-sha-abc' },
+      });
+      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
+      const result = await adapter.pushFiles({
+        repoUrl: 'https://github.com/acme/poc',
+        files: [{ path: 'index.ts', content: 'hello' }],
+        commitMessage: 'init',
+      });
+
+      expect(result.available).toBe(true);
+      if (result.available) {
+        expect(result.commitSha).toBe('nested-sha-abc');
+      }
     });
   });
 });

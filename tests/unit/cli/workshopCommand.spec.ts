@@ -204,7 +204,7 @@ describe('workshopCommand session name display (T064b)', () => {
     expect(allOutput).toContain('2026-01-01_120000');
   });
 
-  it('shows session name in available sessions list when present', async () => {
+  it('shows only named sessions in the resume list', async () => {
     const namedSession: WorkshopSession = {
       sessionId: '2026-02-28_165120',
       schemaVersion: '1.0.0',
@@ -243,9 +243,11 @@ describe('workshopCommand session name display (T064b)', () => {
 
     const allOutput = ioWrites.join(' ');
     expect(allOutput).toContain('Available sessions');
+    // Named session appears in the list
     expect(allOutput).toContain('Inventory Insights');
     expect(allOutput).toContain('2026-02-28_165120');
-    expect(allOutput).toContain('2026-02-28_170457');
+    // Unnamed session is filtered out
+    expect(allOutput).not.toContain('2026-02-28_170457');
   });
 });
 

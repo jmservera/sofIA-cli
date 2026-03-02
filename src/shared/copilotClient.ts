@@ -24,6 +24,78 @@ export interface SessionOptions {
   systemPrompt: string;
   tools?: ToolDefinition[];
   references?: string[];
+  /**
+   * MCP server configurations to forward to the Copilot SDK's
+   * `createSession()`. The SDK manages server lifecycle (spawn/connect,
+   * JSON-RPC, tool dispatch) for LLM-initiated tool calls.
+   *
+   * Format: `Record<string, MCPServerConfig>` matching the SDK's expected
+   * shape (MCPLocalServerConfig or MCPRemoteServerConfig).
+   * Uses `import('@github/copilot-sdk').MCPServerConfig` when SDK is available.
+   */
+  mcpServers?: Record<
+    string,
+    {
+      type?: string;
+      tools: string[];
+      timeout?: number;
+      command?: string;
+      args?: string[];
+      env?: Record<string, string>;
+      cwd?: string;
+      url?: string;
+      headers?: Record<string, string>;
+    }
+  >;
+  /**
+   * Optional hooks for SDK tool-call visibility (FR-021, FR-022).
+   * Forwarded to SDK `createSession({ hooks })` so tool-call activity
+   * is emitted to the CLI spinner via the activity event system.
+   *
+   * Shapes match the SDK's `SessionHooks` signatures:
+   * - `onPreToolUse(input: { toolName, toolArgs }, invocation)`
+   * - `onPostToolUse(input: { toolName, toolArgs, toolResult }, invocation)`
+   * - `onErrorOccurred(input: { error }, invocation)`
+   */
+  hooks?: {
+    onPreToolUse?: (
+      input: { toolName: string; toolArgs: unknown },
+      invocation: { sessionId: string },
+    ) => Promise<{ permissionDecision?: 'allow' | 'deny' | 'ask' } | void> | void;
+    onPostToolUse?: (
+      input: { toolName: string; toolArgs: unknown; toolResult: unknown },
+      invocation: { sessionId: string },
+    ) => Promise<void> | void;
+    onErrorOccurred?: (
+      input: { error: string; errorContext?: string; recoverable?: boolean },
+      invocation: { sessionId: string },
+    ) => Promise<void> | void;
+  };
+  /**
+   * Infinite session configuration for persistent workspaces and automatic
+   * context compaction. When enabled, sessions automatically manage context
+   * limits and persist state. Passed through to SDK `createSession()`.
+   *
+   * Recommended for Ralph Loop sessions to prevent context window exhaustion
+   * during extended multi-iteration conversations (FR-023).
+   */
+  infiniteSessions?: {
+    enabled?: boolean;
+    backgroundCompactionThreshold?: number;
+    bufferExhaustionThreshold?: number;
+  };
+  /**
+   * Callback invoked when the SDK emits `assistant.usage` events (FR-024).
+   * Called with token usage data from each model interaction.
+   * Consumers can use this for debug logging or cumulative tracking.
+   */
+  onUsage?: (usage: {
+    model: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+  }) => void;
 }
 
 /**
@@ -123,9 +195,7 @@ export async function createCopilotClient(): Promise<CopilotClient> {
     sdk = await import('@github/copilot-sdk');
   } catch (err: unknown) {
     const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `GitHub Copilot SDK (@github/copilot-sdk) is not available: ${detail}`,
-    );
+    throw new Error(`GitHub Copilot SDK (@github/copilot-sdk) is not available: ${detail}`);
   }
 
   const { CopilotClient: SdkClient, approveAll } = sdk;
@@ -137,13 +207,50 @@ export async function createCopilotClient(): Promise<CopilotClient> {
 
   return {
     async createSession(options: SessionOptions): Promise<ConversationSession> {
-      const sdkSession = await sdkClient.createSession({
+      const sessionConfig = {
         onPermissionRequest: approveAll,
         systemMessage: {
           mode: 'replace' as const,
           content: options.systemPrompt,
         },
-      });
+        // Forward MCP server configs to the SDK so it manages server lifecycle
+        // (spawn, connect, JSON-RPC dispatch) for LLM-initiated tool calls.
+        // Cast needed because our SessionOptions uses a portable shape that
+        // doesn't carry the SDK's discriminated-union literal types.
+        ...(options.mcpServers && Object.keys(options.mcpServers).length > 0
+          ? {
+              mcpServers: options.mcpServers as Record<
+                string,
+                import('@github/copilot-sdk').MCPServerConfig
+              >,
+            }
+          : {}),
+        // Forward SDK hooks for tool-call visibility (FR-021, FR-022).
+        ...(options.hooks ? { hooks: options.hooks } : {}),
+        // Forward infinite sessions config for context management (FR-023).
+        ...(options.infiniteSessions ? { infiniteSessions: options.infiniteSessions } : {}),
+      };
+
+      const sdkSession = await sdkClient.createSession(sessionConfig);
+
+      // Subscribe to assistant.usage events for token usage tracking (FR-024).
+      if (options.onUsage) {
+        const usageCb = options.onUsage;
+        sdkSession.on(
+          'assistant.usage',
+          (event: {
+            data: {
+              model: string;
+              inputTokens?: number;
+              outputTokens?: number;
+              cacheReadTokens?: number;
+              cacheWriteTokens?: number;
+            };
+          }) => {
+            usageCb(event.data);
+          },
+        );
+      }
 
       const history: CopilotMessage[] = [];
 

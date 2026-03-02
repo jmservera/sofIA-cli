@@ -349,16 +349,18 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
         io.write('No existing sessions found.\n');
         break;
       }
-      const sessionEntries = await Promise.all(
-        sessions.map(async (id) => {
-          try {
-            const session = await store.load(id);
-            return { id, display: sessionDisplayName(session), session };
-          } catch {
-            return { id, display: id, session: undefined };
-          }
-        }),
-      );
+      const sessionEntries = (
+        await Promise.all(
+          sessions.map(async (id) => {
+            try {
+              const session = await store.load(id);
+              return { id, display: sessionDisplayName(session), session };
+            } catch {
+              return { id, display: id, session: undefined };
+            }
+          }),
+        )
+      ).filter((entry) => entry.display !== entry.id);
 
       // Show session list
       io.write('\nAvailable sessions:\n');

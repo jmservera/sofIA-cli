@@ -2,7 +2,8 @@
 
 **Feature Branch**: `003-mcp-transport-integration`  
 **Created**: 2026-03-01  
-**Status**: Draft  
+**Status**: Complete  
+**Completed**: 2026-03-02  
 **Upstream Dependency**: specs/002-poc-generation/spec.md (Ralph Loop, GitHub adapter, context enricher)  
 **Input**: User description: "Implement real MCP tool invocation layer connecting McpManager to actual MCP server transports, enabling GitHub repository creation, Context7 documentation lookup, Azure architecture guidance, and web search capabilities to function in production"
 
@@ -29,7 +30,7 @@ Additionally, this feature wires the discovery phase to use web search and WorkI
 
 The following items from `specs/003-next-spec-gaps.md` are explicitly deferred to a subsequent feature spec to limit scope risk:
 
-- **Resume/checkpoint for `sofia dev`** (P2 GAP-006) — Detect existing PoC directory and resume from last iteration instead of re-scaffolding.
+- **Resume/checkpoint for `sofia dev`** (P2 GAP-006) — Detect existing PoC directory and resume from last iteration instead of re-scaffolding. _Note: SDK provides native `resumeSession(sessionId)` with state stored at `~/.copilot/session-state/` — implementation complexity is lower than originally assessed (see research.md Topic 9)._
 - **`--force` flag implementation** (P2 GAP-007) — Honor the declared `--force` CLI option to delete existing output and restart.
 - **testRunner.ts coverage hardening** (P2 GAP-008) — Add spawn-based integration tests for child process spawning, timeout, and SIGTERM/SIGKILL paths.
 - **PoC template selection** (P2 GAP-009) — Define a template registry mapping plan characteristics to scaffold templates (e.g., Python/FastAPI).
@@ -113,8 +114,19 @@ As a developer, I want the MCP transport layer to align with how the GitHub Copi
 
 **Acceptance Scenarios**:
 
-1. **Given** the Copilot SDK provides a tool-calling mechanism, **When** `McpManager.callTool()` is invoked, **Then** it routes through the SDK's tool dispatch rather than custom HTTP/stdio transport where applicable.
-2. **Given** the SDK defines agent registration patterns, **When** sofIA's discovery/ideation/design/select/plan agents are initialized, **Then** they follow SDK conventions for capability declaration and tool access.
+1. **Given** the Copilot SDK provides native `mcpServers` support in `SessionConfig`, **When** `createSession()` is called with MCP server configurations from `.vscode/mcp.json`, **Then** the SDK manages server lifecycle (spawn/connect, JSON-RPC, tool dispatch) for LLM-initiated tool calls without custom transport code.
+2. **Given** adapters (GitHub, Context7, Azure) need deterministic programmatic tool calls, **When** `McpManager.callTool()` is invoked, **Then** it routes through the custom transport layer (`StdioMcpTransport` / `HttpMcpTransport`) since the SDK's `executeToolCall` is private and cannot be called directly from application code.
+3. **Given** the SDK defines agent registration patterns, **When** sofIA's discovery/ideation/design/select/plan agents are initialized, **Then** they follow SDK conventions for capability declaration and tool access.
+
+### Dual-Lifecycle Limitation
+
+**⚠️ Known limitation**: The Copilot SDK's `mcpServers` support and the custom `McpTransport` layer manage MCP server connections independently. If the same server (e.g., `context7`) is used both by the LLM during conversation turns (SDK-managed) and by a programmatic adapter call (custom transport-managed), **two separate subprocess instances** will be spawned. This is acceptable for Feature 003 scope because:
+
+- The two paths serve fundamentally different call patterns (LLM-driven vs. deterministic).
+- MCP subprocesses are lightweight (Node.js CLI tools via npx).
+- HTTP servers (GitHub, Microsoft Docs) are stateless and unaffected.
+
+This limitation should be revisited in a future feature if subprocess resource usage becomes a concern, potentially by sharing a single subprocess instance between the SDK and custom transport layers.
 
 ---
 
@@ -157,14 +169,21 @@ As a developer, I want the MCP transport layer to align with how the GitHub Copi
 
 - **FR-014**: The discovery phase SHOULD offer web search enrichment after the user provides company and team information in Step 1.
 - **FR-015**: Web search results (company news, competitor activity, industry trends) MUST be stored in the session state for use in subsequent phases.
-- **FR-016**: WorkIQ integration MUST request explicit user permission before accessing Microsoft 365 data.
+- **FR-016**: WorkIQ integration MUST request explicit user permission before accessing Microsoft 365 data. _Note: SDK provides `onPermissionRequest` handler as an alternative — evaluated and deferred in favor of `io.prompt()` for consistency with other interactive prompts (see research.md Topic 8)._
 - **FR-017**: WorkIQ-derived insights (team collaboration patterns, documentation gaps, expertise areas) MUST be stored in the session state when the user consents.
 - **FR-018**: Both web search and WorkIQ enrichment MUST be optional — the discovery phase MUST function normally without them.
 
 #### Copilot SDK Alignment (GAP-006, GAP-007)
 
 - **FR-019**: Before implementing custom MCP transport, the team MUST research the GitHub Copilot SDK's built-in MCP support and tool-calling capabilities. Where the SDK provides native MCP integration (tool dispatch, authentication, protocol handling), the implementation MUST use the SDK's mechanisms rather than building custom transport. Custom stdio/HTTP transport MUST only be built for capabilities the SDK does not cover. This research MUST also determine the authentication model for each transport type. Findings MUST be documented in a research note under `specs/003-mcp-transport-integration/research.md`.
-- **FR-020**: Agent definitions (discovery, ideation, design, select, plan, develop) MUST be refactored to follow Copilot SDK conventions for agent registration and capability declaration. Existing code MUST be modified to align with SDK-expected patterns rather than maintaining a parallel custom dispatch system.
+- **FR-020**: Agent definitions (discovery, ideation, design, select, plan, develop) MUST be verified to follow Copilot SDK conventions for agent registration and capability declaration. Where SDK patterns (e.g., `customAgents`, `skillDirectories`) offer advantages over the current implementation, they SHOULD be evaluated and adopted if beneficial. Research findings (research.md Topic 7) confirmed no structural refactoring is currently required; SDK `customAgents` and `skillDirectories` evaluated and deferred (research.md Topic 9).
+
+#### SDK Hooks & Transparency (Constitution Principle VIII)
+
+- **FR-021**: The system MUST use the Copilot SDK's `onPreToolUse` and `onPostToolUse` hooks to emit tool-call activity events (tool name, start/end, duration) visible via the CLI spinner or activity log, satisfying Constitution Principle VIII ("Users MUST always see the current execution state"). Findings documented in research.md Topic 8.
+- **FR-022**: The system SHOULD use the Copilot SDK's `onErrorOccurred` hook to centralize error handling for LLM-conversation-path MCP failures, complementing `classifyMcpError()` which handles the custom transport path. FR-004's error classification covers programmatic adapter calls only; SDK-managed tool call errors require the `onErrorOccurred` hook.
+- **FR-023**: Ralph Loop sessions SHOULD wire the SDK's `infiniteSessions` config (with `backgroundCompactionThreshold` and `bufferExhaustionThreshold`) to prevent context window exhaustion during extended multi-iteration conversations. Without this, long Ralph Loop runs risk silently truncating important context (see research.md Topic 9).
+- **FR-024**: The system SHOULD subscribe to SDK events (e.g., `assistant.usage` for token tracking) to provide real-time progress and usage transparency in the CLI, per Constitution Principle VIII. Token counts logged at `debug` level and optionally surfaced in the CLI spinner.
 
 ### Key Entities
 
