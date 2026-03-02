@@ -54,11 +54,14 @@ export const WEB_SEARCH_TOOL_DEFINITION: ToolDefinition = {
 
 /**
  * Check if web search is configured via environment variables.
+ *
+ * Uses the new env vars (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`)
+ * instead of legacy vars (`SOFIA_FOUNDRY_AGENT_ENDPOINT`, `SOFIA_FOUNDRY_AGENT_KEY`).
  */
 export function isWebSearchConfigured(): boolean {
   return Boolean(
-    process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT &&
-    process.env.SOFIA_FOUNDRY_AGENT_KEY,
+    process.env.FOUNDRY_PROJECT_ENDPOINT &&
+    process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME,
   );
 }
 

@@ -54,3 +54,33 @@ export async function runPreflightChecks(checks: CheckMap): Promise<PreflightRes
 
   return { passed, checks: results };
 }
+
+/**
+ * Check for legacy web search env vars (FR-016).
+ *
+ * If `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` are set,
+ * returns a fail result with migration instructions.
+ */
+export async function checkLegacyWebSearchEnvVars(): Promise<PreflightCheck> {
+  const legacyEndpoint = process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT;
+  const legacyKey = process.env.SOFIA_FOUNDRY_AGENT_KEY;
+
+  if (legacyEndpoint || legacyKey) {
+    return {
+      name: 'legacy-web-search-env',
+      status: 'fail',
+      message:
+        'Legacy web search env vars detected. ' +
+        'Migrate: replace SOFIA_FOUNDRY_AGENT_ENDPOINT with FOUNDRY_PROJECT_ENDPOINT ' +
+        'and remove SOFIA_FOUNDRY_AGENT_KEY (API key auth is no longer used). ' +
+        'See docs/environment.md',
+      required: true,
+    };
+  }
+
+  return {
+    name: 'legacy-web-search-env',
+    status: 'pass',
+    message: 'No legacy web search env vars detected',
+  };
+}

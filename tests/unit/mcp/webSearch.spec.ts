@@ -27,27 +27,35 @@ describe('web.search tool', () => {
   });
 
   describe('isWebSearchConfigured', () => {
-    it('returns true when both endpoint and key are set', () => {
-      process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT = 'https://foundry.example.com';
-      process.env.SOFIA_FOUNDRY_AGENT_KEY = 'test-key-123';
+    it('returns true when both project endpoint and model deployment name are set', () => {
+      process.env.FOUNDRY_PROJECT_ENDPOINT = 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
+      process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME = 'gpt-4.1-mini';
       expect(isWebSearchConfigured()).toBe(true);
     });
 
-    it('returns false when endpoint is missing', () => {
-      delete process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT;
-      process.env.SOFIA_FOUNDRY_AGENT_KEY = 'test-key-123';
+    it('returns false when project endpoint is missing', () => {
+      delete process.env.FOUNDRY_PROJECT_ENDPOINT;
+      process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME = 'gpt-4.1-mini';
       expect(isWebSearchConfigured()).toBe(false);
     });
 
-    it('returns false when key is missing', () => {
-      process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT = 'https://foundry.example.com';
-      delete process.env.SOFIA_FOUNDRY_AGENT_KEY;
+    it('returns false when model deployment name is missing', () => {
+      process.env.FOUNDRY_PROJECT_ENDPOINT = 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
+      delete process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME;
       expect(isWebSearchConfigured()).toBe(false);
     });
 
     it('returns false when both are missing', () => {
-      delete process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT;
-      delete process.env.SOFIA_FOUNDRY_AGENT_KEY;
+      delete process.env.FOUNDRY_PROJECT_ENDPOINT;
+      delete process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME;
+      expect(isWebSearchConfigured()).toBe(false);
+    });
+
+    it('returns false when only legacy vars are set (T019)', () => {
+      process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT = 'https://foundry.example.com';
+      process.env.SOFIA_FOUNDRY_AGENT_KEY = 'test-key-123';
+      delete process.env.FOUNDRY_PROJECT_ENDPOINT;
+      delete process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME;
       expect(isWebSearchConfigured()).toBe(false);
     });
   });

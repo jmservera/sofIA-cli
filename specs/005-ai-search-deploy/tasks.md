@@ -40,9 +40,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Update `isWebSearchConfigured()` in src/mcp/webSearch.ts to check new env vars (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`) instead of legacy vars
-- [ ] T005 [P] Add legacy env var detection to preflight checks in src/cli/preflight.ts — fail with migration error message if `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` are set (FR-016)
-- [ ] T006 [P] Update docs/environment.md — replace legacy env var documentation with new `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` vars, document `DefaultAzureCredential` auth model
+- [x] T004 Update `isWebSearchConfigured()` in src/mcp/webSearch.ts to check new env vars (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`) instead of legacy vars
+- [x] T005 [P] Add legacy env var detection to preflight checks in src/cli/preflight.ts — fail with migration error message if `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` are set (FR-016)
+- [x] T006 [P] Update docs/environment.md — replace legacy env var documentation with new `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` vars, document `DefaultAzureCredential` auth model
 
 **Checkpoint**: Foundation ready — legacy env vars rejected, new env var pattern established, `npm run typecheck` and `npm run lint` pass
 
