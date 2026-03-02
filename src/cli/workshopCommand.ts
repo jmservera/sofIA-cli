@@ -16,6 +16,7 @@ import { createLoopIO } from './ioContext.js';
 import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../phases/phaseHandlers.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
+import { destroyWebSearchSession } from '../mcp/webSearch.js';
 
 export interface WorkshopCommandOptions {
   session?: string;
@@ -221,6 +222,15 @@ async function runWorkshop(
 }
 
 export async function workshopCommand(opts: WorkshopCommandOptions): Promise<void> {
+  try {
+    await workshopCommandInner(opts);
+  } finally {
+    // Clean up ephemeral web search agent on workshop exit (FR-015)
+    await destroyWebSearchSession();
+  }
+}
+
+async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void> {
   const store = createDefaultStore();
   const io = createLoopIO({
     json: opts.json,

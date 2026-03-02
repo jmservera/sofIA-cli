@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main":"dist/src/cli/index.js",
-  "bin":{
+  "main": "dist/src/cli/index.js",
+  "bin": {
     "sofia": "dist/src/cli/index.js"
   },
   "engines": {
@@ -30,6 +30,9 @@
     "sofia": "npm run sofiacli"
   },
   "dependencies": {
+    "@azure/ai-projects": "^2.0.0-beta.5",
+    "@azure/identity": "^4.13.0",
+    "@github/copilot-sdk": "^0.1.28",
     "@inquirer/prompts": "^8.3.0",
     "chalk": "^5.2.0",
     "cli-table3": "^0.6.3",
@@ -38,8 +41,7 @@
     "marked-terminal": "^6.2.0",
     "ora": "^7.0.1",
     "pino": "^8.17.2",
-    "zod": "^4.3.6",
-    "@github/copilot-sdk": "^0.1.28"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
