@@ -145,12 +145,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T032 [P] [US4] Unit test for teardown script parameter validation — required --resource-group flag, exit code 0 when group not found, exit code 1 on prereq failure in tests/unit/infraTeardown.spec.ts per contracts/web-search-tool.md teardown.sh contract
+- [x] T032 [P] [US4] Unit test for teardown script parameter validation — required --resource-group flag, exit code 0 when group not found, exit code 1 on prereq failure in tests/unit/infraTeardown.spec.ts per contracts/web-search-tool.md teardown.sh contract
 
 ### Implementation for User Story 4
 
-- [ ] T033 [US4] Implement teardown script `infra/teardown.sh` — parse --resource-group flag, check az CLI prerequisites, verify resource group exists (informational exit 0 if not), prompt for confirmation (unless --yes), execute `az group delete --yes --no-wait`, print confirmation per contracts/web-search-tool.md teardown.sh contract
-- [ ] T034 [US4] Make `infra/teardown.sh` executable (chmod +x) and add shebang, set `set -euo pipefail`, handle exit codes (0=success/not-found, 1=prereq fail, 2=deletion fail)
+- [x] T033 [US4] Implement teardown script `infra/teardown.sh` — parse --resource-group flag, check az CLI prerequisites, verify resource group exists (informational exit 0 if not), prompt for confirmation (unless --yes), execute `az group delete --yes --no-wait`, print confirmation per contracts/web-search-tool.md teardown.sh contract
+- [x] T034 [US4] Make `infra/teardown.sh` executable (chmod +x) and add shebang, set `set -euo pipefail`, handle exit codes (0=success/not-found, 1=prereq fail, 2=deletion fail)
 
 **Checkpoint**: User Story 4 complete — teardown script deletes resource group cleanly, handles non-existent groups gracefully. Test in T032 passes.
 
@@ -160,11 +160,11 @@
 
 **Purpose**: Documentation, validation, cleanup across all stories
 
-- [ ] T035 [P] Update README.md — add "Web Search Setup" section with link to quickstart.md and brief deployment instructions
-- [ ] T036 [P] Verify quickstart.md end-to-end flow matches final implementation — deploy → configure → verify → teardown in specs/005-ai-search-deploy/quickstart.md
-- [ ] T037 Run `npm run typecheck` and fix any remaining TypeScript errors across all modified files
-- [ ] T038 Run `npm run lint` and fix any ESLint `import/order` warnings across all modified files
-- [ ] T039 Run full test suite (`npm test`) and ensure no regressions in existing tests
+- [x] T035 [P] Update README.md — add "Web Search Setup" section with link to quickstart.md and brief deployment instructions
+- [x] T036 [P] Verify quickstart.md end-to-end flow matches final implementation — deploy → configure → verify → teardown in specs/005-ai-search-deploy/quickstart.md
+- [x] T037 Run `npm run typecheck` and fix any remaining TypeScript errors across all modified files
+- [x] T038 Run `npm run lint` and fix any ESLint `import/order` warnings across all modified files
+- [x] T039 Run full test suite (`npm test`) and ensure no regressions in existing tests
 
 ---
 

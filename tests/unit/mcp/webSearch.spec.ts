@@ -11,7 +11,7 @@
  * - Tool definition shape for Copilot SDK registration
  * - Successful search returning structured results
  */
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import {
   createWebSearchTool,

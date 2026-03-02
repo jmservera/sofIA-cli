@@ -144,7 +144,6 @@ interface AgentSessionState {
 
 let sessionState: AgentSessionState | null = null;
 let sessionDeps: AgentSessionDeps | null = null;
-let sessionConfig: WebSearchConfig | null = null;
 
 /**
  * Create default dependencies using the real Azure SDK.
@@ -208,7 +207,6 @@ export function createWebSearchTool(
   config: WebSearchConfig,
   deps?: AgentSessionDeps,
 ): (query: string) => Promise<WebSearchResult> {
-  sessionConfig = config;
   sessionDeps = deps ?? null;
 
   return async (query: string): Promise<WebSearchResult> => {
@@ -280,7 +278,6 @@ export async function destroyWebSearchSession(): Promise<void> {
 
   // Reset state first so subsequent calls are no-ops
   sessionState = null;
-  sessionConfig = null;
 
   try {
     await sessionDeps.deleteConversation(openAIClient, conversationId);
