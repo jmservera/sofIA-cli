@@ -40,8 +40,8 @@ let cachedDataset: CardsDataset | null = null;
 export async function loadCardsDataset(): Promise<CardsDataset> {
   if (cachedDataset) return cachedDataset;
 
-  const filePath = join(__dirname, "cards.json");
-  const raw = await readFile(filePath, "utf-8");
+  const filePath = join(__dirname, 'cards.json');
+  const raw = await readFile(filePath, 'utf-8');
   const parsed = JSON.parse(raw) as unknown;
   cachedDataset = cardsDatasetSchema.parse(parsed);
   return cachedDataset;

@@ -27,9 +27,21 @@ function createPopulatedSession(): WorkshopSession {
       { phase: 'Discover', sequence: 1, role: 'user', content: 'Business info', timestamp: now },
       { phase: 'Discover', sequence: 2, role: 'assistant', content: 'Got it', timestamp: now },
       { phase: 'Ideate', sequence: 3, role: 'user', content: 'Ideas please', timestamp: now },
-      { phase: 'Ideate', sequence: 4, role: 'assistant', content: 'Here are ideas', timestamp: now },
+      {
+        phase: 'Ideate',
+        sequence: 4,
+        role: 'assistant',
+        content: 'Here are ideas',
+        timestamp: now,
+      },
       { phase: 'Design', sequence: 5, role: 'user', content: 'Evaluate', timestamp: now },
-      { phase: 'Design', sequence: 6, role: 'assistant', content: 'Evaluation done', timestamp: now },
+      {
+        phase: 'Design',
+        sequence: 6,
+        role: 'assistant',
+        content: 'Evaluation done',
+        timestamp: now,
+      },
       { phase: 'Select', sequence: 7, role: 'user', content: 'Pick one', timestamp: now },
       { phase: 'Select', sequence: 8, role: 'assistant', content: 'Selected', timestamp: now },
     ],
@@ -41,9 +53,7 @@ function createPopulatedSession(): WorkshopSession {
       activities: [{ id: 'a1', name: 'Activity' }],
       edges: [],
     },
-    ideas: [
-      { id: 'i1', title: 'Idea 1', description: 'First idea', workflowStepIds: ['a1'] },
-    ],
+    ideas: [{ id: 'i1', title: 'Idea 1', description: 'First idea', workflowStepIds: ['a1'] }],
     evaluation: {
       method: 'feasibility-value-matrix',
       ideas: [{ ideaId: 'i1', feasibility: 8, value: 9 }],
@@ -55,9 +65,7 @@ function createPopulatedSession(): WorkshopSession {
       confirmedAt: now,
     },
     plan: {
-      milestones: [
-        { id: 'm1', title: 'M1', items: ['First milestone'] },
-      ],
+      milestones: [{ id: 'm1', title: 'M1', items: ['First milestone'] }],
     },
   };
 }
@@ -148,7 +156,7 @@ describe('sessionManager', () => {
 
       // Only Discover turns should remain
       const turns = result.session.turns!;
-      expect(turns.every(t => t.phase === 'Discover')).toBe(true);
+      expect(turns.every((t) => t.phase === 'Discover')).toBe(true);
       expect(turns.length).toBe(2);
     });
 

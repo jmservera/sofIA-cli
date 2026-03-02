@@ -92,9 +92,7 @@ export class TestRunner {
 
     // Truncate rawOutput to max chars from the end
     const truncatedOutput =
-      rawOutput.length > MAX_RAW_OUTPUT_CHARS
-        ? rawOutput.slice(-MAX_RAW_OUTPUT_CHARS)
-        : rawOutput;
+      rawOutput.length > MAX_RAW_OUTPUT_CHARS ? rawOutput.slice(-MAX_RAW_OUTPUT_CHARS) : rawOutput;
 
     return this.parseOutput(truncatedOutput, startTime, rawOutput);
   }
@@ -102,10 +100,7 @@ export class TestRunner {
   /**
    * Spawn test process and collect output.
    */
-  private spawnTests(
-    outputDir: string,
-    onTimeout: (timed: boolean) => void,
-  ): Promise<string> {
+  private spawnTests(outputDir: string, onTimeout: (timed: boolean) => void): Promise<string> {
     return new Promise((resolve, reject) => {
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];

@@ -27,6 +27,7 @@ Starts or resumes the governed workshop flow.
 - In non-interactive mode, requires sufficient args or input file (defined in implementation).
 
 Outputs:
+
 - Human: streamed narrative + activity stream (stderr).
 - JSON mode: JSON events only on stdout.
 
@@ -35,6 +36,7 @@ Outputs:
 Displays session status and next expected action.
 
 Outputs:
+
 - Human: concise summary.
 - JSON: `{ sessionId, phase, status, updatedAt, nextAction }`.
 
@@ -56,4 +58,3 @@ Developer utilities (may be hidden) for local PoC scaffolding and diagnostics.
   - `error.code`
   - `error.message`
   - `error.details?`
-

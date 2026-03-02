@@ -162,9 +162,7 @@ export async function developCommand(
       }
     }
     if (!json) {
-      io.writeActivity(
-        'Cleared existing output directory and session state (--force)',
-      );
+      io.writeActivity('Cleared existing output directory and session state (--force)');
     }
   }
 

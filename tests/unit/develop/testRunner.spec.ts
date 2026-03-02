@@ -27,7 +27,9 @@ class FakeTestRunner extends TestRunner {
   }
 
   // Override the run method to inject fake output
-  async run(_outputDir: string): Promise<import('../../../src/shared/schemas/session.js').TestResults> {
+  async run(
+    _outputDir: string,
+  ): Promise<import('../../../src/shared/schemas/session.js').TestResults> {
     if (this.fakeError) throw this.fakeError;
 
     if (this.fakeTimedOut) {

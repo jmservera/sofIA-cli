@@ -33,15 +33,7 @@ function validSession(overrides: Partial<WorkshopSession> = {}): unknown {
 
 describe('Phase', () => {
   it('contains all seven governed phases', () => {
-    const expected = [
-      'Discover',
-      'Ideate',
-      'Design',
-      'Select',
-      'Plan',
-      'Develop',
-      'Complete',
-    ];
+    const expected = ['Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop', 'Complete'];
     expect(Phase).toEqual(expected);
   });
 });
@@ -72,13 +64,17 @@ describe('workshopSessionSchema', () => {
 
   it('rejects invalid phase value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ phase: 'InvalidPhase' as (typeof Phase)[number] })),
+      workshopSessionSchema.parse(
+        validSession({ phase: 'InvalidPhase' as (typeof Phase)[number] }),
+      ),
     ).toThrow();
   });
 
   it('rejects invalid status value', () => {
     expect(() =>
-      workshopSessionSchema.parse(validSession({ status: 'Nope' as (typeof SessionStatus)[number] })),
+      workshopSessionSchema.parse(
+        validSession({ status: 'Nope' as (typeof SessionStatus)[number] }),
+      ),
     ).toThrow();
   });
 
@@ -211,9 +207,7 @@ describe('workshopSessionSchema', () => {
     const result = workshopSessionSchema.parse(
       validSession({
         plan: {
-          milestones: [
-            { id: 'm1', title: 'Phase 1', items: ['Setup', 'Build'] },
-          ],
+          milestones: [{ id: 'm1', title: 'Phase 1', items: ['Setup', 'Build'] }],
         },
       }),
     );
@@ -276,9 +270,7 @@ describe('workshopSessionSchema', () => {
     const result = workshopSessionSchema.parse(
       validSession({
         cards: {
-          selectedCards: [
-            { id: 'extract-information', title: 'Extract Information' },
-          ],
+          selectedCards: [{ id: 'extract-information', title: 'Extract Information' }],
           scores: [
             {
               cardId: 'extract-information',
@@ -294,9 +286,7 @@ describe('workshopSessionSchema', () => {
   // ── T061: name field tests ─────────────────────────────────────────────────
 
   it('accepts optional name field as string', () => {
-    const result = workshopSessionSchema.parse(
-      validSession({ name: 'Logistics AI Routing' }),
-    );
+    const result = workshopSessionSchema.parse(validSession({ name: 'Logistics AI Routing' }));
     expect((result as Record<string, unknown>).name).toBe('Logistics AI Routing');
   });
 

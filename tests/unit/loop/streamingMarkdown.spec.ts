@@ -33,7 +33,10 @@ function makeSession(overrides?: Partial<WorkshopSession>): WorkshopSession {
   };
 }
 
-function makeIO(inputs: (string | null)[], opts?: { json?: boolean; tty?: boolean }): LoopIO & { _written: string[]; _activities: string[] } {
+function makeIO(
+  inputs: (string | null)[],
+  opts?: { json?: boolean; tty?: boolean },
+): LoopIO & { _written: string[]; _activities: string[] } {
   let inputIndex = 0;
   const written: string[] = [];
   const activities: string[] = [];
@@ -108,9 +111,7 @@ describe('Incremental streaming markdown rendering (T080)', () => {
   });
 
   it('writes raw text in non-TTY mode without markdown rendering', async () => {
-    const client = createFakeCopilotClient([
-      { role: 'assistant', content: '## Raw heading' },
-    ]);
+    const client = createFakeCopilotClient([{ role: 'assistant', content: '## Raw heading' }]);
 
     const io = makeIO(['test'], { tty: false, json: false });
 
@@ -130,9 +131,7 @@ describe('Incremental streaming markdown rendering (T080)', () => {
   });
 
   it('preserves raw markdown in JSON mode output', async () => {
-    const client = createFakeCopilotClient([
-      { role: 'assistant', content: '**Bold** text' },
-    ]);
+    const client = createFakeCopilotClient([{ role: 'assistant', content: '**Bold** text' }]);
 
     const io = makeIO(['test'], { tty: false, json: true });
 
@@ -170,7 +169,7 @@ describe('Incremental streaming markdown rendering (T080)', () => {
     const result = await loop.run();
 
     // Turn history should contain raw markdown, not ANSI escape codes
-    const assistantTurn = result.turns?.find(t => t.role === 'assistant');
+    const assistantTurn = result.turns?.find((t) => t.role === 'assistant');
     expect(assistantTurn).toBeDefined();
     expect(assistantTurn!.content).toBe('## Phase Output\n\nContent here.');
     // Should NOT contain ANSI escape sequences

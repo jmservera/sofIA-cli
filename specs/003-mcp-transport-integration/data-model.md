@@ -10,14 +10,14 @@
 
 This feature introduces three new logical entities and extends two existing ones:
 
-| Entity | Status | Module |
-|--------|--------|--------|
-| `McpTransport` | **NEW** | `src/mcp/mcpTransport.ts` |
-| `ToolCallRequest` | **NEW** | `src/mcp/mcpTransport.ts` |
-| `ToolCallResponse` | **NEW** | `src/mcp/mcpTransport.ts` |
-| `DiscoveryEnrichment` | **NEW** | `src/shared/schemas/session.ts` |
-| `McpManager` | **EXTENDED** | `src/mcp/mcpManager.ts` |
-| `DiscoveryState` | **EXTENDED** | `src/shared/schemas/session.ts` |
+| Entity                | Status       | Module                          |
+| --------------------- | ------------ | ------------------------------- |
+| `McpTransport`        | **NEW**      | `src/mcp/mcpTransport.ts`       |
+| `ToolCallRequest`     | **NEW**      | `src/mcp/mcpTransport.ts`       |
+| `ToolCallResponse`    | **NEW**      | `src/mcp/mcpTransport.ts`       |
+| `DiscoveryEnrichment` | **NEW**      | `src/shared/schemas/session.ts` |
+| `McpManager`          | **EXTENDED** | `src/mcp/mcpManager.ts`         |
+| `DiscoveryState`      | **EXTENDED** | `src/shared/schemas/session.ts` |
 
 ---
 
@@ -33,14 +33,14 @@ This feature introduces three new logical entities and extends two existing ones
  * A transport represents a live connection to one MCP server.
  */
 export interface McpTransport {
-  /** 
-   * Invoke a named tool on this MCP server. 
+  /**
+   * Invoke a named tool on this MCP server.
    * Throws McpTransportError on failure (callers use classifyMcpError).
    */
   callTool(
-    toolName: string, 
-    args: Record<string, unknown>, 
-    timeoutMs: number
+    toolName: string,
+    args: Record<string, unknown>,
+    timeoutMs: number,
   ): Promise<ToolCallResponse>;
 
   /** Whether the transport is currently connected and able to accept calls. */
@@ -66,11 +66,13 @@ export interface McpTransport {
 | `connected` | `boolean` | Whether the initialization handshake completed |
 
 **Lifecycle**:
+
 1. `connect()`: `spawn()` subprocess, send `initialize` JSON-RPC request, wait for `initialized` response. Sets `connected = true`.
 2. `callTool()`: Generate next id, create `PendingRequest` with resolve/reject + timeout, write JSON-RPC request to `process.stdin`, wait for matching response id on `process.stdout`.
 3. `disconnect()`: Send `shutdown` request (optional), then `process.kill()`, clear pending requests with `McpTransportError`.
 
 **Validation rules**:
+
 - Subprocess must respond to `initialize` within 5 seconds or `connect()` throws.
 - Malformed stdout (non-JSON lines) are silently skipped (debug-logged).
 - If subprocess exits unexpectedly, all pending requests are rejected with `connection-refused` class error.
@@ -87,12 +89,14 @@ export interface McpTransport {
 | `nextId` | `number` | Auto-incrementing request id |
 
 **Behavior**:
+
 - Each `callTool()` makes one `fetch()` POST to `config.url`.
 - `AbortController` enforces `timeoutMs`.
 - `Authorization: Bearer <GITHUB_TOKEN>` added when `process.env.GITHUB_TOKEN` is set.
 - No persistent connection (`isConnected()` always returns `true` if the URL is reachable).
 
 **Validation rules**:
+
 - HTTP 4xx responses with status 401/403 → `auth-failure` error class.
 - HTTP 5xx responses → `unknown` error class (not retried).
 - Non-JSON response body → `unknown` error class.
@@ -112,8 +116,8 @@ export interface ToolCallRequest {
   toolName: string;
   /** Tool arguments — must match the tool's declared JSON Schema */
   args: Record<string, unknown>;
-  /** 
-   * Timeout in milliseconds. 
+  /**
+   * Timeout in milliseconds.
    * Default: 30_000 for query tools, 60_000 for repo operations.
    */
   timeoutMs?: number;
@@ -126,6 +130,7 @@ export interface ToolCallRequest {
 ```
 
 **Validation rules**:
+
 - `serverName` must be a key in the loaded `McpConfig.servers` — throws `Error` if unknown.
 - `toolName` must be a non-empty string.
 - `args` must be a plain object (no prototype chain, no Functions).
@@ -139,8 +144,8 @@ export interface ToolCallRequest {
 
 ```typescript
 export interface ToolCallResponse {
-  /** 
-   * The tool's result content. For MCP protocol, this is the parsed 
+  /**
+   * The tool's result content. For MCP protocol, this is the parsed
    * `result.content[0].text` value (or the full `result` object if no content array).
    */
   content: Record<string, unknown> | string;
@@ -152,6 +157,7 @@ export interface ToolCallResponse {
 ```
 
 **Validation rules**:
+
 - If the MCP JSON-RPC response contains `error`, throw `McpTransportError` with the error message.
 - If `result.content` is an array, use `content[0].text` as the content (standard MCP protocol format).
 - If `result.content` is an object (some servers return directly), use it as-is.
@@ -178,14 +184,16 @@ export const DiscoveryEnrichmentSchema = z.object({
   /** Industry trend descriptions */
   industryTrends: z.array(z.string()).optional(),
   /** WorkIQ-derived team insights (only present if user consented) */
-  workiqInsights: z.object({
-    /** Identified team skill areas */
-    teamExpertise: z.array(z.string()).optional(),
-    /** Meeting/communication patterns identified */
-    collaborationPatterns: z.array(z.string()).optional(),
-    /** Areas lacking internal documentation */
-    documentationGaps: z.array(z.string()).optional(),
-  }).optional(),
+  workiqInsights: z
+    .object({
+      /** Identified team skill areas */
+      teamExpertise: z.array(z.string()).optional(),
+      /** Meeting/communication patterns identified */
+      collaborationPatterns: z.array(z.string()).optional(),
+      /** Areas lacking internal documentation */
+      documentationGaps: z.array(z.string()).optional(),
+    })
+    .optional(),
   /** ISO 8601 timestamp when enrichment was collected */
   enrichedAt: z.string().optional(),
   /** Which sources were queried ('websearch', 'workiq') */
@@ -209,6 +217,7 @@ DiscoveryEnrichment states:
 ```
 
 **Validation rules**:
+
 - All fields are optional; a completely empty `DiscoveryEnrichment` is valid (means enrichment was attempted but returned no results or was declined).
 - `enrichedAt` must be a valid ISO 8601 string when present.
 - `sourcesUsed` entries must be lowercase strings (e.g., `'websearch'`, `'workiq'`).
@@ -222,10 +231,10 @@ DiscoveryEnrichment states:
 
 ### New Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `transports` | `Map<string, McpTransport>` | One transport per connected server name |
-| `defaultTimeouts` | `Record<string, number>` | Default timeout per server (30s or 60s) |
+| Field             | Type                        | Description                             |
+| ----------------- | --------------------------- | --------------------------------------- |
+| `transports`      | `Map<string, McpTransport>` | One transport per connected server name |
+| `defaultTimeouts` | `Record<string, number>`    | Default timeout per server (30s or 60s) |
 
 ### New Methods
 
@@ -234,13 +243,13 @@ DiscoveryEnrichment states:
  * Call a tool on a named MCP server.
  * Creates and caches a transport for the server on first call.
  * Applies retry policy for transient errors.
- * 
+ *
  * @throws Error if serverName not in config
  * @throws McpTransportError if tool call fails after retries
  */
 async callTool(
   serverName: string,
-  toolName: string, 
+  toolName: string,
   args: Record<string, unknown>,
   options?: { timeoutMs?: number; retryOnTransient?: boolean }
 ): Promise<Record<string, unknown>>;

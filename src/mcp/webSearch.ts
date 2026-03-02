@@ -56,10 +56,7 @@ export const WEB_SEARCH_TOOL_DEFINITION: ToolDefinition = {
  * Check if web search is configured via environment variables.
  */
 export function isWebSearchConfigured(): boolean {
-  return Boolean(
-    process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT &&
-    process.env.SOFIA_FOUNDRY_AGENT_KEY,
-  );
+  return Boolean(process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT && process.env.SOFIA_FOUNDRY_AGENT_KEY);
 }
 
 // ── Tool factory ─────────────────────────────────────────────────────────────
@@ -83,7 +80,7 @@ export function createWebSearchTool(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify({ query }),
       });
@@ -96,7 +93,7 @@ export function createWebSearchTool(
         };
       }
 
-      const data = await response.json() as Record<string, unknown>;
+      const data = (await response.json()) as Record<string, unknown>;
 
       // Validate response shape
       if (!Array.isArray(data.results)) {
@@ -107,16 +104,14 @@ export function createWebSearchTool(
         };
       }
 
-      const results: WebSearchResultItem[] = (data.results as unknown[]).map(
-        (item: unknown) => {
-          const r = item as Record<string, unknown>;
-          return {
-            title: String(r.title ?? ''),
-            url: String(r.url ?? ''),
-            snippet: String(r.snippet ?? ''),
-          };
-        },
-      );
+      const results: WebSearchResultItem[] = (data.results as unknown[]).map((item: unknown) => {
+        const r = item as Record<string, unknown>;
+        return {
+          title: String(r.title ?? ''),
+          url: String(r.url ?? ''),
+          snippet: String(r.snippet ?? ''),
+        };
+      });
 
       const sources = Array.isArray(data.sources)
         ? (data.sources as unknown[]).map(String)

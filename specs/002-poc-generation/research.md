@@ -54,11 +54,11 @@ The core concept is simple: **a `while true` loop that repeatedly feeds the same
 
 The canonical implementation uses three termination mechanisms:
 
-| Condition | Mechanism | Priority |
-|-----------|-----------|----------|
+| Condition              | Mechanism                                                                          | Priority           |
+| ---------------------- | ---------------------------------------------------------------------------------- | ------------------ |
 | **Completion promise** | LLM outputs `<promise>EXACT_TEXT</promise>` tag; stop hook does exact string match | Primary (semantic) |
-| **Max iterations** | Counter in state file; stop hook checks `iteration >= max_iterations` | Safety net |
-| **State file removal** | User runs `/cancel-ralph` or hook detects corruption | Manual override |
+| **Max iterations**     | Counter in state file; stop hook checks `iteration >= max_iterations`              | Safety net         |
+| **State file removal** | User runs `/cancel-ralph` or hook detects corruption                               | Manual override    |
 
 #### State File Format
 
@@ -67,12 +67,13 @@ The canonical implementation uses three termination mechanisms:
 active: true
 iteration: 1
 max_iterations: 10
-completion_promise: "All tests passing"
-started_at: "2026-02-27T14:30:00Z"
+completion_promise: 'All tests passing'
+started_at: '2026-02-27T14:30:00Z'
 ---
 
 Build a REST API for todos.
 When complete:
+
 - All CRUD endpoints working
 - Tests passing (coverage > 80%)
 - Output: <promise>All tests passing</promise>
@@ -81,12 +82,14 @@ When complete:
 #### Feedback Mechanism
 
 **Key insight**: The feedback is NOT output-to-input piping. Instead:
+
 - The prompt stays the same every iteration
 - The LLM's work **persists in files on disk**
 - Each iteration, the LLM **reads its own prior work** from the filesystem
 - This creates a self-referential improvement loop via file-system state
 
 The stop hook outputs a JSON `block` decision:
+
 ```json
 {
   "decision": "block",
@@ -99,13 +102,13 @@ The stop hook outputs a JSON `block` decision:
 
 For sofIA's Develop phase, we need to **internalize** the Ralph loop rather than using external bash hooks. Key differences from the canonical pattern:
 
-| Aspect | Canonical (Claude Code) | sofIA Adaptation |
-|--------|------------------------|-------------------|
-| Loop mechanism | Bash `while true` / Stop hook | TypeScript `while` loop in `ralphLoop.ts` |
-| Feedback | File system persistence | File system + structured `PocIteration` in session |
-| Prompt | Fixed markdown file | Dynamic, enriched with test failure context |
-| Termination | Promise tag + max iterations | Tests passing + max iterations + user abort |
-| State | `.claude/ralph-loop.local.md` | `WorkshopSession.poc.iterations[]` |
+| Aspect         | Canonical (Claude Code)       | sofIA Adaptation                                   |
+| -------------- | ----------------------------- | -------------------------------------------------- |
+| Loop mechanism | Bash `while true` / Stop hook | TypeScript `while` loop in `ralphLoop.ts`          |
+| Feedback       | File system persistence       | File system + structured `PocIteration` in session |
+| Prompt         | Fixed markdown file           | Dynamic, enriched with test failure context        |
+| Termination    | Promise tag + max iterations  | Tests passing + max iterations + user abort        |
+| State          | `.claude/ralph-loop.local.md` | `WorkshopSession.poc.iterations[]`                 |
 
 **Critical enhancement**: Unlike the canonical Ralph loop where the prompt never changes, sofIA's adaptation should **inject test failure output** into subsequent prompts. This is closer to how the `skill-creator` plugin's `run_loop.py` works — evaluation results from iteration N feed into the improvement prompt for iteration N+1.
 
@@ -185,9 +188,7 @@ async function runTests(cwd: string, timeout = 60_000): Promise<TestResult> {
           failed: code === 0 ? 0 : 1,
           skipped: 0,
           duration: 0,
-          failures: code !== 0
-            ? [{ name: 'unknown', message: stderr || stdout }]
-            : [],
+          failures: code !== 0 ? [{ name: 'unknown', message: stderr || stdout }] : [],
         });
       }
     });
@@ -201,24 +202,24 @@ async function runTests(cwd: string, timeout = 60_000): Promise<TestResult> {
 
 #### spawn vs exec
 
-| Factor | `spawn` | `exec` |
-|--------|---------|--------|
-| Buffer limit | **No limit** (streams) | 1MB default `maxBuffer` |
-| Streaming | Yes — can process real-time | No — waits for completion |
-| Timeout | Built-in `timeout` option | Built-in `timeout` option |
-| Signal handling | Direct `child.kill()` | Same via returned child |
-| **Verdict** | **Preferred** | Acceptable for small output |
+| Factor          | `spawn`                     | `exec`                      |
+| --------------- | --------------------------- | --------------------------- |
+| Buffer limit    | **No limit** (streams)      | 1MB default `maxBuffer`     |
+| Streaming       | Yes — can process real-time | No — waits for completion   |
+| Timeout         | Built-in `timeout` option   | Built-in `timeout` option   |
+| Signal handling | Direct `child.kill()`       | Same via returned child     |
+| **Verdict**     | **Preferred**               | Acceptable for small output |
 
 Use `spawn` because test output can be large (especially with failure stacks).
 
 #### JSON Reporters by Test Runner
 
-| Runner | JSON Flag | Output |
-|--------|-----------|--------|
-| **Vitest** | `--reporter=json` | `{ numPassedTests, numFailedTests, testResults[] }` |
-| **Jest** | `--json` | Same format (Vitest is Jest-compatible) |
-| **Node test runner** | `--test-reporter=spec` | TAP output (parse with `tap-parser`) |
-| **TAP** | Various | Use `tap-parser` npm package to parse |
+| Runner               | JSON Flag              | Output                                              |
+| -------------------- | ---------------------- | --------------------------------------------------- |
+| **Vitest**           | `--reporter=json`      | `{ numPassedTests, numFailedTests, testResults[] }` |
+| **Jest**             | `--json`               | Same format (Vitest is Jest-compatible)             |
+| **Node test runner** | `--test-reporter=spec` | TAP output (parse with `tap-parser`)                |
+| **TAP**              | Various                | Use `tap-parser` npm package to parse               |
 
 **Recommendation**: Use Vitest JSON reporter since the project already uses Vitest. Fall back to exit-code parsing if JSON fails.
 
@@ -227,8 +228,8 @@ Use `spawn` because test output can be large (especially with failure stacks).
 ```typescript
 const child = spawn('npx', ['vitest', 'run', '--reporter=json'], {
   cwd,
-  timeout: 60_000,        // Kill after 60s
-  killSignal: 'SIGTERM',  // Graceful first
+  timeout: 60_000, // Kill after 60s
+  killSignal: 'SIGTERM', // Graceful first
 });
 
 // Belt-and-suspenders: hard kill after grace period
@@ -242,6 +243,7 @@ child.on('close', () => clearTimeout(hardKill));
 #### Environment Variables
 
 Set these to prevent interactive/hanging behavior:
+
 ```typescript
 env: {
   ...process.env,
@@ -279,16 +281,16 @@ The GitHub MCP server at `https://api.githubcopilot.com/mcp/` provides tools via
 
 #### Available Tools (relevant subset)
 
-| Tool | Description |
-|------|-------------|
-| `create_repository` | Create a new GitHub repository |
+| Tool                    | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `create_repository`     | Create a new GitHub repository           |
 | `create_or_update_file` | Create or update a single file in a repo |
-| `push_files` | Push multiple files in a single commit |
-| `create_branch` | Create a new branch |
-| `create_pull_request` | Open a PR |
-| `search_repositories` | Search existing repos |
-| `get_file_contents` | Read file from repo |
-| `list_branches` | List branches |
+| `push_files`            | Push multiple files in a single commit   |
+| `create_branch`         | Create a new branch                      |
+| `create_pull_request`   | Open a PR                                |
+| `search_repositories`   | Search existing repos                    |
+| `get_file_contents`     | Read file from repo                      |
+| `list_branches`         | List branches                            |
 
 #### Tool Calling Pattern via Copilot SDK
 
@@ -384,11 +386,16 @@ interface ScaffoldContext {
 const SCAFFOLD_FILES: ScaffoldFile[] = [
   {
     relativePath: 'package.json',
-    content: (ctx) => JSON.stringify({
-      name: ctx.projectName,
-      version: '0.1.0',
-      scripts: { test: 'vitest run', build: 'tsc' },
-    }, null, 2),
+    content: (ctx) =>
+      JSON.stringify(
+        {
+          name: ctx.projectName,
+          version: '0.1.0',
+          scripts: { test: 'vitest run', build: 'tsc' },
+        },
+        null,
+        2,
+      ),
   },
   {
     relativePath: 'README.md',
@@ -396,10 +403,14 @@ const SCAFFOLD_FILES: ScaffoldFile[] = [
   },
   {
     relativePath: 'tsconfig.json',
-    content: JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'nodenext', strict: true, outDir: 'dist' },
-      include: ['src'],
-    }, null, 2),
+    content: JSON.stringify(
+      {
+        compilerOptions: { target: 'ES2022', module: 'nodenext', strict: true, outDir: 'dist' },
+        include: ['src'],
+      },
+      null,
+      2,
+    ),
   },
   {
     relativePath: 'src/index.ts',
@@ -407,7 +418,8 @@ const SCAFFOLD_FILES: ScaffoldFile[] = [
   },
   {
     relativePath: 'tests/smoke.test.ts',
-    content: (ctx) => `import { describe, it, expect } from 'vitest';\n\ndescribe('${ctx.projectName}', () => {\n  it('should be truthy', () => {\n    expect(true).toBe(true);\n  });\n});\n`,
+    content: (ctx) =>
+      `import { describe, it, expect } from 'vitest';\n\ndescribe('${ctx.projectName}', () => {\n  it('should be truthy', () => {\n    expect(true).toBe(true);\n  });\n});\n`,
   },
 ];
 ```
@@ -440,9 +452,7 @@ async function scaffold(
       }
     }
 
-    const content = typeof file.content === 'function'
-      ? file.content(ctx)
-      : file.content;
+    const content = typeof file.content === 'function' ? file.content(ctx) : file.content;
 
     await writeFile(fullPath, content, 'utf-8');
     written.push(file.relativePath);
@@ -458,8 +468,8 @@ async function scaffold(
 import { join, resolve, normalize } from 'node:path';
 
 // ALWAYS use path.join() — never string concatenation
-const pocDir = join('.', 'poc', sessionId);  // ✅
-const pocDir = `./poc/${sessionId}`;          // ❌ Windows path separator issues
+const pocDir = join('.', 'poc', sessionId); // ✅
+const pocDir = `./poc/${sessionId}`; // ❌ Windows path separator issues
 
 // Normalize user-provided paths
 const safePath = normalize(userPath);
@@ -497,11 +507,13 @@ Use **programmatic generation from typed template descriptors** (no template eng
 ### Findings
 
 The current `ConversationLoop` class is fundamentally **interactive**:
+
 - It calls `this.io.readInput()` in a `while` loop waiting for user text
 - It uses `DecisionGate` to ask the user what to do next
 - It checks for `done` / empty input to break
 
 An autonomous Ralph loop needs to:
+
 - Supply its own "input" (the prompt + test failure context)
 - Never block waiting for user input
 - Terminate based on programmatic conditions (tests passing, max iterations)
@@ -518,6 +530,7 @@ class AutonomousLoop extends ConversationLoop {
   }
 }
 ```
+
 **Pros**: Reuses streaming/rendering code  
 **Cons**: `ConversationLoop.run()` is monolithic; overriding it means reimplementing most of the logic. Fragile inheritance.
 
@@ -538,6 +551,7 @@ class RalphLoop {
   }
 }
 ```
+
 **Pros**: Clean separation of concerns; purpose-built for the autonomous case  
 **Cons**: Duplicates streaming/rendering logic from ConversationLoop
 
@@ -550,8 +564,12 @@ interface LoopDriver {
 }
 
 class InteractiveDriver implements LoopDriver {
-  async getNextInput() { return this.io.readInput(); }
-  shouldContinue() { return true; } // User controls via "done"
+  async getNextInput() {
+    return this.io.readInput();
+  }
+  shouldContinue() {
+    return true;
+  } // User controls via "done"
 }
 
 class AutonomousDriver implements LoopDriver {
@@ -565,6 +583,7 @@ class AutonomousDriver implements LoopDriver {
   }
 }
 ```
+
 **Pros**: Open/Closed principle; ConversationLoop stays unchanged; easy to test drivers independently  
 **Cons**: ConversationLoop needs refactoring to accept a driver; the streaming and turn-management code becomes shared
 
@@ -595,7 +614,7 @@ class RalphLoop {
     return {
       write: (text) => this.outputHandler(text),
       writeActivity: (text) => this.outputHandler(text),
-      readInput: async () => null,  // Immediately signal "done"
+      readInput: async () => null, // Immediately signal "done"
       showDecisionGate: async () => ({ choice: 'continue' }),
       isJsonMode: false,
       isTTY: false,
@@ -603,6 +622,7 @@ class RalphLoop {
   }
 }
 ```
+
 **Pros**: Reuses ConversationLoop's streaming exactly; no modification to existing code; each LLM turn is isolated  
 **Cons**: Creates a new ConversationLoop per iteration (minor overhead); ConversationLoop does more than needed per call (signal handlers, etc.)
 
@@ -664,38 +684,42 @@ export const testResultSchema = z.object({
   passed: z.number(),
   failed: z.number(),
   skipped: z.number(),
-  duration: z.number(),             // milliseconds
-  failures: z.array(z.object({
-    testName: z.string(),
-    message: z.string(),
-    stack: z.string().optional(),
-  })),
+  duration: z.number(), // milliseconds
+  failures: z.array(
+    z.object({
+      testName: z.string(),
+      message: z.string(),
+      stack: z.string().optional(),
+    }),
+  ),
 });
 
 export const pocIterationSchema = z.object({
   iteration: z.number(),
-  startedAt: z.string(),             // ISO-8601
-  endedAt: z.string().optional(),    // ISO-8601
+  startedAt: z.string(), // ISO-8601
+  endedAt: z.string().optional(), // ISO-8601
   changesSummary: z.string().optional(),
-  
+
   // NEW: Structured test results
   testResults: testResultSchema.optional(),
-  
+
   // NEW: Files touched in this iteration
-  filesChanged: z.array(z.string()).optional(),  // relative paths
-  
+  filesChanged: z.array(z.string()).optional(), // relative paths
+
   // NEW: Prompt context tracking (for audit)
   promptTokensUsed: z.number().optional(),
   responseTokensUsed: z.number().optional(),
-  
+
   // NEW: Iteration outcome classification
-  outcome: z.enum([
-    'tests-passing',     // All tests pass — can terminate
-    'tests-improving',   // Fewer failures than previous iteration
-    'tests-regressing',  // More failures than previous iteration
-    'tests-stuck',       // Same failures as previous iteration
-    'error',             // Runtime error (test runner crash, timeout)
-  ]).optional(),
+  outcome: z
+    .enum([
+      'tests-passing', // All tests pass — can terminate
+      'tests-improving', // Fewer failures than previous iteration
+      'tests-regressing', // More failures than previous iteration
+      'tests-stuck', // Same failures as previous iteration
+      'error', // Runtime error (test runner crash, timeout)
+    ])
+    .optional(),
 
   // DEPRECATED: replaced by testResults
   testsRun: z.array(z.string()).optional(),
@@ -706,33 +730,35 @@ export const pocIterationSchema = z.object({
 
 ```typescript
 export const pocDevelopmentStateSchema = z.object({
-  repoPath: z.string().optional(),       // local path or GitHub URL
+  repoPath: z.string().optional(), // local path or GitHub URL
   iterations: z.array(pocIterationSchema),
   finalStatus: z.enum(['success', 'failed', 'partial', 'aborted']).optional(),
-  
+
   // NEW: Technology context
-  techStack: z.string().optional(),         // e.g., "Node.js + TypeScript + Express"
-  templateUsed: z.string().optional(),      // e.g., "node-ts-api"
-  
+  techStack: z.string().optional(), // e.g., "Node.js + TypeScript + Express"
+  templateUsed: z.string().optional(), // e.g., "node-ts-api"
+
   // NEW: Timing
-  totalDuration: z.number().optional(),     // total ms across all iterations
-  
+  totalDuration: z.number().optional(), // total ms across all iterations
+
   // NEW: Configuration used
-  maxIterations: z.number().optional(),     // configured limit
-  testCommand: z.string().optional(),       // e.g., "npm test"
-  
+  maxIterations: z.number().optional(), // configured limit
+  testCommand: z.string().optional(), // e.g., "npm test"
+
   // NEW: Source tracking
   repoSource: z.enum(['github-mcp', 'local', 'existing']).optional(),
-  
+
   // NEW: Termination reason
-  terminationReason: z.enum([
-    'tests-passing',
-    'max-iterations',
-    'user-abort',
-    'stuck-detected',       // same failures for N consecutive iterations
-    'error',
-  ]).optional(),
-  
+  terminationReason: z
+    .enum([
+      'tests-passing',
+      'max-iterations',
+      'user-abort',
+      'stuck-detected', // same failures for N consecutive iterations
+      'error',
+    ])
+    .optional(),
+
   // NEW: Summary for export/audit
   finalTestResults: testResultSchema.optional(),
 });
@@ -750,6 +776,7 @@ The schema supports audit requirements through:
 6. **Timestamps** — `startedAt`/`endedAt` on each iteration plus `totalDuration`
 
 What we deliberately **exclude** from the schema (stored elsewhere or not at all):
+
 - Full file contents (too large for JSON state; stored on disk)
 - Full LLM conversation history (already in `turns[]`)
 - Secrets/tokens (security policy)
@@ -776,11 +803,11 @@ Extend `PocDevelopmentState` and `PocIteration` as described above. Add the new 
 
 ## Summary of Decisions
 
-| # | Topic | Decision |
-|---|-------|----------|
-| 1 | Ralph Loop Pattern | Modified Ralph loop with test-failure injection; internal TypeScript loop, not external bash |
-| 2 | Test Runner | `spawn` + Vitest `--reporter=json` + 60s timeout + belt-and-suspenders kill |
-| 3 | GitHub MCP | LLM-mediated MCP tool calls with `McpManager` availability detection; local fallback |
-| 4 | Local Scaffolding | Programmatic typed template descriptors; skip-existing idempotency; `node:path` for safety |
-| 5 | Loop Architecture | Compose: `RalphLoop` owns iteration, uses `ConversationLoop` per turn with auto-completing IO |
-| 6 | Schema Extensions | Full extension of `PocDevelopmentState` + `PocIteration` + new `TestResult` schema |
+| #   | Topic              | Decision                                                                                      |
+| --- | ------------------ | --------------------------------------------------------------------------------------------- |
+| 1   | Ralph Loop Pattern | Modified Ralph loop with test-failure injection; internal TypeScript loop, not external bash  |
+| 2   | Test Runner        | `spawn` + Vitest `--reporter=json` + 60s timeout + belt-and-suspenders kill                   |
+| 3   | GitHub MCP         | LLM-mediated MCP tool calls with `McpManager` availability detection; local fallback          |
+| 4   | Local Scaffolding  | Programmatic typed template descriptors; skip-existing idempotency; `node:path` for safety    |
+| 5   | Loop Architecture  | Compose: `RalphLoop` owns iteration, uses `ConversationLoop` per turn with auto-completing IO |
+| 6   | Schema Extensions  | Full extension of `PocDevelopmentState` + `PocIteration` + new `TestResult` schema            |

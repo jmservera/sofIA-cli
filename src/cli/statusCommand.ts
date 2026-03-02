@@ -24,7 +24,11 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
 
     if (sessions.length === 0) {
       if (opts.json) {
-        process.stdout.write(JSON.stringify({ error: 'No sessions found. Start one with: sofia workshop --new-session' }) + '\n');
+        process.stdout.write(
+          JSON.stringify({
+            error: 'No sessions found. Start one with: sofia workshop --new-session',
+          }) + '\n',
+        );
       } else {
         console.error('No sessions found. Start one with: sofia workshop --new-session');
       }
@@ -60,10 +64,12 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
           rows.push([id.slice(0, 8), '', '?', 'Error', '?']);
         }
       }
-      console.log(renderTable({
-        head: ['Session', 'Name', 'Phase', 'Status', 'Updated'],
-        rows,
-      }));
+      console.log(
+        renderTable({
+          head: ['Session', 'Name', 'Phase', 'Status', 'Updated'],
+          rows,
+        }),
+      );
     }
     return;
   }
@@ -72,7 +78,9 @@ export async function statusCommand(opts: StatusCommandOptions): Promise<void> {
 
   if (!(await store.exists(opts.session))) {
     if (opts.json) {
-      process.stdout.write(JSON.stringify({ error: `Session "${opts.session}" not found.` }) + '\n');
+      process.stdout.write(
+        JSON.stringify({ error: `Session "${opts.session}" not found.` }) + '\n',
+      );
     } else {
       console.error(`Error: Session "${opts.session}" not found.`);
     }

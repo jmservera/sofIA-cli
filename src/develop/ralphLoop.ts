@@ -316,7 +316,8 @@ export class RalphLoop {
     }
 
     // ── Iteration loop ─────────────────────────────────────────────────────
-    const testRunner = this.options.testRunner ??
+    const testRunner =
+      this.options.testRunner ??
       new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
     // Push scaffold files to GitHub after install
     if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {

@@ -26,9 +26,7 @@ function createFullSession(): WorkshopSession {
     updatedAt: '2025-06-15T12:00:00Z',
     phase: 'Complete',
     status: 'Completed',
-    participants: [
-      { id: 'p1', displayName: 'Alice', role: 'Facilitator' },
-    ],
+    participants: [{ id: 'p1', displayName: 'Alice', role: 'Facilitator' }],
     businessContext: {
       businessDescription: 'Logistics company specializing in last-mile delivery',
       challenges: ['Route optimization is manual', 'High fuel costs'],
@@ -76,8 +74,16 @@ function createFullSession(): WorkshopSession {
     },
     plan: {
       milestones: [
-        { id: 'm1', title: 'Data Collection', items: ['Set up telemetry', 'Collect 3 months of delivery data'] },
-        { id: 'm2', title: 'Model Training', items: ['Train route model', 'Validate on historical data'] },
+        {
+          id: 'm1',
+          title: 'Data Collection',
+          items: ['Set up telemetry', 'Collect 3 months of delivery data'],
+        },
+        {
+          id: 'm2',
+          title: 'Model Training',
+          items: ['Train route model', 'Validate on historical data'],
+        },
         { id: 'm3', title: 'Integration', items: ['API endpoint', 'Driver app integration'] },
       ],
       architectureNotes: 'Microservices with Azure Maps API',
@@ -97,9 +103,27 @@ function createFullSession(): WorkshopSession {
     },
     artifacts: { generatedFiles: [] },
     turns: [
-      { phase: 'Discover', sequence: 1, role: 'user', content: 'We are a logistics company', timestamp: '2025-01-01T00:01:00Z' },
-      { phase: 'Discover', sequence: 2, role: 'assistant', content: 'Understood, let me document that.', timestamp: '2025-01-01T00:02:00Z' },
-      { phase: 'Ideate', sequence: 3, role: 'user', content: 'Generate ideas', timestamp: '2025-01-01T00:03:00Z' },
+      {
+        phase: 'Discover',
+        sequence: 1,
+        role: 'user',
+        content: 'We are a logistics company',
+        timestamp: '2025-01-01T00:01:00Z',
+      },
+      {
+        phase: 'Discover',
+        sequence: 2,
+        role: 'assistant',
+        content: 'Understood, let me document that.',
+        timestamp: '2025-01-01T00:02:00Z',
+      },
+      {
+        phase: 'Ideate',
+        sequence: 3,
+        role: 'user',
+        content: 'Generate ideas',
+        timestamp: '2025-01-01T00:03:00Z',
+      },
     ],
   };
 }

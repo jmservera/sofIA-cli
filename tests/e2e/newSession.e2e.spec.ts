@@ -60,7 +60,9 @@ function runCliPty(
     });
 
     let output = '';
-    term.onData((data) => { output += data; });
+    term.onData((data) => {
+      output += data;
+    });
 
     let inputIdx = 0;
 
@@ -200,17 +202,16 @@ describe('New Session E2E (PTY)', () => {
     const result = await runCliPty(
       ['workshop'],
       [
-        { text: '1', delayMs: MENU_RENDER_DELAY },      // select New Session
+        { text: '1', delayMs: MENU_RENDER_DELAY }, // select New Session
         { text: '\r', delayMs: INPUT_SUBMIT_DELAY },
-        { text: '\x03', delayMs: PHASE_INIT_DELAY },    // Ctrl+C to abort
+        { text: '\x03', delayMs: PHASE_INIT_DELAY }, // Ctrl+C to abort
       ],
       15_000,
     );
 
     // Either a new session was created (shows session ID) or an error about
     // Copilot initialization was shown — either way the process handled option 1
-    const gotSessionOrError =
-      /session|error|copilot|discover/i.test(result.output);
+    const gotSessionOrError = /session|error|copilot|discover/i.test(result.output);
     expect(gotSessionOrError).toBe(true);
   }, 20_000);
 

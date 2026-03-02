@@ -20,9 +20,7 @@ import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop
 import { createFakeCopilotClient } from '../../src/shared/copilotClient.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { SessionStore } from '../../src/sessions/sessionStore.js';
-import {
-  runDirectCommand,
-} from '../../src/cli/directCommands.js';
+import { runDirectCommand } from '../../src/cli/directCommands.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,8 +49,12 @@ function createNonTtyIO(
   const activityLog: string[] = [];
 
   return {
-    write(text: string) { output.push(text); },
-    writeActivity(text: string) { activityLog.push(text); },
+    write(text: string) {
+      output.push(text);
+    },
+    writeActivity(text: string) {
+      activityLog.push(text);
+    },
     writeToolSummary(_toolName: string, _summary: string) {},
     async readInput(_prompt?: string): Promise<string | null> {
       if (inputIdx >= inputs.length) return null;
@@ -138,7 +140,7 @@ describe('Direct command non-TTY mode', () => {
     });
 
     // All stdout output should be valid JSON lines
-    for (const line of io.output.filter(l => l.trim())) {
+    for (const line of io.output.filter((l) => l.trim())) {
       expect(() => JSON.parse(line)).not.toThrow();
     }
   });
@@ -184,8 +186,13 @@ describe('Direct command non-TTY mode', () => {
     expect(result.exitCode).toBe(1);
     expect(result.error).toBeDefined();
     // When json mode, the IO output should have JSON error
-    const jsonErrors = io.output.filter(l => {
-      try { const o = JSON.parse(l); return o.error; } catch { return false; }
+    const jsonErrors = io.output.filter((l) => {
+      try {
+        const o = JSON.parse(l);
+        return o.error;
+      } catch {
+        return false;
+      }
     });
     expect(jsonErrors.length).toBeGreaterThan(0);
   });
@@ -209,10 +216,10 @@ describe('Direct command non-TTY mode', () => {
     // loop before readInput is called again). Provide one input per attempt, then
     // null to end the successful run.
     const io = createNonTtyIO({ choice: 'exit' }, [
-      'attempt 1',   // consumed by attempt 1 (fails)
-      'attempt 2',   // consumed by attempt 2 (fails)
-      'attempt 3',   // consumed by attempt 3 (succeeds, then loop reads again)
-      null,          // ends the successful loop iteration
+      'attempt 1', // consumed by attempt 1 (fails)
+      'attempt 2', // consumed by attempt 2 (fails)
+      'attempt 3', // consumed by attempt 3 (succeeds, then loop reads again)
+      null, // ends the successful loop iteration
     ]);
 
     await runDirectCommand({
@@ -240,9 +247,9 @@ describe('Direct command non-TTY mode', () => {
 
     // Each retry attempt consumes one input. retry=2 means 3 total attempts.
     const io = createNonTtyIO({ choice: 'exit' }, [
-      'attempt 1',   // attempt 1 (fails)
-      'attempt 2',   // attempt 2/retry 1 (fails)
-      'attempt 3',   // attempt 3/retry 2 (fails, exhausted)
+      'attempt 1', // attempt 1 (fails)
+      'attempt 2', // attempt 2/retry 1 (fails)
+      'attempt 3', // attempt 3/retry 2 (fails, exhausted)
     ]);
 
     const result = await runDirectCommand({

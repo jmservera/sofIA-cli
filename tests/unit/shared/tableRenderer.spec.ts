@@ -30,7 +30,10 @@ describe('renderTable', () => {
 
   it('renders without headers', () => {
     const output = renderTable({
-      rows: [['a', 'b'], ['c', 'd']],
+      rows: [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
     });
     expect(output).toContain('a');
     expect(output).toContain('d');

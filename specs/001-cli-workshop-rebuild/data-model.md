@@ -13,6 +13,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 **Storage**: `./.sofia/sessions/<sessionId>.json`
 
 **Fields (minimum)**
+
 - `sessionId: string`
 - `createdAt: string` (ISO-8601)
 - `updatedAt: string` (ISO-8601)
@@ -34,6 +35,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `errors?: ErrorRecord[]`
 
 **Validation rules**
+
 - `sessionId` is stable across the session.
 - `updatedAt` is monotonically increasing.
 - `phase` must follow state machine (see below).
@@ -42,6 +44,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 ### 2) Phase
 
 `Phase` is an enum representing the governed progression:
+
 - `Discover`
 - `Ideate`
 - `Design`
@@ -83,12 +86,14 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `edges: WorkflowEdge[]`
 
 `WorkflowStep`
+
 - `id: string`
 - `name: string`
 - `description?: string`
 - `metrics?: Metric[]` (e.g., hours/week, NSAT)
 
 `WorkflowEdge`
+
 - `fromStepId: string`
 - `toStepId: string`
 
@@ -98,12 +103,14 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `scores?: CardScore[]`
 
 `EnvisioningCard`
+
 - `id: string`
 - `title: string`
 - `category?: string`
 - `notes?: string`
 
 `CardScore`
+
 - `cardId: string`
 - `dimensions: Record<string, number>`
 
@@ -122,6 +129,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `method: "feasibility-value-matrix" | "custom"`
 
 `IdeaEvaluationItem`
+
 - `ideaId: string`
 - `feasibility: number` (normalized 0..1 or 1..5; decide in implementation)
 - `value: number`
@@ -144,6 +152,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `dependencies?: string[]`
 
 `Milestone`
+
 - `id: string`
 - `title: string`
 - `items: string[]`
@@ -155,6 +164,7 @@ This is a conceptual data model for persistence and exports. It is not an implem
 - `finalStatus?: "success" | "failed"`
 
 `PocIteration`
+
 - `iteration: number`
 - `startedAt: string`
 - `endedAt?: string`
@@ -177,6 +187,7 @@ This replaces “LLM thoughts” with a compliant activity/telemetry stream.
 - `generatedFiles: GeneratedFile[]`
 
 `GeneratedFile`
+
 - `relativePath: string`
 - `type: "markdown" | "json" | "text"`
 - `createdAt: string`
@@ -191,12 +202,15 @@ This replaces “LLM thoughts” with a compliant activity/telemetry stream.
 ## State machine
 
 Valid transitions:
+
 - `Discover → Ideate → Design → Select → Plan → Develop → Complete`
 
 Failure transitions:
+
 - Any phase may set `status=Errored` but **must** persist the session before exit.
 
 Resume:
+
 - `Paused → Active` without phase change.
 
 ## Export model
@@ -204,7 +218,7 @@ Resume:
 **Export root**: `./exports/<sessionId>/`
 
 Minimum contents:
+
 - `summary.json` (export index + top-level summary)
 - Phase markdown files (names finalized in implementation):
   - `discover.md`, `ideate.md`, `design.md`, `select.md`, `plan.md`, `develop.md`
-

@@ -99,11 +99,9 @@ export function backtrackSession(
 
   // Remove turns from invalidated phases
   if (updatedSession.turns) {
-    const validPhases = new Set(
-      phaseOrder.slice(0, targetIdx),
-    );
-    updatedSession.turns = updatedSession.turns.filter(
-      t => validPhases.has(t.phase as PhaseValue),
+    const validPhases = new Set(phaseOrder.slice(0, targetIdx));
+    updatedSession.turns = updatedSession.turns.filter((t) =>
+      validPhases.has(t.phase as PhaseValue),
     );
   }
 

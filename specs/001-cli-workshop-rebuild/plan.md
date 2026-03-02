@@ -6,7 +6,7 @@
 **Plan outputs created by this workflow**:
 
 - Phase 0: ./research.md
-- Phase 1: ./data-model.md, ./quickstart.md, ./contracts/*
+- Phase 1: ./data-model.md, ./quickstart.md, ./contracts/\*
 
 ## Summary
 
@@ -77,7 +77,6 @@ This repository already contains two critical inputs that the implementation mus
 
 - Location: `src/originalPrompts/`
 - Files:
-
   - `facilitator_persona.md`
   - `design_thinking_persona.md`
   - `design_thinking.md`
@@ -134,7 +133,7 @@ Output contract:
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Default gates for this repository (sofIA Copilot CLI) — derived from `.specify/memory/constitution.md`:
 
@@ -192,22 +191,18 @@ exports/                  # repo-local exports (gitignored): customer artifact b
 The agent set is derived from the existing personas/prompts and covers the workshop pipeline end-to-end:
 
 - Facilitator orchestrator (primary)
-
   - Seed: `src/originalPrompts/facilitator_persona.md`
   - Responsibilities: governed progression/decision gates, delegation to step specialists, persistence of summaries + artifacts.
 
 - Step specialists (per phase/step)
-
   - Seeds: `design_thinking_persona.md` + `design_thinking.md`, plus `guardrails.md` included everywhere.
   - Output contracts: each step emits structured data for the session model (see `data-model.md`) and Markdown artifacts for export.
 
 - Document generator
-
   - Seed: `document_generator_persona.md` + `document_generator_example.md`
   - Responsibilities: produce customer-ready workshop report/artifacts from session state.
 
 - Discovery Cards support
-
   - Data source: `src/shared/data/cards.json` via `cardsLoader.ts`
   - Responsibilities: present cards, support scoring, map cards to workflow steps, seed ideation prompts with relevant cards.
 
@@ -355,7 +350,7 @@ These additions address requirements clarified in Session 2026-02-27 regarding v
 
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-| --------- | ---------- | ----------------------------------- |
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| Violation                  | Why Needed         | Simpler Alternative Rejected Because |
+| -------------------------- | ------------------ | ------------------------------------ |
+| [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |

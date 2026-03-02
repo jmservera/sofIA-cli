@@ -76,10 +76,7 @@
         "Marketing - Employ AI to group customers based on purchasing behavior, demographics, and preferences for targeted marketing.",
         "Social Media - Use AI to identify and group trending sentiments or topics, aiding sentiment analysis and trend prediction."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Foundry"],
       "optionalCategory": "Data Analysis"
     },
     {
@@ -178,11 +175,7 @@
         "Banking - Detect suspicious credit card activities that may indicate fraud",
         "Cybersecurity - Spot unusual traffic patterns in login data to detect potential cyber attacks."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Custom Vision",
-        "Azure Sentinel"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Custom Vision", "Azure Sentinel"],
       "optionalCategory": "Anomaly Detection"
     },
     {
@@ -229,10 +222,7 @@
         "Project Management - Estimate project completion time based on past performance data.",
         "Finance - Predict market trends to shape investment strategies."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Microsoft Fabric"
-      ],
+      "azureServices": ["Azure Machine Learning", "Microsoft Fabric"],
       "optionalCategory": "Forecasting"
     },
     {
@@ -277,11 +267,7 @@
         "Sales - Generate expressions for trend analysis by describing the analytical goal.",
         "Customer Service - Build a dashboard summarizing customer feedback using natural language queries."
       ],
-      "azureServices": [
-        "Copilot for Power BI",
-        "Azure AI Language",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Copilot for Power BI", "Azure AI Language", "Azure AI Foundry"],
       "optionalCategory": "Data Analysis"
     },
     {
@@ -326,10 +312,7 @@
         "Health & Fitness - Get personalized fitness and health recommendations based on lifestyle and goals",
         "Personal Reminders - Set reminders for appointments, medication intake, or bill payments"
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Microsoft 365 Copilot"
-      ],
+      "azureServices": ["Azure AI Foundry", "Microsoft 365 Copilot"],
       "optionalCategory": "Personal Assistance"
     },
     {
@@ -358,10 +341,7 @@
         "Manufacturing - Use AI for predictive maintenance, minimize downtime and reduce costs.",
         "Education - Employ AI to adapt to students' learning styles, improving educational outcomes."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Foundry"],
       "optionalCategory": "Process Improvement"
     },
     {
@@ -405,10 +385,7 @@
         "Manufacturing - Monitor equipment data to spot anomalies, enable proactive maintenance and avoid costly breakdowns.",
         "Healthcare - Detect anomalies in patient health data for early detection of potential health issues."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Foundry"],
       "optionalCategory": "Anomaly Detection"
     },
     {
@@ -487,10 +464,7 @@
         "E-commerce - Auto-generate detailed product descriptions for online catalogs",
         "Banking - Assess credit risks by analyzing customer financial data"
       ],
-      "azureServices": [
-        "Dynamics 365 Finance & Operations",
-        "Azure AI Language"
-      ],
+      "azureServices": ["Dynamics 365 Finance & Operations", "Azure AI Language"],
       "optionalCategory": "Financial Automation"
     },
     {
@@ -536,11 +510,7 @@
         "Administration - Convert printed documents into digital text for easy search and retrieval.",
         "Education - Transform printed textbooks into digital format, facilitating remote learning."
       ],
-      "azureServices": [
-        "Azure AI Vision",
-        "Power Platform : AI Builder",
-        "Bing Search API"
-      ],
+      "azureServices": ["Azure AI Vision", "Power Platform : AI Builder", "Bing Search API"],
       "optionalCategory": "Image to Text"
     },
     {
@@ -552,11 +522,7 @@
         "Security Systems - Enhance security by enabling systems to identify authorized individuals for access control.",
         "Social Media -  Enables automatic tagging of individuals in social media platforms."
       ],
-      "azureServices": [
-        "Azure AI Face service",
-        "Azure AI Foundry",
-        "Azure AI Vision"
-      ],
+      "azureServices": ["Azure AI Face service", "Azure AI Foundry", "Azure AI Vision"],
       "optionalCategory": "Facial Recognition"
     },
     {
@@ -568,12 +534,7 @@
         "Retail - Analyze customer movements and interactions within the store to understand behavior.",
         "Urban Planning - Optimize infrastructure and services by analyzing spatial data like population density or traffic patterns."
       ],
-      "azureServices": [
-        "Azure Maps",
-        "Azure Digital Twins",
-        "Azure AI Vision",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure Maps", "Azure Digital Twins", "Azure AI Vision", "Azure AI Foundry"],
       "optionalCategory": "Spatial Analysis"
     },
     {
@@ -620,10 +581,7 @@
         "Accessibility - Improve accessibility for visually impaired users with textual descriptions of images on websites or applications.",
         "Education - Assist learning by providing detailed captions for educational images or diagrams."
       ],
-      "azureServices": [
-        "Azure AI Vision",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Vision", "Azure AI Foundry"],
       "optionalCategory": "Image Captioning"
     },
     {
@@ -635,11 +593,7 @@
         "Digital Archives - Facilitate search and retrieval in large image archives by generating detailed metadata for each image.",
         "Photography - Assist photographers in managing their portfolios by creating metadata for each photograph, including details like location, subject, camera settings, etc."
       ],
-      "azureServices": [
-        "Azure AI Vision",
-        "Azure AI Foundry",
-        "Azure Machine Learning"
-      ],
+      "azureServices": ["Azure AI Vision", "Azure AI Foundry", "Azure Machine Learning"],
       "optionalCategory": "Image Metadata"
     },
     {
@@ -740,10 +694,7 @@
         "Accessibility - Read out articles, books, or documents with AI for users with visual impairments.",
         "Voice Assistants - Provide voice-based responses or instructions in applications or devices using AI."
       ],
-      "azureServices": [
-        "Azure AI Language",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Language", "Azure AI Foundry"],
       "optionalCategory": "Text to speech"
     },
     {
@@ -773,11 +724,7 @@
         "Customer Support - Provide real-time translation in multilingual customer interactions.",
         "Travel & Tourism - Facilitate communication for travelers by translating local languages instantly."
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Azure AI Language",
-        "Microsoft 365 Copilot"
-      ],
+      "azureServices": ["Azure AI Foundry", "Azure AI Language", "Microsoft 365 Copilot"],
       "optionalCategory": "Communication"
     },
     {
@@ -789,9 +736,7 @@
         "Gaming industry - Enhance user immersion with unique voiced characters.",
         "Virtual assistants - Improve user engagement with lifelike, expressive voices."
       ],
-      "azureServices": [
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Foundry"],
       "optionalCategory": "User engagement"
     },
     {
@@ -821,9 +766,7 @@
         "Transcription Services - Automate transcription of interviews, meetings or lectures.",
         "Voice Assistants - Convert spoken commands into text for processing."
       ],
-      "azureServices": [
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Foundry"],
       "optionalCategory": "Accessibility"
     },
     {
@@ -835,9 +778,7 @@
         "Customer Service - Identify callers for personalized interactions and swift verification.",
         "Smart Home Devices - Customize user experience by recognizing different household members' voices."
       ],
-      "azureServices": [
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Foundry"],
       "optionalCategory": "Security & Personalization"
     },
     {
@@ -849,11 +790,7 @@
         "AI Assistants - Allow users to activate assistants with preferred catchphrases.",
         "Automotive Industry - Improve driving experience with custom voice command activation."
       ],
-      "azureServices": [
-        "Azure IoT Edge",
-        "Azure AI Foundry",
-        "Azure AI Language"
-      ],
+      "azureServices": ["Azure IoT Edge", "Azure AI Foundry", "Azure AI Language"],
       "optionalCategory": "User Experience"
     },
     {
@@ -865,10 +802,7 @@
         "Healthcare Industry - Assist medical professionals in accessing information or controlling equipment hands-free.",
         "Smart Home Appliances - Control home appliances like lights or thermostats through voice commands."
       ],
-      "azureServices": [
-        "Azure AI Language",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure AI Language", "Azure AI Foundry"],
       "optionalCategory": "Accessibility & Convenience"
     },
     {
@@ -880,10 +814,7 @@
         "Telecommunications - Train voice assistants to understand industry-specific jargon and accents.",
         "Healthcare Industry - Enable medical applications to understand and generate medical terminologies."
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Azure AI Language"
-      ],
+      "azureServices": ["Azure AI Foundry", "Azure AI Language"],
       "optionalCategory": "Communication & Efficiency"
     },
     {
@@ -895,10 +826,7 @@
         "Entertainment Industry - Create realistic voiceovers for animated characters or digital influencers.",
         "Accessibility - Develop assistive technologies that speak in familiar voices for users with special needs."
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Azure AI Language"
-      ],
+      "azureServices": ["Azure AI Foundry", "Azure AI Language"],
       "optionalCategory": "Personalization & Engagement"
     },
     {
@@ -910,10 +838,7 @@
         "Tech sector - Navigating smartphone or tablet interfaces using touch gestures.",
         "Design sector - Drawing or annotating on touch-enabled devices for creative work."
       ],
-      "azureServices": [
-        "Microsoft Surface",
-        "Azure AI Custom Vision"
-      ],
+      "azureServices": ["Microsoft Surface", "Azure AI Custom Vision"],
       "optionalCategory": "Touch recognition"
     },
     {
@@ -925,11 +850,7 @@
         "Retail - Create personalized flavor profiles based on food and beverage purchases.",
         "Food Industry - Predict the optimum flavor profiles for new recipes or food products."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Foundry",
-        "Microsoft Fabric"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Foundry", "Microsoft Fabric"],
       "optionalCategory": "Food and Beverage"
     },
     {
@@ -941,11 +862,7 @@
         "Chemical Industry - Enhance fabric softener smell with optimal chemical combinations.",
         "Safety and Security - Identify hazards based on unique chemical profiles."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Foundry",
-        "Microsoft Fabric"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Foundry", "Microsoft Fabric"],
       "optionalCategory": "Chemical and Safety"
     },
     {
@@ -957,11 +874,7 @@
         "Robotics - Recognize objects and obstacles for safe, efficient robotic navigation.",
         "Retail - Understand surroundings to provide context-aware product recommendations."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure AI Vision",
-        "Azure Spatial Anchors"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure AI Vision", "Azure Spatial Anchors"],
       "optionalCategory": "Object and Environment Sensing"
     },
     {
@@ -973,11 +886,7 @@
         "Sports - Monitor and analyze athlete movements for performance improvements.",
         "Security - Detect unusual motions for enhanced security surveillance and alerts."
       ],
-      "azureServices": [
-        "Azure Machine Learning",
-        "Azure IoT Edge",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Azure Machine Learning", "Azure IoT Edge", "Azure AI Foundry"],
       "optionalCategory": "Motion Detection"
     },
     {
@@ -1006,11 +915,7 @@
         "Content Creation - Generate high-quality text for blogs, articles, or social media posts, enhancing productivity.",
         "Data Analysis - Extract insights from large volumes of text data, enabling informed business decisions."
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Azure AI Language",
-        "Microsoft 365 Copilot"
-      ],
+      "azureServices": ["Azure AI Foundry", "Azure AI Language", "Microsoft 365 Copilot"],
       "optionalCategory": "Text Generation & Enhancement"
     },
     {
@@ -1022,11 +927,7 @@
         "Finance - Simulate financial scenarios to test models, enhancing risk management without revealing sensitive data.",
         "Retail - Generate synthetic customer behavior data to optimize sales strategies while preserving customer privacy."
       ],
-      "azureServices": [
-        "Azure AI Foundry",
-        "Azure Machine Learning",
-        "Microsoft Fabric"
-      ],
+      "azureServices": ["Azure AI Foundry", "Azure Machine Learning", "Microsoft Fabric"],
       "optionalCategory": "Synthetic Data Generation"
     },
     {
@@ -1054,11 +955,7 @@
         "Form Creation - Use AI to automatically generate detailed forms for event registrations.",
         "Dynamic Layouts - Create dynamic webpage layouts for a product catalog using AI."
       ],
-      "azureServices": [
-        "Power Platform : Power Pages",
-        "Azure AI Language",
-        "GitHub Copilot"
-      ],
+      "azureServices": ["Power Platform : Power Pages", "Azure AI Language", "GitHub Copilot"],
       "optionalCategory": "Web Development"
     },
     {
@@ -1206,11 +1103,7 @@
         "Field Service - Technicians receive summarized key points of work orders, enabling quicker job comprehension.",
         "Management - Efficiently schedule and manage work orders with AI assistance."
       ],
-      "azureServices": [
-        "Dynamics 365 Field Service",
-        "Azure AI Language",
-        "Azure AI Foundry"
-      ],
+      "azureServices": ["Dynamics 365 Field Service", "Azure AI Language", "Azure AI Foundry"],
       "optionalCategory": "Field Service"
     },
     {
@@ -1222,10 +1115,7 @@
         "HR - Create employee onboarding apps quickly by describing the desired functionality.",
         "Retail - Develop inventory management apps by converting sketches or designs into working prototypes."
       ],
-      "azureServices": [
-        "Power Platform : Power Apps",
-        "GitHub Copilot"
-      ],
+      "azureServices": ["Power Platform : Power Apps", "GitHub Copilot"],
       "optionalCategory": "App Development"
     },
     {

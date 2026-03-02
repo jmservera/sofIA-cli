@@ -40,12 +40,14 @@ function createTestSession(overrides?: Partial<WorkshopSession>): WorkshopSessio
   };
 }
 
-function createTestIO(opts: {
-  isTTY?: boolean;
-  isJsonMode?: boolean;
-  inputs?: (string | null)[];
-  gateChoice?: DecisionGateResult;
-} = {}): LoopIO & { output: string[]; activityLog: string[] } {
+function createTestIO(
+  opts: {
+    isTTY?: boolean;
+    isJsonMode?: boolean;
+    inputs?: (string | null)[];
+    gateChoice?: DecisionGateResult;
+  } = {},
+): LoopIO & { output: string[]; activityLog: string[] } {
   let inputIdx = 0;
   const output: string[] = [];
   const activityLog: string[] = [];
@@ -53,8 +55,12 @@ function createTestIO(opts: {
   const gateChoice = opts.gateChoice ?? { choice: 'exit' as const };
 
   return {
-    write(text: string) { output.push(text); },
-    writeActivity(text: string) { activityLog.push(text); },
+    write(text: string) {
+      output.push(text);
+    },
+    writeActivity(text: string) {
+      activityLog.push(text);
+    },
     writeToolSummary(_toolName: string, _summary: string) {},
     async readInput(_prompt?: string): Promise<string | null> {
       if (inputIdx >= inputs.length) return null;
@@ -92,7 +98,9 @@ describe('directCommands validation', () => {
     const result = await runDirectCommand({
       sessionId: undefined as unknown as string,
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
     });
 
     expect(result.exitCode).toBe(1);
@@ -106,7 +114,9 @@ describe('directCommands validation', () => {
     const result = await runDirectCommand({
       sessionId: '',
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
     });
 
     expect(result.exitCode).toBe(1);
@@ -122,7 +132,9 @@ describe('directCommands validation', () => {
     const result = await runDirectCommand({
       sessionId: session.sessionId,
       phase: undefined as unknown as PhaseValue,
-      store, client, io,
+      store,
+      client,
+      io,
       nonInteractive: true,
     });
 
@@ -139,7 +151,9 @@ describe('directCommands validation', () => {
     const result = await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Brainstorm' as PhaseValue,
-      store, client, io,
+      store,
+      client,
+      io,
     });
 
     expect(result.exitCode).toBe(1);
@@ -154,7 +168,9 @@ describe('directCommands validation', () => {
     const result = await runDirectCommand({
       sessionId: 'does-not-exist',
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
     });
 
     expect(result.exitCode).toBe(1);
@@ -182,12 +198,19 @@ describe('directCommands JSON output', () => {
     await runDirectCommand({
       sessionId: 'missing',
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
       json: true,
     });
 
-    const jsonLines = io.output.filter(l => {
-      try { JSON.parse(l); return true; } catch { return false; }
+    const jsonLines = io.output.filter((l) => {
+      try {
+        JSON.parse(l);
+        return true;
+      } catch {
+        return false;
+      }
     });
     expect(jsonLines.length).toBeGreaterThan(0);
     const parsed = JSON.parse(jsonLines[0]);
@@ -200,20 +223,26 @@ describe('directCommands JSON output', () => {
     const session = createTestSession();
     await store.save(session);
     const io = createTestIO({ isJsonMode: true, inputs: ['hello', null] });
-    const client = createFakeCopilotClient([
-      { role: 'assistant', content: 'I understand.' },
-    ]);
+    const client = createFakeCopilotClient([{ role: 'assistant', content: 'I understand.' }]);
 
     await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
       json: true,
     });
 
     // Should contain at least the result summary
-    const jsonLines = io.output
-      .filter(l => { try { const o = JSON.parse(l); return o.sessionId; } catch { return false; } });
+    const jsonLines = io.output.filter((l) => {
+      try {
+        const o = JSON.parse(l);
+        return o.sessionId;
+      } catch {
+        return false;
+      }
+    });
     expect(jsonLines.length).toBeGreaterThan(0);
     const result = JSON.parse(jsonLines[0]);
     expect(result.sessionId).toBe(session.sessionId);
@@ -225,7 +254,11 @@ describe('ioContext', () => {
   it('creates TTY IO when input stream has isTTY', () => {
     const input = new Readable({ read() {} }) as NodeJS.ReadableStream & { isTTY?: boolean };
     (input as NodeJS.ReadableStream & { isTTY?: boolean }).isTTY = true;
-    const output = new Writable({ write(_c, _e, cb) { cb(); } });
+    const output = new Writable({
+      write(_c, _e, cb) {
+        cb();
+      },
+    });
 
     const io = createLoopIO({ input, output });
     expect(io.isTTY).toBe(true);
@@ -235,7 +268,11 @@ describe('ioContext', () => {
   it('creates non-TTY IO when nonInteractive is true', () => {
     const input = new Readable({ read() {} }) as NodeJS.ReadableStream & { isTTY?: boolean };
     (input as NodeJS.ReadableStream & { isTTY?: boolean }).isTTY = true;
-    const output = new Writable({ write(_c, _e, cb) { cb(); } });
+    const output = new Writable({
+      write(_c, _e, cb) {
+        cb();
+      },
+    });
 
     const io = createLoopIO({ input, output, nonInteractive: true });
     expect(io.isTTY).toBe(false);
@@ -286,7 +323,9 @@ describe('directCommands retry', () => {
     await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
       retry: 3,
     });
 
@@ -314,12 +353,14 @@ describe('directCommands retry', () => {
     await runDirectCommand({
       sessionId: session.sessionId,
       phase: 'Discover',
-      store, client, io,
+      store,
+      client,
+      io,
       retry: 2,
     });
 
     // Should have logged retry activity
-    const retryLogs = io.activityLog.filter(l => l.includes('Retrying'));
+    const retryLogs = io.activityLog.filter((l) => l.includes('Retrying'));
     expect(retryLogs.length).toBeGreaterThan(0);
   });
 });

@@ -20,7 +20,9 @@ export interface ExportCommandOptions {
 export async function exportCommand(opts: ExportCommandOptions): Promise<void> {
   if (!opts.session) {
     if (opts.json) {
-      process.stdout.write(JSON.stringify({ error: 'No session specified. Use --session <id>.' }) + '\n');
+      process.stdout.write(
+        JSON.stringify({ error: 'No session specified. Use --session <id>.' }) + '\n',
+      );
     } else {
       console.error('Error: No session specified. Use --session <id>.');
     }
@@ -42,19 +44,19 @@ export async function exportCommand(opts: ExportCommandOptions): Promise<void> {
   }
 
   const session = await store.load(opts.session);
-  const exportDir = opts.output
-    ? opts.output
-    : await ensureExportDir(opts.session);
+  const exportDir = opts.output ? opts.output : await ensureExportDir(opts.session);
 
   const result = await exportSession(session, exportDir);
 
   if (opts.json) {
-    process.stdout.write(JSON.stringify({
-      sessionId: session.sessionId,
-      exported: true,
-      exportDir: result.exportDir,
-      files: result.files,
-    }) + '\n');
+    process.stdout.write(
+      JSON.stringify({
+        sessionId: session.sessionId,
+        exported: true,
+        exportDir: result.exportDir,
+        files: result.files,
+      }) + '\n',
+    );
   } else {
     console.log(`Exported session "${session.sessionId}" to ${result.exportDir}`);
     console.log(`Generated ${result.files.length} file(s):`);

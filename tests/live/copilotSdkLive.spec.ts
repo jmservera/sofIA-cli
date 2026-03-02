@@ -13,12 +13,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 import { createCopilotClient } from '../../src/shared/copilotClient.js';
-import type { CopilotClient, ConversationSession, CopilotMessage } from '../../src/shared/copilotClient.js';
+import type {
+  CopilotClient,
+  ConversationSession,
+  CopilotMessage,
+} from '../../src/shared/copilotClient.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Collect all TextDelta events from an AsyncIterable of SofiaEvents into a string. */
-async function collectText(iter: AsyncIterable<import('../../src/shared/events.js').SofiaEvent>): Promise<string> {
+async function collectText(
+  iter: AsyncIterable<import('../../src/shared/events.js').SofiaEvent>,
+): Promise<string> {
   const chunks: string[] = [];
   for await (const event of iter) {
     if (event.type === 'TextDelta') {
@@ -124,9 +130,7 @@ describe('Live Copilot SDK client', () => {
       systemPrompt: 'You are a helpful assistant. Be very brief.',
     });
 
-    await collectText(
-      session.send({ role: 'user', content: 'Say hello.' }),
-    );
+    await collectText(session.send({ role: 'user', content: 'Say hello.' }));
 
     const history: CopilotMessage[] = session.getHistory();
 

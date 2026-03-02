@@ -35,9 +35,7 @@ export class SessionStore {
   async list(): Promise<string[]> {
     try {
       const files = await readdir(this.baseDir);
-      return files
-        .filter((f) => f.endsWith('.json'))
-        .map((f) => f.replace(/\.json$/, ''));
+      return files.filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
     } catch {
       return [];
     }

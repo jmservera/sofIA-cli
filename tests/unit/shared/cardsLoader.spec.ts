@@ -9,7 +9,11 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { loadCardsDataset, getCardsByCategory, searchCards } from '../../../src/shared/data/cardsLoader.js';
+import {
+  loadCardsDataset,
+  getCardsByCategory,
+  searchCards,
+} from '../../../src/shared/data/cardsLoader.js';
 
 describe('cardsLoader', () => {
   it('loads the cards dataset successfully', async () => {
@@ -47,7 +51,7 @@ describe('cardsLoader', () => {
     const filtered = await getCardsByCategory(firstCategory);
 
     expect(filtered.length).toBeGreaterThan(0);
-    expect(filtered.every(c => c.category === firstCategory)).toBe(true);
+    expect(filtered.every((c) => c.category === firstCategory)).toBe(true);
   });
 
   it('returns empty array for unknown category', async () => {
@@ -63,7 +67,7 @@ describe('cardsLoader', () => {
     const results = await searchCards(keyword);
 
     expect(results.length).toBeGreaterThan(0);
-    expect(results.some(c => c.cardId === firstCard.cardId)).toBe(true);
+    expect(results.some((c) => c.cardId === firstCard.cardId)).toBe(true);
   });
 
   it('searches cards case-insensitively', async () => {

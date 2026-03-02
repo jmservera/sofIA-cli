@@ -23,7 +23,7 @@ Implement the **Develop** phase for sofIA: transform a completed workshop sessio
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Outcome-first discovery**: ✅ PoC generation is the culminating deliverable of the workshop — directly tied to the user's selected AI idea and business goals.
 - **Secure-by-default**: ✅ No secrets in logs/prompts; PoC scaffolds use secure defaults; GitHub MCP requests respect organization policies.
@@ -95,7 +95,7 @@ tests/
 
 ## Post-Design Constitution Re-Check
 
-*All 6 gates re-evaluated after Phase 1 design. No violations.*
+_All 6 gates re-evaluated after Phase 1 design. No violations._
 
 - **Outcome-first discovery**: ✅ Contracts explicitly link PoC output back to the workshop session and selected idea via `.sofia-metadata.json`.
 - **Secure-by-default**: ✅ Local-first output; GitHub MCP is opt-in; no PII in metadata; scaffold templates use secure TS defaults.

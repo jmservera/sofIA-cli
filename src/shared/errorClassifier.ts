@@ -39,11 +39,7 @@ export interface ErrorClassification {
 export function classifyError(err: unknown): ErrorClassification {
   // Normalise to an Error-like shape
   const error =
-    err instanceof Error
-      ? err
-      : typeof err === 'string'
-        ? new Error(err)
-        : new Error(String(err));
+    err instanceof Error ? err : typeof err === 'string' ? new Error(err) : new Error(String(err));
 
   const code = (err as { code?: string }).code;
   const statusCode = (err as { statusCode?: number }).statusCode;
@@ -137,18 +133,14 @@ const USER_MESSAGES: Record<ErrorCategory, string> = {
   connection:
     'Unable to establish a connection. Please check that the service is running and try again.',
   dns: 'DNS lookup failed — verify your network connection and that the hostname is correct.',
-  timeout:
-    'The request timed out. The service may be under heavy load; please try again shortly.',
+  timeout: 'The request timed out. The service may be under heavy load; please try again shortly.',
   auth: 'Authentication failed — please check your credentials or auth token and try again.',
-  'rate-limit':
-    'Rate limit exceeded. Please wait a moment before retrying.',
-  'not-found':
-    'The requested resource was not found. Verify the path or identifier and try again.',
+  'rate-limit': 'Rate limit exceeded. Please wait a moment before retrying.',
+  'not-found': 'The requested resource was not found. Verify the path or identifier and try again.',
   validation:
     'Data validation failed. The input or stored data does not match the expected schema.',
   mcp: 'An MCP service encountered an error. It may be temporarily unavailable — retrying might help.',
-  internal:
-    'An unexpected error occurred. If the problem persists, please report it.',
+  internal: 'An unexpected error occurred. If the problem persists, please report it.',
 };
 
 /**

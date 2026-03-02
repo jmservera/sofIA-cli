@@ -155,7 +155,7 @@ Mapping: the 12-step workshop covers **Discover/Ideate/Design**; Phase 2 maps to
     - [ ] Are boundary conditions verified (max/min values, empty collections, large payloads)?
     - [ ] Are new integration points exercised (new MCP calls, Copilot SDK interactions)?
     - [ ] Do existing tests still pass without modification (no silent regressions)?
-    If any gaps are found, add tests and repeat the red → green cycle before proceeding.
+          If any gaps are found, add tests and repeat the red → green cycle before proceeding.
 
 - **Observability & Diagnostics**
   - Use structured, leveled logging with a clear separation between **debug**, **info**, **warn**, and **error**.

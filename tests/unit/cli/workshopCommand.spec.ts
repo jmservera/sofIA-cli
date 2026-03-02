@@ -345,7 +345,9 @@ describe('workshopCommand auto-transition prompt (T053)', () => {
     expect(allOutput).toContain('install dependencies');
 
     // FR-021: readInput was called with the auto-transition prompt
-    expect(ioReadInputPrompts.some((p) => p.includes('Would you like to start PoC development'))).toBe(true);
+    expect(
+      ioReadInputPrompts.some((p) => p.includes('Would you like to start PoC development')),
+    ).toBe(true);
   });
 
   it('exits workshop when user accepts auto-transition prompt (FR-021)', async () => {

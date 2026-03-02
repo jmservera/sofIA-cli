@@ -20,4 +20,3 @@
 
 - `files[].path` is relative to the export directory.
 - Do not include secrets.
-

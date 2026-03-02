@@ -9,7 +9,11 @@ import { mkdtemp, rm, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { PocScaffolder, toKebabCase, validatePocOutput } from '../../../src/develop/pocScaffolder.js';
+import {
+  PocScaffolder,
+  toKebabCase,
+  validatePocOutput,
+} from '../../../src/develop/pocScaffolder.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -97,7 +101,9 @@ describe('PocScaffolder', () => {
 
     it('uses idea title as project name', () => {
       const session = makeSession({
-        ideas: [{ id: 'idea-1', title: 'My Cool AI App', description: 'desc', workflowStepIds: [] }],
+        ideas: [
+          { id: 'idea-1', title: 'My Cool AI App', description: 'desc', workflowStepIds: [] },
+        ],
       });
       const ctx = PocScaffolder.buildContext(session, tmpDir);
       expect(ctx.projectName).toBe('my-cool-ai-app');
@@ -132,7 +138,9 @@ describe('PocScaffolder', () => {
 
       for (const file of requiredFiles) {
         const fullPath = join(tmpDir, file);
-        const exists = await stat(fullPath).then(() => true).catch(() => false);
+        const exists = await stat(fullPath)
+          .then(() => true)
+          .catch(() => false);
         expect(exists, `Expected ${file} to exist`).toBe(true);
       }
 
@@ -324,11 +332,19 @@ describe('validatePocOutput', () => {
     const { writeFile, mkdir } = await import('node:fs/promises');
     await mkdir(join(tmpDir, 'src'), { recursive: true });
     await mkdir(join(tmpDir, 'tests'), { recursive: true });
-    await writeFile(join(tmpDir, 'package.json'), JSON.stringify({ name: 'test', scripts: {} }), 'utf-8');
+    await writeFile(
+      join(tmpDir, 'package.json'),
+      JSON.stringify({ name: 'test', scripts: {} }),
+      'utf-8',
+    );
     await writeFile(join(tmpDir, 'README.md'), '# Test', 'utf-8');
     await writeFile(join(tmpDir, 'tsconfig.json'), JSON.stringify({}), 'utf-8');
     await writeFile(join(tmpDir, '.gitignore'), 'node_modules/', 'utf-8');
-    await writeFile(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({ sessionId: 'x' }), 'utf-8');
+    await writeFile(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({ sessionId: 'x' }),
+      'utf-8',
+    );
     await writeFile(join(tmpDir, 'src/index.ts'), 'export function main() {}', 'utf-8');
     await writeFile(join(tmpDir, 'tests/index.test.ts'), 'import { test } from "vitest"', 'utf-8');
 
@@ -402,10 +418,7 @@ describe('PocScaffolder.scanAndRecordTodos (T072)', () => {
       join(tmpDir, 'src/index.ts'),
       '// TODO: Implement the core functionality\nexport function main() {}\n// TODO: Add error handling\n',
     );
-    await writeFile(
-      join(tmpDir, 'src/utils.ts'),
-      'export function helper() { return 42; }\n',
-    );
+    await writeFile(join(tmpDir, 'src/utils.ts'), 'export function helper() { return 42; }\n');
     await writeFile(
       join(tmpDir, '.sofia-metadata.json'),
       JSON.stringify({ sessionId: 'test-001', scaffoldedAt: new Date().toISOString() }),
@@ -433,10 +446,7 @@ describe('PocScaffolder.scanAndRecordTodos (T072)', () => {
   it('records zero TODOs when no markers exist', async () => {
     const { writeFile } = await import('node:fs/promises');
 
-    await writeFile(
-      join(tmpDir, 'index.ts'),
-      'export function main() { return "clean"; }\n',
-    );
+    await writeFile(join(tmpDir, 'index.ts'), 'export function main() { return "clean"; }\n');
     await writeFile(
       join(tmpDir, '.sofia-metadata.json'),
       JSON.stringify({ sessionId: 'test-002' }),

@@ -4,10 +4,10 @@ sofIA uses environment variables for optional integrations. All are optional —
 
 ## Web Search (Azure AI Foundry)
 
-| Variable | Description |
-|----------|-------------|
+| Variable                       | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
 | `SOFIA_FOUNDRY_AGENT_ENDPOINT` | Azure AI Foundry Bing Search agent endpoint URL |
-| `SOFIA_FOUNDRY_AGENT_KEY` | API key for the Foundry agent |
+| `SOFIA_FOUNDRY_AGENT_KEY`      | API key for the Foundry agent                   |
 
 Both must be set for the `web.search` tool to be available. When not configured, the web search tool is disabled and the workshop proceeds without web search capabilities.
 

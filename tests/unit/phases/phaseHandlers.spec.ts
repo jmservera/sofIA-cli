@@ -9,7 +9,11 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../../../src/phases/phaseHandlers.js';
+import {
+  createPhaseHandler,
+  getPhaseOrder,
+  getNextPhase,
+} from '../../../src/phases/phaseHandlers.js';
 import { backtrackSession } from '../../../src/sessions/sessionManager.js';
 import type { WorkshopSession, PhaseValue } from '../../../src/shared/schemas/session.js';
 
@@ -110,7 +114,8 @@ describe('phaseHandlers', () => {
     it('extractResult sets session.name when sessionName is present in LLM response', () => {
       const handler = createPhaseHandler('Discover');
       const session = makeSession();
-      const response = '```json\n{"businessDescription": "Logistics Co", "challenges": ["Routing"], "sessionName": "Logistics AI Routing"}\n```';
+      const response =
+        '```json\n{"businessDescription": "Logistics Co", "challenges": ["Routing"], "sessionName": "Logistics AI Routing"}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.name).toBe('Logistics AI Routing');
     });
@@ -126,7 +131,8 @@ describe('phaseHandlers', () => {
     it('extractResult does not overwrite existing session.name (first-write-wins)', () => {
       const handler = createPhaseHandler('Discover');
       const session = makeSession({ name: 'Original Name' } as Partial<WorkshopSession>);
-      const response = '```json\n{"businessDescription": "Retail Co", "challenges": ["Growth"], "sessionName": "New Name"}\n```';
+      const response =
+        '```json\n{"businessDescription": "Retail Co", "challenges": ["Growth"], "sessionName": "New Name"}\n```';
       const result = handler.extractResult!(session, response);
       // Should NOT include name in updates since session already has one
       expect(result.name).toBeUndefined();
@@ -225,7 +231,8 @@ describe('phaseHandlers', () => {
     it('Ideate handler extracts ideas from response', () => {
       const handler = createPhaseHandler('Ideate');
       const session = makeSession();
-      const response = '```json\n[{"id": "i1", "title": "AI Chat", "description": "Chatbot", "workflowStepIds": ["s1"]}]\n```';
+      const response =
+        '```json\n[{"id": "i1", "title": "AI Chat", "description": "Chatbot", "workflowStepIds": ["s1"]}]\n```';
       const result = handler.extractResult!(session, response);
       expect(result.ideas).toHaveLength(1);
       expect(result.ideas![0].title).toBe('AI Chat');
@@ -234,9 +241,12 @@ describe('phaseHandlers', () => {
     it('Ideate handler merges ideas without duplicates', () => {
       const handler = createPhaseHandler('Ideate');
       const session = makeSession({
-        ideas: [{ id: 'i1', title: 'Existing', description: 'Already there', workflowStepIds: ['s1'] }],
+        ideas: [
+          { id: 'i1', title: 'Existing', description: 'Already there', workflowStepIds: ['s1'] },
+        ],
       });
-      const response = '```json\n[{"id": "i1", "title": "Dup", "description": "Dup", "workflowStepIds": ["s1"]}, {"id": "i2", "title": "New", "description": "New one", "workflowStepIds": ["s2"]}]\n```';
+      const response =
+        '```json\n[{"id": "i1", "title": "Dup", "description": "Dup", "workflowStepIds": ["s1"]}, {"id": "i2", "title": "New", "description": "New one", "workflowStepIds": ["s2"]}]\n```';
       const result = handler.extractResult!(session, response);
       expect(result.ideas).toHaveLength(2);
       expect(result.ideas![0].title).toBe('Existing');
@@ -246,7 +256,8 @@ describe('phaseHandlers', () => {
     it('Design handler extracts evaluation from response', () => {
       const handler = createPhaseHandler('Design');
       const session = makeSession();
-      const response = '```json\n{"method": "feasibility-value-matrix", "ideas": [{"ideaId": "i1", "feasibility": 4, "value": 5}]}\n```';
+      const response =
+        '```json\n{"method": "feasibility-value-matrix", "ideas": [{"ideaId": "i1", "feasibility": 4, "value": 5}]}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.evaluation).toBeDefined();
       expect(result.evaluation!.method).toBe('feasibility-value-matrix');
@@ -255,7 +266,8 @@ describe('phaseHandlers', () => {
     it('Select handler extracts selection from response', () => {
       const handler = createPhaseHandler('Select');
       const session = makeSession();
-      const response = '```json\n{"ideaId": "i1", "selectionRationale": "Best ROI", "confirmedByUser": true}\n```';
+      const response =
+        '```json\n{"ideaId": "i1", "selectionRationale": "Best ROI", "confirmedByUser": true}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.selection).toBeDefined();
       expect(result.selection!.ideaId).toBe('i1');
@@ -264,7 +276,8 @@ describe('phaseHandlers', () => {
     it('Plan handler extracts plan from response', () => {
       const handler = createPhaseHandler('Plan');
       const session = makeSession();
-      const response = '```json\n{"milestones": [{"id": "m1", "title": "Setup", "items": ["Init repo"]}]}\n```';
+      const response =
+        '```json\n{"milestones": [{"id": "m1", "title": "Setup", "items": ["Init repo"]}]}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.plan).toBeDefined();
       expect(result.plan!.milestones).toHaveLength(1);
@@ -273,7 +286,8 @@ describe('phaseHandlers', () => {
     it('Develop handler extracts poc state from response', () => {
       const handler = createPhaseHandler('Develop');
       const session = makeSession();
-      const response = '```json\n{"repoSource": "local", "iterations": [{"iteration": 1, "startedAt": "2025-01-01T00:00:00Z", "outcome": "scaffold", "filesChanged": []}]}\n```';
+      const response =
+        '```json\n{"repoSource": "local", "iterations": [{"iteration": 1, "startedAt": "2025-01-01T00:00:00Z", "outcome": "scaffold", "filesChanged": []}]}\n```';
       const result = handler.extractResult!(session, response);
       expect(result.poc).toBeDefined();
       expect(result.poc!.iterations).toHaveLength(1);
@@ -299,9 +313,7 @@ describe('phaseHandlers', () => {
           activities: [{ id: 'a1', name: 'Step 1' }],
           edges: [],
         },
-        ideas: [
-          { id: 'i1', title: 'Idea A', description: 'Desc', workflowStepIds: ['a1'] },
-        ],
+        ideas: [{ id: 'i1', title: 'Idea A', description: 'Desc', workflowStepIds: ['a1'] }],
       });
 
       // Backtrack to Ideate: clears ideas (and anything downstream)
@@ -324,9 +336,7 @@ describe('phaseHandlers', () => {
           businessDescription: 'ACME',
           challenges: ['Growth'],
         },
-        ideas: [
-          { id: 'old', title: 'Old Idea', description: 'Was here', workflowStepIds: ['a1'] },
-        ],
+        ideas: [{ id: 'old', title: 'Old Idea', description: 'Was here', workflowStepIds: ['a1'] }],
         evaluation: {
           method: 'feasibility-value-matrix',
           ideas: [{ ideaId: 'old', feasibility: 3, value: 3 }],
@@ -340,7 +350,8 @@ describe('phaseHandlers', () => {
 
       // Re-running Ideate handler extracts fresh ideas
       const handler = createPhaseHandler('Ideate');
-      const freshResponse = '```json\n[{"id": "new1", "title": "New Idea", "description": "Fresh", "workflowStepIds": ["a1"]}]\n```';
+      const freshResponse =
+        '```json\n[{"id": "new1", "title": "New Idea", "description": "Fresh", "workflowStepIds": ["a1"]}]\n```';
       const result = handler.extractResult!(backtracked, freshResponse);
       expect(result.ideas).toHaveLength(1);
       expect(result.ideas![0].id).toBe('new1');
@@ -369,8 +380,20 @@ describe('phaseHandlers', () => {
         const session = makeSession({
           phase,
           turns: [
-            { phase, sequence: 1, role: 'user', content: 'Previous input', timestamp: '2025-01-01T00:00:00Z' },
-            { phase, sequence: 2, role: 'assistant', content: 'Previous response', timestamp: '2025-01-01T00:00:00Z' },
+            {
+              phase,
+              sequence: 1,
+              role: 'user',
+              content: 'Previous input',
+              timestamp: '2025-01-01T00:00:00Z',
+            },
+            {
+              phase,
+              sequence: 2,
+              role: 'assistant',
+              content: 'Previous response',
+              timestamp: '2025-01-01T00:00:00Z',
+            },
           ],
         });
         const msg = handler.getInitialMessage!(session);
@@ -386,8 +409,20 @@ describe('phaseHandlers', () => {
       const resumedSession = makeSession({
         phase: 'Discover',
         turns: [
-          { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: '2025-01-01T00:00:00Z' },
-          { phase: 'Discover', sequence: 2, role: 'assistant', content: 'hi', timestamp: '2025-01-01T00:00:00Z' },
+          {
+            phase: 'Discover',
+            sequence: 1,
+            role: 'user',
+            content: 'hello',
+            timestamp: '2025-01-01T00:00:00Z',
+          },
+          {
+            phase: 'Discover',
+            sequence: 2,
+            role: 'assistant',
+            content: 'hi',
+            timestamp: '2025-01-01T00:00:00Z',
+          },
         ],
       });
 

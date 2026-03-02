@@ -13,7 +13,12 @@ import {
   type LoopIO,
   type PhaseHandler,
 } from '../../src/loop/conversationLoop.js';
-import type { CopilotClient, ConversationSession, CopilotMessage, SessionOptions } from '../../src/shared/copilotClient.js';
+import type {
+  CopilotClient,
+  ConversationSession,
+  CopilotMessage,
+  SessionOptions,
+} from '../../src/shared/copilotClient.js';
 import { ActivitySpinner } from '../../src/shared/activitySpinner.js';
 import type { SofiaEvent } from '../../src/shared/events.js';
 import {
@@ -39,26 +44,47 @@ function makeSession(overrides?: Partial<WorkshopSession>): WorkshopSession {
   };
 }
 
-function makeIO(inputs: (string | null)[], opts?: { json?: boolean; tty?: boolean }): LoopIO & { _written: string[]; _activities: string[]; _toolSummaries: Array<{ toolName: string; summary: string }> } {
+function makeIO(
+  inputs: (string | null)[],
+  opts?: { json?: boolean; tty?: boolean },
+): LoopIO & {
+  _written: string[];
+  _activities: string[];
+  _toolSummaries: Array<{ toolName: string; summary: string }>;
+} {
   let inputIndex = 0;
   const written: string[] = [];
   const activities: string[] = [];
   const toolSummaries: Array<{ toolName: string; summary: string }> = [];
 
   return {
-    write(text: string) { written.push(text); },
-    writeActivity(text: string) { activities.push(text); },
-    writeToolSummary(toolName: string, summary: string) { toolSummaries.push({ toolName, summary }); },
+    write(text: string) {
+      written.push(text);
+    },
+    writeActivity(text: string) {
+      activities.push(text);
+    },
+    writeToolSummary(toolName: string, summary: string) {
+      toolSummaries.push({ toolName, summary });
+    },
     async readInput(): Promise<string | null> {
       if (inputIndex >= inputs.length) return null;
       return inputs[inputIndex++] ?? null;
     },
-    async showDecisionGate() { return { choice: 'continue' as const }; },
+    async showDecisionGate() {
+      return { choice: 'continue' as const };
+    },
     isJsonMode: opts?.json ?? false,
     isTTY: opts?.tty ?? true,
-    get _written() { return written; },
-    get _activities() { return activities; },
-    get _toolSummaries() { return toolSummaries; },
+    get _written() {
+      return written;
+    },
+    get _activities() {
+      return activities;
+    },
+    get _toolSummaries() {
+      return toolSummaries;
+    },
   };
 }
 
@@ -127,9 +153,7 @@ describe('Spinner lifecycle integration (T089)', () => {
     const startSpy = vi.spyOn(spinner, 'startThinking');
     const stopSpy = vi.spyOn(spinner, 'stop');
 
-    const client = createEventSequenceClient([
-      [createTextDeltaEvent('Hello from LLM')],
-    ]);
+    const client = createEventSequenceClient([[createTextDeltaEvent('Hello from LLM')]]);
 
     const io = makeIO(['test input'], { tty: true });
     const loop = new ConversationLoop({

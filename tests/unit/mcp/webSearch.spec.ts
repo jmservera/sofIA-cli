@@ -71,7 +71,11 @@ describe('web.search tool', () => {
         ok: true,
         json: async () => ({
           results: [
-            { title: 'AI in Retail', url: 'https://example.com/ai-retail', snippet: 'How AI transforms retail' },
+            {
+              title: 'AI in Retail',
+              url: 'https://example.com/ai-retail',
+              snippet: 'How AI transforms retail',
+            },
           ],
           sources: ['https://example.com/ai-retail'],
         }),
@@ -113,9 +117,9 @@ describe('web.search tool', () => {
     });
 
     it('degrades gracefully when fetch throws', async () => {
-      const mockFetch = vi.fn().mockRejectedValue(
-        Object.assign(new Error('Network error'), { code: 'ECONNREFUSED' }),
-      );
+      const mockFetch = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('Network error'), { code: 'ECONNREFUSED' }));
 
       const tool = createWebSearchTool({
         endpoint: 'https://foundry.example.com',

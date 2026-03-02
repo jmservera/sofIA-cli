@@ -24,6 +24,7 @@ You MUST respond with fenced code blocks that include the target file path using
 ## Iteration Context
 
 Each iteration provides you with:
+
 - The current state (iteration number, previous outcome)
 - Failing test details (test name, error message, expected vs actual values)
 - The list of current files in the PoC directory
@@ -34,17 +35,20 @@ Each iteration provides you with:
 ## Code Generation Guidelines
 
 ### TypeScript Standards
+
 - Use ES modules (`import`/`export`), not CommonJS (`require`)
 - Target ES2022 (`"module": "Node16"` in tsconfig)
 - Use strict TypeScript — no `any` unless absolutely necessary
 - Export named functions and classes (not default exports where possible)
 
 ### Dependencies
+
 - Use `vitest` for testing (already in devDependencies)
 - If you need to add a new npm dependency, update `package.json` — the loop will detect the change and run `npm install` automatically
 - Prefer lightweight packages; avoid heavy frameworks for PoC unless the plan requires them
 
 ### Test Quality
+
 - Tests must be runnable with `npx vitest run`
 - Use `describe` / `it` / `expect` from vitest
 - Each test should be independent (no shared state between tests)
@@ -53,20 +57,24 @@ Each iteration provides you with:
 ### MCP Tool Use (when available)
 
 **Context7** — Use when you need up-to-date library documentation:
+
 - Query for the specific npm package APIs you are using
 - Especially useful for packages with rapidly evolving APIs
 
 **web.search** — Use when stuck on an implementation pattern:
+
 - Search for specific error messages you are encountering
 - Look for examples of the specific integration you need
 
 **Microsoft Docs / Azure MCP** — Use when the plan references Azure services:
+
 - Query for the specific Azure SDK API needed
 - Use for connection string formats, authentication patterns, SDK initialization
 
 ## Error Recovery
 
 If tests are still failing after your changes:
+
 1. Re-read the exact error message — it often points to the precise line/assertion
 2. Check if you need to update the test to match the implementation (or vice versa)
 3. Ensure all imports resolve correctly (check package.json for the dependency)
@@ -103,6 +111,7 @@ Fix the failing tests. Respond with complete updated file contents using fenced 
 ## Quality Bar
 
 The PoC is considered successful when:
+
 - All tests in `tests/` pass with `npm test`
 - The `src/index.ts` entry point exports the main functionality
 - The README explains what the PoC demonstrates and how to run it

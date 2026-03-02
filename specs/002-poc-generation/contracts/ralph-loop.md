@@ -97,13 +97,13 @@ The code generator parses these blocks and writes them to disk.
 
 ## Termination conditions
 
-| Condition | `finalStatus` | `terminationReason` |
-|-----------|--------------|---------------------|
-| All tests pass | `success` | `tests-passing` |
-| Max iterations reached, some tests pass | `partial` | `max-iterations` |
-| Max iterations reached, no tests pass | `failed` | `max-iterations` |
-| User presses Ctrl+C | session preserved as-is | `user-stopped` |
-| Unrecoverable error (LLM timeout, disk error) | `failed` | `error` |
+| Condition                                     | `finalStatus`           | `terminationReason` |
+| --------------------------------------------- | ----------------------- | ------------------- |
+| All tests pass                                | `success`               | `tests-passing`     |
+| Max iterations reached, some tests pass       | `partial`               | `max-iterations`    |
+| Max iterations reached, no tests pass         | `failed`                | `max-iterations`    |
+| User presses Ctrl+C                           | session preserved as-is | `user-stopped`      |
+| Unrecoverable error (LLM timeout, disk error) | `failed`                | `error`             |
 
 ## Error handling
 

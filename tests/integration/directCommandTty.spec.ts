@@ -20,9 +20,7 @@ import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop
 import { createFakeCopilotClient } from '../../src/shared/copilotClient.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { SessionStore } from '../../src/sessions/sessionStore.js';
-import {
-  runDirectCommand,
-} from '../../src/cli/directCommands.js';
+import { runDirectCommand } from '../../src/cli/directCommands.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,8 +49,12 @@ function createScriptedIO(
   const activityLog: string[] = [];
 
   return {
-    write(text: string) { output.push(text); },
-    writeActivity(text: string) { activityLog.push(text); },
+    write(text: string) {
+      output.push(text);
+    },
+    writeActivity(text: string) {
+      activityLog.push(text);
+    },
     writeToolSummary(_toolName: string, _summary: string) {},
     async readInput(_prompt?: string): Promise<string | null> {
       if (inputIdx >= inputs.length) return null;
@@ -89,7 +91,10 @@ describe('Direct command TTY mode', () => {
 
     const io = createScriptedIO(['Here are some ideas about AI automation'], { choice: 'exit' });
     const client = createFakeCopilotClient([
-      { role: 'assistant', content: '{"ideas": [{"title": "AI Helper", "description": "An AI assistant"}]}' },
+      {
+        role: 'assistant',
+        content: '{"ideas": [{"title": "AI Helper", "description": "An AI assistant"}]}',
+      },
     ]);
 
     const result = await runDirectCommand({

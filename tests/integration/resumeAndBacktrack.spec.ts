@@ -135,7 +135,9 @@ describe('Resume and Backtrack Flow', () => {
       session: loaded,
       phaseHandler: handler,
       onEvent: () => {},
-      onSessionUpdate: async (s) => { await store.save(s); },
+      onSessionUpdate: async (s) => {
+        await store.save(s);
+      },
     });
 
     const result = await loop.run();
@@ -154,16 +156,39 @@ describe('Resume and Backtrack Flow', () => {
         edges: [],
       },
       ideas: [
-        { id: 'i1', title: 'AI Procurement', description: 'Automated purchasing', workflowStepIds: ['a1'] },
+        {
+          id: 'i1',
+          title: 'AI Procurement',
+          description: 'Automated purchasing',
+          workflowStepIds: ['a1'],
+        },
       ],
       evaluation: {
         method: 'feasibility-value-matrix',
         ideas: [{ ideaId: 'i1', feasibility: 4, value: 5 }],
       },
       turns: [
-        { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: new Date().toISOString() },
-        { phase: 'Ideate', sequence: 2, role: 'user', content: 'ideas', timestamp: new Date().toISOString() },
-        { phase: 'Design', sequence: 3, role: 'user', content: 'evaluate', timestamp: new Date().toISOString() },
+        {
+          phase: 'Discover',
+          sequence: 1,
+          role: 'user',
+          content: 'hello',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'user',
+          content: 'ideas',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          phase: 'Design',
+          sequence: 3,
+          role: 'user',
+          content: 'evaluate',
+          timestamp: new Date().toISOString(),
+        },
       ],
     });
     await store.save(session);
@@ -201,7 +226,8 @@ describe('Resume and Backtrack Flow', () => {
     const client = createFakeCopilotClient([
       {
         role: 'assistant',
-        content: '```json\n[{"id": "new-1", "title": "Smart Scheduling", "description": "AI scheduling", "workflowStepIds": ["a1"]}]\n```',
+        content:
+          '```json\n[{"id": "new-1", "title": "Smart Scheduling", "description": "AI scheduling", "workflowStepIds": ["a1"]}]\n```',
       },
     ]);
     const io = createScriptedIO(['Generate new ideas', null]);
@@ -214,7 +240,9 @@ describe('Resume and Backtrack Flow', () => {
       session,
       phaseHandler: handler,
       onEvent: () => {},
-      onSessionUpdate: async (s) => { await store.save(s); },
+      onSessionUpdate: async (s) => {
+        await store.save(s);
+      },
     });
 
     const result = await loop.run();

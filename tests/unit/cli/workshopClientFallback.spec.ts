@@ -13,9 +13,7 @@ vi.mock('../../../src/shared/copilotClient.js', async (importOriginal) => {
   const orig = await importOriginal<typeof import('../../../src/shared/copilotClient.js')>();
   return {
     ...orig,
-    createCopilotClient: vi.fn().mockRejectedValue(
-      new Error('SDK not available'),
-    ),
+    createCopilotClient: vi.fn().mockRejectedValue(new Error('SDK not available')),
   };
 });
 
@@ -88,7 +86,7 @@ describe('workshopCommand — client creation failure', () => {
       json: true,
     });
 
-    const allOutput = writeSpy.mock.calls.map(c => String(c[0])).join('');
+    const allOutput = writeSpy.mock.calls.map((c) => String(c[0])).join('');
 
     // Should NOT contain the canned fake response
     expect(allOutput).not.toContain('Welcome to the AI Discovery Workshop');

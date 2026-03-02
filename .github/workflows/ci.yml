@@ -29,8 +29,8 @@ jobs:
         run: npm run lint
 
       - name: Type check
-        run: npm run typecheck      
-      
+        run: npm run typecheck
+
       - name: Run tests
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_KEY }}

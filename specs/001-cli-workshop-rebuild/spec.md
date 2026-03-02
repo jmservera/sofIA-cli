@@ -28,7 +28,7 @@
 - Q: Should the user see a "thinking" indicator during silent gaps? → A: Yes. Show a "Thinking..." spinner during all silent gaps: after user input before first token, and after tool results before next text output.
 - Q: Should `--verbose` be a new flag or reuse `--debug`? → A: Reuse `--debug`. When `--debug` is set, also show verbose tool output inline (tool arguments and full result details). No new `--verbose` flag.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Run a new governed workshop session (Priority: P1)
 
@@ -88,7 +88,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 - Recoverable errors should route to a recovery decision flow instead of abrupt termination.
 - Interactive output must never show raw SDK JSON events.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -213,7 +213,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 - **FR-061**: System MUST NOT run multiple competing follow-up loops in the same execution path.
 - **FR-062**: System MUST NOT mix activity telemetry into JSON stdout payloads.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **WorkshopSession**: id, name (auto-generated after first Discover exchange), currentPhase, completedPhases, businessContext, journeyMap, ideas, bxtEvaluations, selectedIdeaId, plan, poc (PocDevelopmentState), turns, timestamps.
 - **ConversationTurn**: phase, sequence, role, content, timestamp, metadata.
@@ -221,7 +221,7 @@ As an operator or automation pipeline, I want to continue a session non-interact
 - **BxtEvaluation**: businessScore, experienceScore, technicalScore, rationale, classification.
 - **PocDevelopmentState**: repoPath, iterations, finalStatus (detailed behavior defined in feature `002-poc-generation`).
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

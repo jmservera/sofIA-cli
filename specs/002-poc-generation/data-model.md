@@ -13,6 +13,7 @@ This document defines the entities introduced or extended by Feature 002. It bui
 Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-rebuild/data-model.md) §13.
 
 **Fields**
+
 - `repoPath?: string` — local path to generated PoC directory (e.g., `./poc/<sessionId>/`)
 - `repoUrl?: string` — GitHub URL if created via MCP
 - `repoSource: "local" | "github-mcp"` — how the repo was created
@@ -24,6 +25,7 @@ Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-
 - `finalTestResults?: TestResults` — test state at loop termination
 
 **Validation rules**
+
 - `repoPath` OR `repoUrl` must be set after first successful scaffold.
 - `repoSource` is required once scaffolding completes.
 - `finalStatus` is set only when the Ralph loop terminates.
@@ -35,6 +37,7 @@ Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-
 Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-rebuild/data-model.md) §13.
 
 **Fields**
+
 - `iteration: number` — 1-indexed iteration counter
 - `startedAt: string` — ISO-8601 timestamp
 - `endedAt?: string` — ISO-8601 timestamp
@@ -46,6 +49,7 @@ Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-
 - `llmPromptContext?: string` — summary of context sent to LLM (for auditability, not full prompt)
 
 **Validation rules**
+
 - `iteration` starts at 1, increments by 1.
 - First iteration always has `outcome: "scaffold"`.
 - `filesChanged` must be relative paths within the PoC directory.
@@ -58,6 +62,7 @@ Extends the entity defined in Feature 001's [data-model.md](../001-cli-workshop-
 Captures the technology choices for the generated PoC. Determined during scaffolding from the session's `plan.architectureNotes` and `plan.dependencies`.
 
 **Fields**
+
 - `language: string` — primary language (e.g., "TypeScript", "Python")
 - `framework?: string` — web framework or runtime (e.g., "Express", "FastAPI")
 - `testRunner: string` — test runner command (e.g., "npm test", "pytest")
@@ -65,6 +70,7 @@ Captures the technology choices for the generated PoC. Determined during scaffol
 - `runtime: string` — runtime environment (e.g., "Node.js 20", "Python 3.11")
 
 **Validation rules**
+
 - `language` and `runtime` are required.
 - `testRunner` is required — the Ralph loop cannot proceed without it.
 
@@ -73,6 +79,7 @@ Captures the technology choices for the generated PoC. Determined during scaffol
 Structured output from running the PoC's test suite.
 
 **Fields**
+
 - `passed: number` — count of passing tests
 - `failed: number` — count of failing tests
 - `skipped: number` — count of skipped tests
@@ -82,6 +89,7 @@ Structured output from running the PoC's test suite.
 - `rawOutput?: string` — truncated raw test runner output (max 2000 chars)
 
 **Validation rules**
+
 - `total === passed + failed + skipped`.
 - `failures.length <= failed` (may be truncated).
 - `rawOutput` is truncated to 2000 characters from the end (tail).
@@ -91,6 +99,7 @@ Structured output from running the PoC's test suite.
 Individual test failure detail, fed back to the LLM as context for the next iteration.
 
 **Fields**
+
 - `testName: string` — name/path of the failing test
 - `message: string` — assertion error or exception message
 - `expected?: string` — expected value (if assertion failure)
@@ -103,6 +112,7 @@ Individual test failure detail, fed back to the LLM as context for the next iter
 Describes a PoC scaffold template. Templates are defined programmatically (no external template files).
 
 **Fields**
+
 - `id: string` — template identifier (e.g., "node-typescript-express", "python-fastapi")
 - `name: string` — human-readable name
 - `language: string` — primary language
@@ -113,6 +123,7 @@ Describes a PoC scaffold template. Templates are defined programmatically (no ex
 A single file in a scaffold template.
 
 **Fields**
+
 - `path: string` — path relative to PoC root
 - `content: string` — file content (may contain `{{placeholder}}` tokens)
 - `skipIfExists: boolean` — whether to skip writing if file already exists (default: true)
@@ -126,6 +137,7 @@ Develop (entered) → Scaffolding → Iteration 1 → ... → Iteration N → Co
 ```
 
 Transitions within Develop:
+
 - `Scaffolding`: Generate initial PoC project structure → outcome: "scaffold"
 - `Iteration N` (N >= 2): Run tests → feed failures to LLM → generate fixes → outcome: "tests-passing" | "tests-failing" | "error"
 - `Complete`: `finalStatus = "success"` when `terminationReason = "tests-passing"`
@@ -151,6 +163,7 @@ WorkshopSession
 ## Export Extensions
 
 The Develop section of `exports/<sessionId>/develop.md` should include:
+
 - PoC repository location (path or URL)
 - Technology stack summary
 - Iteration timeline with outcomes

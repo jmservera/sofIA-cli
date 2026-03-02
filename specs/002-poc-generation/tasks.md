@@ -51,7 +51,7 @@
 
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
-- [x] T011 [P] [US1] Add unit tests for `PocScaffolder` in `tests/unit/develop/pocScaffolder.spec.ts`: verify scaffold creates all required files (.gitignore, README.md, package.json, tsconfig.json, src/index.ts, tests/*.test.ts, .sofia-metadata.json); verify skip-if-exists behavior; verify ScaffoldContext population from session
+- [x] T011 [P] [US1] Add unit tests for `PocScaffolder` in `tests/unit/develop/pocScaffolder.spec.ts`: verify scaffold creates all required files (.gitignore, README.md, package.json, tsconfig.json, src/index.ts, tests/\*.test.ts, .sofia-metadata.json); verify skip-if-exists behavior; verify ScaffoldContext population from session
 - [x] T012 [P] [US1] Add unit tests for `TestRunner` in `tests/unit/develop/testRunner.spec.ts`: verify spawns `npm test` with `--reporter=json`, parses JSON output into `TestResults` schema, handles timeout (60s), handles non-zero exit code, truncates `rawOutput` to 2000 chars
 - [x] T013 [P] [US1] Add unit tests for `CodeGenerator` in `tests/unit/develop/codeGenerator.spec.ts`: verify parses fenced code blocks with `file=path` from LLM response, writes files to outputDir, handles empty response gracefully, builds iteration prompt with test failures context
 - [x] T014 [P] [US1] Add unit tests for `developCommand` in `tests/unit/cli/developCommand.spec.ts`: verify session validation (rejects sessions without selection/plan), verify `--session`, `--max-iterations`, `--output` option parsing, verify error messages for invalid sessions

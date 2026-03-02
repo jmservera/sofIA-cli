@@ -29,10 +29,7 @@ export interface CliHandlers {
 export function buildCli(handlers?: Partial<CliHandlers>): Command {
   const program = new Command();
 
-  program
-    .name('sofia')
-    .description('sofIA — AI Discovery Workshop CLI')
-    .version('0.1.0');
+  program.name('sofia').description('sofIA — AI Discovery Workshop CLI').version('0.1.0');
 
   // ── Global options ──────────────────────────────────────────────────────
 
@@ -41,7 +38,10 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
     .option('--json', 'Emit machine-readable JSON only on stdout')
     .option('--debug', 'Enable debug telemetry')
     .option('--log-file <path>', 'Write structured logs to file')
-    .option('--non-interactive', 'Disallow prompts; fail with actionable error if input is missing');
+    .option(
+      '--non-interactive',
+      'Disallow prompts; fail with actionable error if input is missing',
+    );
 
   // ── Workshop options promoted to top level (FR-004) ──────────────────────
 
@@ -52,7 +52,10 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
 
   // ── Workshop handler logic ──────────────────────────────────────────────
 
-  async function invokeWorkshopHandler(programOpts: Record<string, unknown>, cmdOpts?: Record<string, unknown>): Promise<void> {
+  async function invokeWorkshopHandler(
+    programOpts: Record<string, unknown>,
+    cmdOpts?: Record<string, unknown>,
+  ): Promise<void> {
     const merged = { ...programOpts, ...cmdOpts };
 
     if (handlers?.workshopHandler) {
@@ -69,7 +72,10 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
       const { getLogger } = await import('../logging/logger.js');
 
       const store = createDefaultStore();
-      const io = createLoopIO({ json: merged.json as boolean, nonInteractive: merged.nonInteractive as boolean });
+      const io = createLoopIO({
+        json: merged.json as boolean,
+        nonInteractive: merged.nonInteractive as boolean,
+      });
 
       let client;
       try {
@@ -221,10 +227,11 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
 // ── Auto-parse when run as CLI entrypoint ─────────────────────────────────
 
 // Only auto-parse when running as the main CLI entrypoint, not when imported for testing
-const isMainModule = process.argv[1] &&
+const isMainModule =
+  process.argv[1] &&
   (process.argv[1].endsWith('/cli/index.js') ||
-   process.argv[1].endsWith('/cli/index.ts') ||
-   process.argv[1].endsWith('sofia'));
+    process.argv[1].endsWith('/cli/index.ts') ||
+    process.argv[1].endsWith('sofia'));
 
 if (isMainModule) {
   const program = buildCli();

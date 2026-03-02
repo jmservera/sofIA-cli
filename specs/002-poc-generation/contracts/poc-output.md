@@ -34,6 +34,7 @@ Always generated to prevent accidental commits of build artifacts, especially wh
 ### README.md
 
 Must contain:
+
 - **Title**: PoC name (from the selected idea title)
 - **Description**: What AI capability it demonstrates
 - **Prerequisites**: Runtime, environment variables, dependencies
@@ -54,7 +55,7 @@ Must contain:
     "start": "node dist/index.js",
     "test": "vitest run"
   },
-  "dependencies": { },
+  "dependencies": {},
   "devDependencies": {
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
@@ -120,23 +121,23 @@ The scaffolder produces the initial file set before the first Ralph loop iterati
 
 ```typescript
 interface ScaffoldTemplate {
-  id: string;                    // e.g., "node-ts-vitest"
+  id: string; // e.g., "node-ts-vitest"
   description: string;
   files: TemplateFile[];
 }
 
 interface TemplateFile {
-  path: string;                  // Relative to outputDir
+  path: string; // Relative to outputDir
   content: string | ((ctx: ScaffoldContext) => string);
-  skipIfExists?: boolean;        // Default: true
+  skipIfExists?: boolean; // Default: true
 }
 
 interface ScaffoldContext {
-  projectName: string;           // kebab-case from idea title
+  projectName: string; // kebab-case from idea title
   ideaTitle: string;
   ideaDescription: string;
   techStack: TechStack;
-  planSummary: string;           // From Plan phase output
+  planSummary: string; // From Plan phase output
 }
 ```
 
@@ -144,16 +145,16 @@ interface ScaffoldContext {
 
 After the Ralph loop completes, the following checks are applied before declaring success:
 
-| Check | Required | Description |
-|-------|----------|-------------|
-| `package.json` exists | Yes | Valid JSON with `test` script |
-| `README.md` exists | Yes | Non-empty |
-| `tsconfig.json` exists | Yes | Valid JSON |
-| At least 1 `.ts` file in `src/` | Yes | Main implementation |
-| At least 1 `.test.ts` file in `tests/` | Yes | Tests for the PoC |
-| `.sofia-metadata.json` exists | Yes | Links back to session |
-| `.gitignore` exists | Yes | Excludes `node_modules/`, `dist/`, `coverage/` |
-| `npm test` exits 0 | Only for `success` status | Tests pass |
+| Check                                  | Required                  | Description                                    |
+| -------------------------------------- | ------------------------- | ---------------------------------------------- |
+| `package.json` exists                  | Yes                       | Valid JSON with `test` script                  |
+| `README.md` exists                     | Yes                       | Non-empty                                      |
+| `tsconfig.json` exists                 | Yes                       | Valid JSON                                     |
+| At least 1 `.ts` file in `src/`        | Yes                       | Main implementation                            |
+| At least 1 `.test.ts` file in `tests/` | Yes                       | Tests for the PoC                              |
+| `.sofia-metadata.json` exists          | Yes                       | Links back to session                          |
+| `.gitignore` exists                    | Yes                       | Excludes `node_modules/`, `dist/`, `coverage/` |
+| `npm test` exits 0                     | Only for `success` status | Tests pass                                     |
 
 ## GitHub MCP integration (optional)
 

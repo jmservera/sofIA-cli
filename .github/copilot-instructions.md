@@ -14,6 +14,7 @@ This project reimagines [Microsoft's AI Discovery Agent (AIDA)](https://github.c
 ## Architecture
 
 ### Agent Flow
+
 ```
 User Input → Discovery Agent → Ideation Agent → Design Agent → Selection Agent → Planning Agent → Development Agent
 ```
@@ -25,7 +26,7 @@ Examples for these agents can be found in the [src/originalPrompts/](../src/orig
 - **Copilot Enabled App** - Main entry point handling GitHub Copilot chat interactions via `@github/copilot-sdk`
 - **MCP Integrations** - External services for gathering context and generating solutions:
   - **WorkIQ** - Process analysis and task discovery
-  - **Context7** - Documentation and context retrieval  
+  - **Context7** - Documentation and context retrieval
   - **Microsoft Learn** - Azure/AI documentation
   - **GitHub MCP** - Repository search, code examples, and issue tracking
 
@@ -162,9 +163,10 @@ Do not modify production code until a failing test proves the change is needed.
 
 > **Rationale:** Several bugs in the streaming pipeline (resolveIdle, onComplete fallback) were fixed without tests initially, requiring rework. Writing the test first catches regressions immediately and documents the expected SDK event sequence.
 
-
 ### Agent State Management
+
 Each agent phase should:
+
 - Accept context from previous phases
 - Emit structured output for the next phase
 - Support checkpointing for long-running sessions
@@ -213,6 +215,7 @@ The project enforces strict TypeScript checking via `npm run typecheck` (`tsc --
 ## MCP Server Configuration
 
 The project uses Model Context Protocol servers for external integrations. Configuration is in:
+
 - `.vscode/settings.json` - VS Code / GitHub Copilot integration
 - `.vscode/mcp.json` - MCP server configuration
 
@@ -220,19 +223,20 @@ Ensure these services are being used when needed for context retrieval and tool 
 
 ### Available MCP Servers
 
-| Server | Config | Purpose |
-|--------|--------|---------|
-| `workiq` | `@microsoft/workiq` | Microsoft 365 data - emails, meetings, documents, Teams messages |
-| `github` | Remote: `https://api.githubcopilot.com/mcp/` | Repository search, code, issues, PRs, Actions workflows |
+| Server          | Config                                        | Purpose                                                                     |
+| --------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
+| `workiq`        | `@microsoft/workiq`                           | Microsoft 365 data - emails, meetings, documents, Teams messages            |
+| `github`        | Remote: `https://api.githubcopilot.com/mcp/`  | Repository search, code, issues, PRs, Actions workflows                     |
 | `microsoftdocs` | Remote: `https://learn.microsoft.com/api/mcp` | Azure resource management - storage, compute, databases and everything else |
-| `context7` | `@upstash/context7-mcp` | Up-to-date library/framework documentation |
-| `playwright` | `@playwright/mcp@latest` | Browser automation for web research and PoC testing |
+| `context7`      | `@upstash/context7-mcp`                       | Up-to-date library/framework documentation                                  |
+| `playwright`    | `@playwright/mcp@latest`                      | Browser automation for web research and PoC testing                         |
 
 > **Note**: Web search is built into GitHub Copilot - no additional MCP server needed for researching companies, industry trends, or public information.
 
 ### WorkIQ Setup
 
 WorkIQ requires Microsoft 365 tenant access and admin consent. On first use:
+
 1. Run `npx -y @microsoft/workiq accept-eula` to accept the EULA
 2. Sign in when prompted - admin consent may be required
 3. See [WorkIQ Admin Instructions](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md) for tenant setup

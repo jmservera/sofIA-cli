@@ -120,24 +120,25 @@ coverage/
   {
     path: 'tsconfig.json',
     skipIfExists: true,
-    content: JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'Node16',
-          moduleResolution: 'Node16',
-          strict: true,
-          outDir: 'dist',
-          rootDir: 'src',
-          declaration: true,
-          esModuleInterop: true,
-          skipLibCheck: true,
+    content:
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'Node16',
+            moduleResolution: 'Node16',
+            strict: true,
+            outDir: 'dist',
+            rootDir: 'src',
+            declaration: true,
+            esModuleInterop: true,
+            skipLibCheck: true,
+          },
+          include: ['src'],
         },
-        include: ['src'],
-      },
-      null,
-      2,
-    ) + '\n',
+        null,
+        2,
+      ) + '\n',
   },
 
   {
@@ -304,7 +305,7 @@ export class PocScaffolder {
 
     const planSummary = session.plan?.architectureNotes
       ? session.plan.architectureNotes
-      : session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details';
+      : (session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details');
 
     const techStack: TechStack = templateEntry?.techStack
       ? { ...templateEntry.techStack }

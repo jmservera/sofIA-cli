@@ -119,7 +119,9 @@ describe('New Session Flow', () => {
       session,
       phaseHandler: handler,
       onEvent: (e) => events.push(e),
-      onSessionUpdate: async (s) => { await store.save(s); },
+      onSessionUpdate: async (s) => {
+        await store.save(s);
+      },
     });
 
     const result = await loop.run();
@@ -131,7 +133,7 @@ describe('New Session Flow', () => {
     expect(result.turns![1].role).toBe('assistant');
 
     // Events should include activity
-    const activityEvents = events.filter(e => e.type === 'Activity');
+    const activityEvents = events.filter((e) => e.type === 'Activity');
     expect(activityEvents.length).toBeGreaterThan(0);
 
     // Session should be persisted
@@ -160,7 +162,9 @@ describe('New Session Flow', () => {
       session,
       phaseHandler: handler,
       onEvent: () => {},
-      onSessionUpdate: async (s) => { await store.save(s); },
+      onSessionUpdate: async (s) => {
+        await store.save(s);
+      },
     });
 
     const result = await loop.run();
@@ -276,16 +280,21 @@ describe('New Session Flow', () => {
     expect(handler.isComplete!(createTestSession(), '')).toBe(false);
 
     // Complete with business context and workflow
-    expect(handler.isComplete!(createTestSession({
-      businessContext: {
-        businessDescription: 'Test Corp',
-        challenges: ['Growth'],
-      },
-      workflow: {
-        activities: [{ id: 'a1', name: 'Activity 1' }],
-        edges: [],
-      },
-    }), '')).toBe(true);
+    expect(
+      handler.isComplete!(
+        createTestSession({
+          businessContext: {
+            businessDescription: 'Test Corp',
+            challenges: ['Growth'],
+          },
+          workflow: {
+            activities: [{ id: 'a1', name: 'Activity 1' }],
+            edges: [],
+          },
+        }),
+        '',
+      ),
+    ).toBe(true);
   });
 
   it('handles Select handler isComplete requiring user confirmation', async () => {
@@ -295,23 +304,33 @@ describe('New Session Flow', () => {
     expect(handler.isComplete!(createTestSession(), '')).toBe(false);
 
     // Not complete with unconfirmed selection
-    expect(handler.isComplete!(createTestSession({
-      selection: {
-        ideaId: 'i1',
-        selectionRationale: 'Best option',
-        confirmedByUser: false,
-      },
-    }), '')).toBe(false);
+    expect(
+      handler.isComplete!(
+        createTestSession({
+          selection: {
+            ideaId: 'i1',
+            selectionRationale: 'Best option',
+            confirmedByUser: false,
+          },
+        }),
+        '',
+      ),
+    ).toBe(false);
 
     // Complete with confirmed selection
-    expect(handler.isComplete!(createTestSession({
-      selection: {
-        ideaId: 'i1',
-        selectionRationale: 'Best option',
-        confirmedByUser: true,
-        confirmedAt: new Date().toISOString(),
-      },
-    }), '')).toBe(true);
+    expect(
+      handler.isComplete!(
+        createTestSession({
+          selection: {
+            ideaId: 'i1',
+            selectionRationale: 'Best option',
+            confirmedByUser: true,
+            confirmedAt: new Date().toISOString(),
+          },
+        }),
+        '',
+      ),
+    ).toBe(true);
   });
 
   it('captures events during conversation', async () => {
@@ -336,11 +355,11 @@ describe('New Session Flow', () => {
     await loop.run();
 
     // Should have Activity event for phase start
-    const activityEvents = events.filter(e => e.type === 'Activity');
+    const activityEvents = events.filter((e) => e.type === 'Activity');
     expect(activityEvents.length).toBeGreaterThan(0);
 
     // Should have TextDelta events from streaming
-    const textEvents = events.filter(e => e.type === 'TextDelta');
+    const textEvents = events.filter((e) => e.type === 'TextDelta');
     expect(textEvents.length).toBeGreaterThan(0);
   });
 
@@ -376,9 +395,7 @@ describe('New Session Flow', () => {
 
   it('renders output in JSON mode vs text mode', async () => {
     const session = createTestSession();
-    const client = createFakeCopilotClient([
-      { role: 'assistant', content: 'Test response.' },
-    ]);
+    const client = createFakeCopilotClient([{ role: 'assistant', content: 'Test response.' }]);
 
     // JSON mode
     const jsonIO = createScriptedIO(['hello', null]);

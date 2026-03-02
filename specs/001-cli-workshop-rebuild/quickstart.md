@@ -74,10 +74,9 @@ npm run start -- workshop --debug --log-file .sofia/logs/dev.log
 
 ## Environment variables (optional)
 
-| Variable | Purpose |
-|----------|---------|
+| Variable                       | Purpose                                     |
+| ------------------------------ | ------------------------------------------- |
 | `SOFIA_FOUNDRY_AGENT_ENDPOINT` | Azure AI Foundry Bing Search agent endpoint |
-| `SOFIA_FOUNDRY_AGENT_KEY` | API key for the Foundry agent |
+| `SOFIA_FOUNDRY_AGENT_KEY`      | API key for the Foundry agent               |
 
 See [docs/environment.md](../../docs/environment.md) for details.
-

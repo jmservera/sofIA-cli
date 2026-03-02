@@ -129,15 +129,30 @@ describe('Auto-start conversation integration (T075)', () => {
   it('auto-start with resumed session includes progress context', async () => {
     const session = createTestSession({
       turns: [
-        { phase: 'Discover', sequence: 1, role: 'user', content: 'Previous input', timestamp: '2025-01-01T00:00:00Z' },
-        { phase: 'Discover', sequence: 2, role: 'assistant', content: 'Previous response', timestamp: '2025-01-01T00:00:00Z' },
+        {
+          phase: 'Discover',
+          sequence: 1,
+          role: 'user',
+          content: 'Previous input',
+          timestamp: '2025-01-01T00:00:00Z',
+        },
+        {
+          phase: 'Discover',
+          sequence: 2,
+          role: 'assistant',
+          content: 'Previous response',
+          timestamp: '2025-01-01T00:00:00Z',
+        },
       ],
     });
     const originalTurnCount = session.turns!.length;
     await store.save(session);
 
     const client = createFakeCopilotClient([
-      { role: 'assistant', content: 'Welcome back! Last time we discussed your business. Let me continue.' },
+      {
+        role: 'assistant',
+        content: 'Welcome back! Last time we discussed your business. Let me continue.',
+      },
     ]);
 
     const io = createScriptedIO([]);

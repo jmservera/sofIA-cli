@@ -18,7 +18,8 @@ import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 // ── Load fixture session ──────────────────────────────────────────────────────
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 describe('PoC Scaffold Integration', () => {
   let tmpDir: string;

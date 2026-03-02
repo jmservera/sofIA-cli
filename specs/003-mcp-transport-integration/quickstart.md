@@ -89,11 +89,16 @@ describe('HttpMcpTransport', () => {
     const calls: RequestInit[] = [];
     const mockFetch = async (url: string, init: RequestInit) => {
       calls.push(init);
-      return new Response(JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        result: { content: [{ type: 'text', text: '{"html_url":"https://github.com/org/repo"}' }] }
-      }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          result: {
+            content: [{ type: 'text', text: '{"html_url":"https://github.com/org/repo"}' }],
+          },
+        }),
+        { status: 200 },
+      );
     };
 
     const transport = new HttpMcpTransport(
@@ -123,6 +128,7 @@ Run: `npm run test:unit` → **should pass**.
 ### Step C: Review
 
 Checklist:
+
 - [ ] Are error paths tested (401, timeout, malformed JSON)?
 - [ ] Is the retry policy exercised (separate `retryPolicy.spec.ts`)?
 - [ ] Does `McpManager.callTool()` integration test pass?
@@ -190,14 +196,14 @@ npm test
 
 ## 6. Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GITHUB_TOKEN` | For live GitHub MCP | Personal access token with `repo` scope |
-| `AZURE_SUBSCRIPTION_ID` | For live Azure MCP | Azure subscription ID |
-| `AZURE_TENANT_ID` | For live Azure MCP | Azure tenant ID |
-| `AZURE_AI_FOUNDRY_ENDPOINT` | For web search | Azure AI Foundry endpoint URL |
-| `AZURE_AI_FOUNDRY_API_KEY` | For web search | Azure AI Foundry API key |
-| `SOFIA_LIVE_MCP_TESTS` | To enable live tests | Set to `true` to run live smoke tests |
+| Variable                    | Required             | Description                             |
+| --------------------------- | -------------------- | --------------------------------------- |
+| `GITHUB_TOKEN`              | For live GitHub MCP  | Personal access token with `repo` scope |
+| `AZURE_SUBSCRIPTION_ID`     | For live Azure MCP   | Azure subscription ID                   |
+| `AZURE_TENANT_ID`           | For live Azure MCP   | Azure tenant ID                         |
+| `AZURE_AI_FOUNDRY_ENDPOINT` | For web search       | Azure AI Foundry endpoint URL           |
+| `AZURE_AI_FOUNDRY_API_KEY`  | For web search       | Azure AI Foundry API key                |
+| `SOFIA_LIVE_MCP_TESTS`      | To enable live tests | Set to `true` to run live smoke tests   |
 
 ---
 
@@ -205,27 +211,27 @@ npm test
 
 ### New files
 
-| File | Purpose |
-|------|---------|
-| `src/mcp/mcpTransport.ts` | `McpTransport` interface + `StdioMcpTransport` + `HttpMcpTransport` + `createTransport()` |
-| `src/mcp/retryPolicy.ts` | `withRetry()` helper |
-| `src/phases/discoveryEnricher.ts` | `DiscoveryEnricher` class |
-| `tests/unit/mcp/mcpTransport.spec.ts` | Transport unit tests |
-| `tests/unit/mcp/retryPolicy.spec.ts` | Retry policy unit tests |
-| `tests/unit/phases/discoveryEnricher.spec.ts` | Discovery enricher unit tests |
-| `tests/integration/mcpTransportFlow.spec.ts` | End-to-end transport integration test |
-| `tests/e2e/mcpLive.spec.ts` | Live smoke tests (gated by `SOFIA_LIVE_MCP_TESTS`) |
+| File                                          | Purpose                                                                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/mcp/mcpTransport.ts`                     | `McpTransport` interface + `StdioMcpTransport` + `HttpMcpTransport` + `createTransport()` |
+| `src/mcp/retryPolicy.ts`                      | `withRetry()` helper                                                                      |
+| `src/phases/discoveryEnricher.ts`             | `DiscoveryEnricher` class                                                                 |
+| `tests/unit/mcp/mcpTransport.spec.ts`         | Transport unit tests                                                                      |
+| `tests/unit/mcp/retryPolicy.spec.ts`          | Retry policy unit tests                                                                   |
+| `tests/unit/phases/discoveryEnricher.spec.ts` | Discovery enricher unit tests                                                             |
+| `tests/integration/mcpTransportFlow.spec.ts`  | End-to-end transport integration test                                                     |
+| `tests/e2e/mcpLive.spec.ts`                   | Live smoke tests (gated by `SOFIA_LIVE_MCP_TESTS`)                                        |
 
 ### Modified files
 
-| File | Change |
-|------|--------|
-| `src/mcp/mcpManager.ts` | Add `callTool()` implementation + transport registry |
-| `src/develop/githubMcpAdapter.ts` | Remove stub; use real `callTool()` |
-| `src/develop/mcpContextEnricher.ts` | Remove stub; use real `callTool()` |
-| `src/develop/ralphLoop.ts` | Add post-scaffold push; fix file content flow |
-| `src/phases/phaseHandlers.ts` | Wire discovery enrichment after Step 1 |
-| `src/shared/schemas/session.ts` | Add `DiscoveryEnrichment` + extend `DiscoveryState` |
+| File                                | Change                                               |
+| ----------------------------------- | ---------------------------------------------------- |
+| `src/mcp/mcpManager.ts`             | Add `callTool()` implementation + transport registry |
+| `src/develop/githubMcpAdapter.ts`   | Remove stub; use real `callTool()`                   |
+| `src/develop/mcpContextEnricher.ts` | Remove stub; use real `callTool()`                   |
+| `src/develop/ralphLoop.ts`          | Add post-scaffold push; fix file content flow        |
+| `src/phases/phaseHandlers.ts`       | Wire discovery enrichment after Step 1               |
+| `src/shared/schemas/session.ts`     | Add `DiscoveryEnrichment` + extend `DiscoveryState`  |
 
 ---
 
@@ -253,9 +259,11 @@ try {
 ```typescript
 import { McpManager, loadMcpConfig } from '../../../src/mcp/mcpManager.js';
 
-const manager = new McpManager({ servers: {
-  context7: { name: 'context7', type: 'stdio', command: 'npx', args: [] }
-}});
+const manager = new McpManager({
+  servers: {
+    context7: { name: 'context7', type: 'stdio', command: 'npx', args: [] },
+  },
+});
 
 // Inject fake transport (via a test seam or vi.mock)
 manager.markConnected('context7');

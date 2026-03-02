@@ -27,4 +27,3 @@
 
 - Must not persist secrets/tokens.
 - Redact/omit any sensitive values from tool responses before writing.
-

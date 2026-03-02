@@ -471,9 +471,7 @@ describe('developCommand — --force option', () => {
     );
 
     // store.save should have been called with poc cleared
-    expect(store.save).toHaveBeenCalledWith(
-      expect.objectContaining({ poc: undefined }),
-    );
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({ poc: undefined }));
   });
 
   it('--force on a success session clears status and starts fresh (T028, FR-010)', async () => {
@@ -514,9 +512,7 @@ describe('developCommand — --force option', () => {
     );
 
     // Should have cleared poc before running loop
-    expect(store.save).toHaveBeenCalledWith(
-      expect.objectContaining({ poc: undefined }),
-    );
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({ poc: undefined }));
     // RalphLoop should have been constructed and run
     expect(RalphLoop).toHaveBeenCalled();
   });
@@ -610,9 +606,7 @@ describe('developCommand — resume behavior', () => {
     // Should NOT have created a RalphLoop
     expect(RalphLoop).not.toHaveBeenCalled();
     // Should have displayed completion message
-    expect(io.writeActivity).toHaveBeenCalledWith(
-      expect.stringContaining('already complete'),
-    );
+    expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('already complete'));
   });
 
   it('defaults to resume when poc.finalStatus is failed (T017, FR-006)', async () => {
@@ -642,9 +636,7 @@ describe('developCommand — resume behavior', () => {
     await developCommand({ session: 'test-dev-session' }, { store, io, client });
 
     // Should have displayed resume message
-    expect(io.writeActivity).toHaveBeenCalledWith(
-      expect.stringContaining('Resuming session'),
-    );
+    expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Resuming session'));
     // RalphLoop should have been created
     expect(RalphLoop).toHaveBeenCalled();
   });
@@ -683,9 +675,7 @@ describe('developCommand — resume behavior', () => {
 
     await developCommand({ session: 'test-dev-session' }, { store, io, client });
 
-    expect(io.writeActivity).toHaveBeenCalledWith(
-      expect.stringContaining('Resuming session'),
-    );
+    expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Resuming session'));
     expect(RalphLoop).toHaveBeenCalled();
   });
 });

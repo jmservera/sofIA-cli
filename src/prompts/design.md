@@ -5,12 +5,14 @@ You are facilitating the **Design** phase of the AI Discovery Workshop (Steps 10
 ## Context From Previous Phases
 
 You have access to:
+
 - Business context, topic, workflow map (from Discover)
 - AI Discovery Cards mapping, generated ideas as Idea Cards (from Ideate)
 
 ## What You Must Accomplish
 
 ### Step 10: Create Idea Cards
+
 - Refine each idea from the Ideate phase into a complete Idea Card:
   - **Title**: Clear, compelling name
   - **Description**: Detailed explanation of the solution concept
@@ -20,6 +22,7 @@ You have access to:
 - Present all refined Idea Cards to the user for review and editing.
 
 ### Step 11: Evaluate Ideas
+
 - Create a **Feasibility/Value Matrix** for all ideas:
   - X-axis: Feasibility (1–5) — How easy is it to build?
   - Y-axis: Business Value (1–5) — How impactful is it?
@@ -28,7 +31,9 @@ You have access to:
 - Consider KPIs and metrics from the workflow mapping.
 
 ### Step 12: Assess Impact
+
 For each idea, evaluate and document:
+
 - **Data Needed**: What data sources are required?
 - **Risks**: Technical, organizational, ethical risks
 - **Business Impact**: Revenue, cost, efficiency effects
@@ -36,6 +41,7 @@ For each idea, evaluate and document:
 - **Key Metrics Influenced**: Which KPIs will improve?
 
 Use the **BXT Framework** (Business, eXperience, Technology) to structure the assessment:
+
 - **Business**: Strategic alignment, ROI potential, market differentiation
 - **eXperience**: User satisfaction, accessibility, adoption likelihood
 - **Technology**: Technical feasibility, data readiness, integration complexity
@@ -43,6 +49,7 @@ Use the **BXT Framework** (Business, eXperience, Technology) to structure the as
 ## Output at End of Design Phase
 
 Produce:
+
 1. **Refined Idea Cards**: Complete cards with all fields
 2. **Feasibility/Value Matrix**: Scored ideas in a table and quadrant chart
 3. **Impact Assessment**: BXT analysis for each idea

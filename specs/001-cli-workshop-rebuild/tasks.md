@@ -47,8 +47,8 @@
 - [x] T017 [P] Create initial CLI entrypoint in src/cli/index.ts wired to commander (no workshop commands implemented yet)
 - [x] T018 [P] Add node-pty based E2E harness skeleton in tests/e2e/harness.spec.ts for driving the CLI interactively
 - [x] T019 Add foundational unit tests for sessionStore, logger, markdownRenderer, and ConversationLoop in tests/unit/
- - [x] T059 [P] Implement `web.search` tool backed by the Azure AI Foundry Bing Search agent in src/mcp/webSearch.ts, wired through McpManager and exposed to the Copilot SDK
- - [x] T060 [P] Add unit/integration tests for `web.search` behavior and degradation paths (Foundry misconfigured/unavailable) in tests/unit/mcp/webSearch.spec.ts and/or tests/integration/webSearch.spec.ts
+- [x] T059 [P] Implement `web.search` tool backed by the Azure AI Foundry Bing Search agent in src/mcp/webSearch.ts, wired through McpManager and exposed to the Copilot SDK
+- [x] T060 [P] Add unit/integration tests for `web.search` behavior and degradation paths (Foundry misconfigured/unavailable) in tests/unit/mcp/webSearch.spec.ts and/or tests/integration/webSearch.spec.ts
 
 **Checkpoint**: Foundation ready – user story implementation can now begin in parallel.
 
@@ -243,13 +243,13 @@
 
 #### Tests for 8a (REQUIRED — write first, verify they fail) ⚠️
 
-- [X] T080 [P] [US1] Add unit tests for incremental markdown rendering in streaming in tests/unit/loop/conversationLoop.spec.ts: verify `TextDelta` chunks are passed through `renderMarkdown()` in TTY mode, raw markdown in non-TTY/JSON mode, and turn history stores raw markdown (not ANSI)
-- [X] T081 [P] [US1] Add unit tests for `renderMarkdown()` handling of partial/incremental chunks in tests/unit/shared/markdownRenderer.spec.ts: verify partial markdown (split heading, incomplete bold) renders without crashing
+- [x] T080 [P] [US1] Add unit tests for incremental markdown rendering in streaming in tests/unit/loop/conversationLoop.spec.ts: verify `TextDelta` chunks are passed through `renderMarkdown()` in TTY mode, raw markdown in non-TTY/JSON mode, and turn history stores raw markdown (not ANSI)
+- [x] T081 [P] [US1] Add unit tests for `renderMarkdown()` handling of partial/incremental chunks in tests/unit/shared/markdownRenderer.spec.ts: verify partial markdown (split heading, incomplete bold) renders without crashing
 
 #### Implementation for 8a
 
-- [X] T082 [US1] Update `ConversationLoop.streamResponse()` in src/loop/conversationLoop.ts to pass `TextDelta` chunks through `renderMarkdown()` before `io.write()` in TTY mode; ensure raw markdown is accumulated separately for turn history persistence
-- [X] T083 [US1] Update `renderMarkdown()` in src/shared/markdownRenderer.ts if needed to handle incremental chunk rendering gracefully (ensure `marked.parse()` doesn't throw on partial markdown)
+- [x] T082 [US1] Update `ConversationLoop.streamResponse()` in src/loop/conversationLoop.ts to pass `TextDelta` chunks through `renderMarkdown()` before `io.write()` in TTY mode; ensure raw markdown is accumulated separately for turn history persistence
+- [x] T083 [US1] Update `renderMarkdown()` in src/shared/markdownRenderer.ts if needed to handle incremental chunk rendering gracefully (ensure `marked.parse()` doesn't throw on partial markdown)
 
 **Checkpoint**: LLM streaming output appears as formatted markdown (colored headings, bold, code blocks) in the terminal during streaming.
 
@@ -263,11 +263,11 @@
 
 #### Tests for 8b (REQUIRED — write first, verify they fail) ⚠️
 
-- [X] T084 [P] [US1] Add unit tests for `ActivitySpinner` in tests/unit/shared/activitySpinner.spec.ts: verify `startThinking()` starts a spinner with "Thinking..." text, `startToolCall(name)` updates spinner text, `completeToolCall(name, summary)` stops spinner and prints summary, `stop()` clears spinner, and all methods are no-ops when non-TTY or JSON mode
+- [x] T084 [P] [US1] Add unit tests for `ActivitySpinner` in tests/unit/shared/activitySpinner.spec.ts: verify `startThinking()` starts a spinner with "Thinking..." text, `startToolCall(name)` updates spinner text, `completeToolCall(name, summary)` stops spinner and prints summary, `stop()` clears spinner, and all methods are no-ops when non-TTY or JSON mode
 
 #### Implementation for 8b
 
-- [X] T085 [US1] Create `src/shared/activitySpinner.ts` with `ActivitySpinner` class wrapping `ora`: constructor accepts `{ isTTY, isJsonMode, debugMode }`; methods: `startThinking()`, `startToolCall(toolName)`, `completeToolCall(toolName, summary)`, `stop()`, `isActive()`; writes to stderr; all operations no-op when non-TTY or JSON mode
+- [x] T085 [US1] Create `src/shared/activitySpinner.ts` with `ActivitySpinner` class wrapping `ora`: constructor accepts `{ isTTY, isJsonMode, debugMode }`; methods: `startThinking()`, `startToolCall(toolName)`, `completeToolCall(toolName, summary)`, `stop()`, `isActive()`; writes to stderr; all operations no-op when non-TTY or JSON mode
 
 **Checkpoint**: `ActivitySpinner` module exists with full test coverage; can be instantiated and used independently.
 
@@ -281,12 +281,12 @@
 
 #### Tests for 8c (REQUIRED — write first, verify they fail) ⚠️
 
-- [X] T086 [P] [US1] Add unit tests for `writeToolSummary()` in tests/unit/cli/ioContext.spec.ts: verify default mode prints "✓ <toolName>: <summary>" to stderr, `--debug` mode additionally prints args and result, and JSON/non-TTY mode omits tool summaries from stdout
+- [x] T086 [P] [US1] Add unit tests for `writeToolSummary()` in tests/unit/cli/ioContext.spec.ts: verify default mode prints "✓ <toolName>: <summary>" to stderr, `--debug` mode additionally prints args and result, and JSON/non-TTY mode omits tool summaries from stdout
 
 #### Implementation for 8c
 
-- [X] T087 [US1] Add `writeToolSummary(toolName, summary, debug?)` method to `LoopIO` interface in src/loop/conversationLoop.ts and implement in `createLoopIO()` in src/cli/ioContext.ts: default prints one-line summary to stderr; `--debug` expands with formatted JSON of args and result; non-TTY/JSON omits from stdout
-- [X] T088 [US1] Update `IoContextOptions` in src/cli/ioContext.ts to accept `debug?: boolean` option so `createLoopIO()` can control verbose tool output behavior
+- [x] T087 [US1] Add `writeToolSummary(toolName, summary, debug?)` method to `LoopIO` interface in src/loop/conversationLoop.ts and implement in `createLoopIO()` in src/cli/ioContext.ts: default prints one-line summary to stderr; `--debug` expands with formatted JSON of args and result; non-TTY/JSON omits from stdout
+- [x] T088 [US1] Update `IoContextOptions` in src/cli/ioContext.ts to accept `debug?: boolean` option so `createLoopIO()` can control verbose tool output behavior
 
 **Checkpoint**: Tool call completions produce visible one-line summaries; `--debug` shows full details.
 
@@ -300,13 +300,13 @@
 
 #### Tests for 8d (REQUIRED — write first, verify they fail) ⚠️
 
-- [X] T089 [P] [US1] Add integration tests for spinner lifecycle in ConversationLoop in tests/integration/spinnerLifecycle.spec.ts: verify spinner starts with "Thinking..." after user input, transitions on ToolCall events, prints tool summary on ToolResult, stops on first TextDelta, and handles multi-tool sequences correctly
-- [X] T090 [P] [US1] Add unit tests for ConversationLoop spinner injection in tests/unit/loop/conversationLoop.spec.ts: verify spinner option is accepted, no-op spinner works for non-TTY, spinner.stop() is called on response complete
+- [x] T089 [P] [US1] Add integration tests for spinner lifecycle in ConversationLoop in tests/integration/spinnerLifecycle.spec.ts: verify spinner starts with "Thinking..." after user input, transitions on ToolCall events, prints tool summary on ToolResult, stops on first TextDelta, and handles multi-tool sequences correctly
+- [x] T090 [P] [US1] Add unit tests for ConversationLoop spinner injection in tests/unit/loop/conversationLoop.spec.ts: verify spinner option is accepted, no-op spinner works for non-TTY, spinner.stop() is called on response complete
 
 #### Implementation for 8d
 
-- [X] T091 [US1] Add `spinner?: ActivitySpinner` to `ConversationLoopOptions` in src/loop/conversationLoop.ts; update `streamResponse()` to manage spinner lifecycle: `startThinking()` before send, `startToolCall()` on ToolCall event, `completeToolCall()` + `io.writeToolSummary()` on ToolResult event, `stop()` on first TextDelta event, `stop()` on response complete
-- [X] T092 [US1] Wire spinner creation into src/cli/workshopCommand.ts `runWorkshop()`: create `ActivitySpinner` from IO context options and pass to `ConversationLoop` constructor; pass `debug` option through to `createLoopIO()`
+- [x] T091 [US1] Add `spinner?: ActivitySpinner` to `ConversationLoopOptions` in src/loop/conversationLoop.ts; update `streamResponse()` to manage spinner lifecycle: `startThinking()` before send, `startToolCall()` on ToolCall event, `completeToolCall()` + `io.writeToolSummary()` on ToolResult event, `stop()` on first TextDelta event, `stop()` on response complete
+- [x] T092 [US1] Wire spinner creation into src/cli/workshopCommand.ts `runWorkshop()`: create `ActivitySpinner` from IO context options and pass to `ConversationLoop` constructor; pass `debug` option through to `createLoopIO()`
 
 **Checkpoint**: Full visual feedback lifecycle works end-to-end: users see "Thinking...", tool-specific spinners, tool summaries, and formatted markdown streaming.
 
@@ -314,7 +314,7 @@
 
 ### Phase 8 Validation
 
-- [X] T093 Run full test suite (`npx vitest run`) and manual smoke test with a live Copilot session to verify: (1) "Thinking..." spinner appears during LLM processing, (2) tool-specific spinners appear during tool calls, (3) tool summaries display after completion, (4) LLM text streams as formatted markdown, (5) `--debug` shows verbose tool output, (6) `--json` mode suppresses all spinners and ANSI
+- [x] T093 Run full test suite (`npx vitest run`) and manual smoke test with a live Copilot session to verify: (1) "Thinking..." spinner appears during LLM processing, (2) tool-specific spinners appear during tool calls, (3) tool summaries display after completion, (4) LLM text streams as formatted markdown, (5) `--debug` shows verbose tool output, (6) `--json` mode suppresses all spinners and ANSI
 
 ---
 
@@ -398,6 +398,7 @@ T078: src/cli/workshopCommand.ts              (depends on T076, T077 — SHARED 
 ```
 
 **Recommended serial order** (single developer):
+
 1. 7a tests → 7a implementation → verify tests pass
 2. 7b tests → 7b implementation → verify tests pass
 3. 7c tests → 7c implementation → verify tests pass
@@ -444,6 +445,7 @@ T092: src/cli/workshopCommand.ts         (spinner wiring)
 ```
 
 **Recommended serial order** (single developer):
+
 1. 8a tests + 8b tests (parallel) → 8a implementation + 8b implementation (parallel) → verify
 2. 8c tests → 8c implementation → verify
 3. 8d tests → 8d implementation → verify

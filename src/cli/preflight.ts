@@ -39,7 +39,11 @@ export async function runPreflightChecks(checks: CheckMap): Promise<PreflightRes
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         return {
-          name: key.replace(/^check/, '').replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''),
+          name: key
+            .replace(/^check/, '')
+            .replace(/([A-Z])/g, '-$1')
+            .toLowerCase()
+            .replace(/^-/, ''),
           status: 'fail' as const,
           message,
           required: true,
@@ -48,9 +52,7 @@ export async function runPreflightChecks(checks: CheckMap): Promise<PreflightRes
     }),
   );
 
-  const passed = results.every(
-    (c) => c.status !== 'fail' || c.required === false,
-  );
+  const passed = results.every((c) => c.status !== 'fail' || c.required === false);
 
   return { passed, checks: results };
 }

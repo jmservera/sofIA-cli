@@ -24,12 +24,12 @@ New Session → Active (Discover) → ... → Active (Plan) → Active (Develop)
 
 ### States
 
-| Status | Description |
-|--------|-------------|
-| `Active` | Session is in progress |
-| `Paused` | Session paused (can resume) |
-| `Completed` | All phases finished |
-| `Errored` | Failed with an error (session is persisted before exit) |
+| Status      | Description                                             |
+| ----------- | ------------------------------------------------------- |
+| `Active`    | Session is in progress                                  |
+| `Paused`    | Session paused (can resume)                             |
+| `Completed` | All phases finished                                     |
+| `Errored`   | Failed with an error (session is persisted before exit) |
 
 ## Phases
 
@@ -39,14 +39,14 @@ Phases follow a strict linear progression with decision gates:
 Discover → Ideate → Design → Select → Plan → Develop → Complete
 ```
 
-| Phase | Purpose | Key Artifacts |
-|-------|---------|---------------|
-| **Discover** | Understand the business, challenges, and context | `businessContext`, `topic` |
-| **Ideate** | Brainstorm activities, explore AI Envisioning Cards | `activities`, `cards` |
-| **Design** | Generate and refine Idea Cards with architecture sketches | `ideas` |
-| **Select** | Evaluate ideas via feasibility/value matrix, pick the best | `evaluation`, `selection` |
-| **Plan** | Create implementation roadmap and milestones | `plan` |
-| **Develop** | Capture PoC requirements and intent (handoff to feature 002) | `poc` |
+| Phase        | Purpose                                                      | Key Artifacts              |
+| ------------ | ------------------------------------------------------------ | -------------------------- |
+| **Discover** | Understand the business, challenges, and context             | `businessContext`, `topic` |
+| **Ideate**   | Brainstorm activities, explore AI Envisioning Cards          | `activities`, `cards`      |
+| **Design**   | Generate and refine Idea Cards with architecture sketches    | `ideas`                    |
+| **Select**   | Evaluate ideas via feasibility/value matrix, pick the best   | `evaluation`, `selection`  |
+| **Plan**     | Create implementation roadmap and milestones                 | `plan`                     |
+| **Develop**  | Capture PoC requirements and intent (handoff to feature 002) | `poc`                      |
 
 ### Decision Gates
 
@@ -55,6 +55,7 @@ Phase transitions require explicit user confirmation. The system will **never** 
 ### Backtracking
 
 Users can backtrack to an earlier phase. When backtracking:
+
 - All downstream phase artifacts are **invalidated** (marked for recomputation)
 - The session moves to the target phase
 - Invalidated phases must be re-run to regenerate their artifacts
@@ -63,13 +64,13 @@ Users can backtrack to an earlier phase. When backtracking:
 
 ```typescript
 interface WorkshopSession {
-  sessionId: string;              // Stable UUID
-  createdAt: string;              // ISO-8601
-  updatedAt: string;              // ISO-8601, monotonically increasing
-  schemaVersion: string;          // e.g., "1.0.0"
-  phase: Phase;                   // Current phase
-  status: SessionStatus;          // Active | Paused | Completed | Errored
-  participants: Participant[];    // Facilitator, attendees, observers
+  sessionId: string; // Stable UUID
+  createdAt: string; // ISO-8601
+  updatedAt: string; // ISO-8601, monotonically increasing
+  schemaVersion: string; // e.g., "1.0.0"
+  phase: Phase; // Current phase
+  status: SessionStatus; // Active | Paused | Completed | Errored
+  participants: Participant[]; // Facilitator, attendees, observers
   businessContext?: BusinessContext;
   topic?: TopicSelection;
   activities?: Activity[];
@@ -87,17 +88,17 @@ interface WorkshopSession {
 
 ### Key Sub-entities
 
-| Entity | Purpose |
-|--------|---------|
-| `BusinessContext` | Company description, challenges, constraints, success metrics |
-| `TopicSelection` | Chosen focus area and scope notes |
-| `WorkflowMap` | Steps and edges describing the activity flow |
-| `CardSelection` | Selected AI Envisioning Cards with scores |
-| `IdeaCard` | Generated ideas with title, description, workflow links |
-| `IdeaEvaluation` | Feasibility/value scoring for each idea |
-| `SelectedIdea` | The chosen idea with rationale and user confirmation |
-| `ImplementationPlan` | Milestones, architecture notes, dependencies |
-| `PocDevelopmentState` | PoC repo path, iterations, final status |
+| Entity                | Purpose                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| `BusinessContext`     | Company description, challenges, constraints, success metrics |
+| `TopicSelection`      | Chosen focus area and scope notes                             |
+| `WorkflowMap`         | Steps and edges describing the activity flow                  |
+| `CardSelection`       | Selected AI Envisioning Cards with scores                     |
+| `IdeaCard`            | Generated ideas with title, description, workflow links       |
+| `IdeaEvaluation`      | Feasibility/value scoring for each idea                       |
+| `SelectedIdea`        | The chosen idea with rationale and user confirmation          |
+| `ImplementationPlan`  | Milestones, architecture notes, dependencies                  |
+| `PocDevelopmentState` | PoC repo path, iterations, final status                       |
 
 ## Safety
 
