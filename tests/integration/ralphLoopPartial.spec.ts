@@ -303,3 +303,114 @@ describe('RalphLoop integration — partial/failed outcomes', () => {
     expect(result.session.poc?.iterations.length).toBeGreaterThan(0);
   });
 });
+
+// ── Resume from interrupted session (T019) ────────────────────────────────
+
+describe('resume from interrupted session', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'ralph-resume-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('resumes from session with 2 completed iterations and starts at iteration 3 (T019)', async () => {
+    const io = makeIo();
+
+    // Create a session with 2 prior iterations
+    const session: WorkshopSession = {
+      ...fixtureSession,
+      poc: {
+        repoSource: 'local',
+        repoPath: tmpDir,
+        iterations: [
+          {
+            iteration: 1,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'scaffold',
+            filesChanged: ['package.json', 'src/index.ts'],
+          },
+          {
+            iteration: 2,
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            outcome: 'tests-failing',
+            filesChanged: ['src/index.ts'],
+            testResults: {
+              passed: 1,
+              failed: 1,
+              skipped: 0,
+              total: 2,
+              durationMs: 200,
+              failures: [{ testName: 'test1', message: 'Expected x' }],
+            },
+          },
+        ],
+      },
+    };
+
+    // Mock a client that returns passing code on first call
+    const passingClient: CopilotClient = {
+      createSession: vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      }),
+    };
+
+    // TestRunner that passes on first call
+    const testRunner = {
+      run: vi.fn().mockResolvedValue({
+        passed: 2,
+        failed: 0,
+        skipped: 0,
+        total: 2,
+        durationMs: 100,
+        failures: [],
+      }),
+    } as unknown as TestRunner;
+
+    const scaffolder = makeFakeScaffolder(tmpDir);
+
+    const ralph = new RalphLoop({
+      client: passingClient,
+      io,
+      session,
+      outputDir: tmpDir,
+      maxIterations: 10,
+      testRunner,
+      scaffolder,
+      checkpoint: {
+        hasPriorRun: true,
+        completedIterations: 2,
+        lastIterationIncomplete: false,
+        resumeFromIteration: 3,
+        canSkipScaffold: false,
+        priorFinalStatus: undefined,
+        priorIterations: session.poc!.iterations,
+      },
+    });
+
+    const result = await ralph.run();
+
+    // Should have seeded from prior iterations and continued
+    // Note: finalStatus may be 'partial' since makeFakeScaffolder doesn't create all
+    // files required by validatePocOutput (README.md, tsconfig.json, etc.)
+    expect(['success', 'partial']).toContain(result.finalStatus);
+    // Total iterations should include the 2 prior + scaffold + tests-passing
+    expect(result.iterationsCompleted).toBeGreaterThanOrEqual(3);
+    // Session should have iterations from resume
+    expect(result.session.poc?.iterations.length).toBeGreaterThanOrEqual(3);
+  });
+});

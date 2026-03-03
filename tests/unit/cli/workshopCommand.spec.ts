@@ -1,8 +1,6 @@
 /**
- * T064b: Unit tests for workshopCommand — session name display.
- *
- * Verifies that workshopCommand displays the session name in
- * creation, resume, and pause messages.
+ * Unit tests for workshopCommand — session name display, Plan→Develop
+ * transition guidance (T052), and auto-transition prompt (T053).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -58,10 +56,13 @@ vi.mock('../../../src/logging/logger.js', () => {
   };
 });
 
-// Track LoopIO writes
+// Track LoopIO writes — decision gate is configurable per test
 let ioWrites: string[] = [];
 let ioReadResponses: (string | null)[] = [];
 let ioReadIndex = 0;
+let ioReadInputPrompts: string[] = [];
+let decisionGateResponses: Array<{ choice: string }> = [];
+let decisionGateIndex = 0;
 
 vi.mock('../../../src/cli/ioContext.js', () => ({
   createLoopIO: () => ({
@@ -69,11 +70,17 @@ vi.mock('../../../src/cli/ioContext.js', () => ({
       ioWrites.push(text);
     },
     writeActivity: () => {},
-    readInput: async () => {
+    readInput: async (prompt?: string) => {
+      if (prompt) ioReadInputPrompts.push(prompt);
       if (ioReadIndex >= ioReadResponses.length) return null;
       return ioReadResponses[ioReadIndex++];
     },
-    showDecisionGate: async () => ({ choice: 'exit' as const }),
+    showDecisionGate: async () => {
+      if (decisionGateIndex < decisionGateResponses.length) {
+        return decisionGateResponses[decisionGateIndex++];
+      }
+      return { choice: 'exit' as const };
+    },
     isJsonMode: false,
     isTTY: true,
   }),
@@ -100,6 +107,9 @@ describe('workshopCommand session name display (T064b)', () => {
     ioWrites = [];
     ioReadResponses = [];
     ioReadIndex = 0;
+    ioReadInputPrompts = [];
+    decisionGateResponses = [];
+    decisionGateIndex = 0;
     vi.clearAllMocks();
     process.exitCode = undefined;
   });
@@ -238,5 +248,133 @@ describe('workshopCommand session name display (T064b)', () => {
     expect(allOutput).toContain('2026-02-28_165120');
     // Unnamed session is filtered out
     expect(allOutput).not.toContain('2026-02-28_170457');
+  });
+});
+
+// ── T052: Plan→Develop transition displays "sofia dev --session {id}" ─────
+
+describe('workshopCommand Plan→Develop transition (T052)', () => {
+  beforeEach(() => {
+    ioWrites = [];
+    ioReadResponses = [];
+    ioReadIndex = 0;
+    ioReadInputPrompts = [];
+    decisionGateResponses = [];
+    decisionGateIndex = 0;
+    vi.clearAllMocks();
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
+  it('displays "sofia dev --session {id}" after Plan phase completes (FR-020)', async () => {
+    const session: WorkshopSession = {
+      sessionId: 'plan-test-001',
+      schemaVersion: '1.0.0',
+      createdAt: '2026-01-01T12:00:00Z',
+      updatedAt: '2026-01-01T12:30:00Z',
+      phase: 'Plan',
+      status: 'Active',
+      participants: [],
+      artifacts: { generatedFiles: [] },
+      turns: [],
+    };
+
+    mockStore.exists.mockResolvedValue(true);
+    mockStore.load.mockResolvedValue(session);
+
+    // First gate (Plan): continue → triggers transition to Develop
+    // Second gate (Develop): exit → stops the loop
+    decisionGateResponses = [{ choice: 'continue' }, { choice: 'exit' }];
+
+    const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
+    await workshopCommand({ session: 'plan-test-001' });
+
+    const allOutput = ioWrites.join(' ');
+    expect(allOutput).toContain('sofia dev --session plan-test-001');
+    expect(allOutput).toContain('Ready for PoC Generation');
+  });
+});
+
+// ── T053: Workshop offers auto-transition prompt in interactive mode ──────
+
+describe('workshopCommand auto-transition prompt (T053)', () => {
+  beforeEach(() => {
+    ioWrites = [];
+    ioReadResponses = [];
+    ioReadIndex = 0;
+    ioReadInputPrompts = [];
+    decisionGateResponses = [];
+    decisionGateIndex = 0;
+    vi.clearAllMocks();
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
+  it('offers auto-transition prompt in interactive mode after Plan phase (FR-021)', async () => {
+    const session: WorkshopSession = {
+      sessionId: 'transition-test-001',
+      schemaVersion: '1.0.0',
+      createdAt: '2026-01-01T12:00:00Z',
+      updatedAt: '2026-01-01T12:30:00Z',
+      phase: 'Plan',
+      status: 'Active',
+      participants: [],
+      artifacts: { generatedFiles: [] },
+      turns: [],
+    };
+
+    mockStore.exists.mockResolvedValue(true);
+    mockStore.load.mockResolvedValue(session);
+
+    // Continue from Plan → Develop, then exit
+    decisionGateResponses = [{ choice: 'continue' }, { choice: 'exit' }];
+
+    const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
+    await workshopCommand({ session: 'transition-test-001' });
+
+    const allOutput = ioWrites.join(' ');
+    // FR-021: The transition message includes tech stack info and scaffolding description
+    expect(allOutput).toContain('scaffold a project');
+    expect(allOutput).toContain('technology stack');
+    expect(allOutput).toContain('install dependencies');
+
+    // FR-021: readInput was called with the auto-transition prompt
+    expect(ioReadInputPrompts.some((p) => p.includes('Would you like to start PoC development'))).toBe(true);
+  });
+
+  it('exits workshop when user accepts auto-transition prompt (FR-021)', async () => {
+    const session: WorkshopSession = {
+      sessionId: 'auto-transition-001',
+      schemaVersion: '1.0.0',
+      createdAt: '2026-01-01T12:00:00Z',
+      updatedAt: '2026-01-01T12:30:00Z',
+      phase: 'Plan',
+      status: 'Active',
+      participants: [],
+      artifacts: { generatedFiles: [] },
+      turns: [],
+    };
+
+    mockStore.exists.mockResolvedValue(true);
+    mockStore.load.mockResolvedValue(session);
+
+    // Continue from Plan → user answers 'y' to auto-transition
+    decisionGateResponses = [{ choice: 'continue' }];
+    // First null exits the conversation loop; 'y' answers the auto-transition prompt
+    ioReadResponses = [null, 'y'];
+
+    const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
+    await workshopCommand({ session: 'auto-transition-001' });
+
+    const allOutput = ioWrites.join(' ');
+    // Workshop should show transition message and exit (returning early)
+    expect(allOutput).toContain('Starting PoC development');
+    expect(allOutput).toContain('sofia dev --session auto-transition-001');
   });
 });

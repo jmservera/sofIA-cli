@@ -27,6 +27,8 @@ import { TestRunner } from './testRunner.js';
 import { CodeGenerator, isPathWithinDirectory, isUnsafePath } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
 import { GitHubMcpAdapter } from './githubMcpAdapter.js';
+import type { CheckpointState } from './checkpointState.js';
+import type { TemplateEntry } from './templateRegistry.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,10 @@ export interface RalphLoopOptions {
   testRunner?: TestRunner;
   /** Override PocScaffolder for testing */
   scaffolder?: PocScaffolder;
+  /** Checkpoint state for resume behavior */
+  checkpoint?: CheckpointState;
+  /** Template entry for install/test commands */
+  templateEntry?: TemplateEntry;
 }
 
 export interface RalphLoopResult {
@@ -72,9 +78,16 @@ export interface RalphLoopResult {
 
 // ── npm helper ───────────────────────────────────────────────────────────────
 
-function runNpmInstall(cwd: string): Promise<{ success: boolean; error?: string }> {
+function runInstallCommand(
+  cwd: string,
+  installCommand = 'npm install',
+): Promise<{ success: boolean; error?: string }> {
   return new Promise((resolve) => {
-    const child = spawn('npm', ['install'], {
+    const parts = installCommand.split(/\s+/);
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    const child = spawn(cmd, args, {
       cwd,
       shell: false,
       stdio: 'pipe',
@@ -172,7 +185,23 @@ export class RalphLoop {
     const safeOnEvent = onEvent ?? (() => {});
     this.setupSigintHandler(session, onSessionUpdate, safeOnEvent);
 
-    const iterations: PocIteration[] = [];
+    // ── Resume detection ───────────────────────────────────────────────────
+    const checkpoint = this.options.checkpoint;
+    const templateEntry = this.options.templateEntry;
+    const installCommand = templateEntry?.installCommand ?? 'npm install';
+    const testCommandStr = templateEntry?.testCommand;
+
+    // Seed iterations from prior session state (FR-001)
+    const iterations: PocIteration[] = checkpoint?.hasPriorRun
+      ? [...checkpoint.priorIterations]
+      : [];
+
+    // If last iteration was incomplete, pop it and re-run (FR-001a)
+    if (checkpoint?.lastIterationIncomplete && iterations.length > 0) {
+      io.writeActivity(
+        `Re-running incomplete iteration ${iterations.length + 1} (no test results recorded)`,
+      );
+    }
 
     // ── Determine repo source ──────────────────────────────────────────────
     const githubAdapter = this.options.githubAdapter;
@@ -185,80 +214,32 @@ export class RalphLoop {
     }
 
     // ── Build scaffold context ─────────────────────────────────────────────
-    const scaffoldCtx = PocScaffolder.buildContext(session, outputDir);
+    const scaffoldCtx = PocScaffolder.buildContext(session, outputDir, templateEntry);
     const techStack = scaffoldCtx.techStack;
 
-    // ── Iteration 1: Scaffold ──────────────────────────────────────────────
-    io.writeActivity('Scaffolding PoC project structure...');
-    spinner?.startThinking();
+    // ── Scaffold (skip if resuming with valid output dir) ──────────────────
+    const shouldSkipScaffold = checkpoint?.canSkipScaffold === true;
+    let scaffoldResult: Awaited<ReturnType<PocScaffolder['scaffold']>> | undefined;
 
-    const scaffolder = this.options.scaffolder ?? new PocScaffolder();
-    const scaffoldStart = Date.now();
+    if (shouldSkipScaffold) {
+      io.writeActivity('Skipping scaffold — output directory and .sofia-metadata.json present');
+    } else {
+      // FR-007: Re-scaffold when output dir is missing but iterations exist
+      if (checkpoint?.hasPriorRun) {
+        io.writeActivity('Output directory missing — re-scaffolding for resumed session');
+      }
 
-    let scaffoldResult;
-    try {
-      scaffoldResult = await scaffolder.scaffold(scaffoldCtx);
-    } catch (err: unknown) {
-      spinner?.stop();
-      const msg = err instanceof Error ? err.message : String(err);
-      return this.terminate(
-        session,
-        iterations,
-        'failed',
-        'error',
-        startTime,
-        outputDir,
-        repoSource,
-        techStack,
-        onEvent,
-        `Scaffold failed: ${msg}`,
-      );
-    }
-
-    const scaffoldIteration: PocIteration = {
-      iteration: 1,
-      startedAt: new Date(scaffoldStart).toISOString(),
-      endedAt: new Date().toISOString(),
-      outcome: 'scaffold',
-      filesChanged: scaffoldResult.createdFiles,
-      changesSummary: `Scaffold created ${scaffoldResult.createdFiles.length} files`,
-    };
-    iterations.push(scaffoldIteration);
-
-    spinner?.stop();
-    io.writeActivity(`Scaffold complete: ${scaffoldResult.createdFiles.length} files created`);
-
-    // Persist after scaffold
-    session = this.updateSessionPoc(
-      session,
-      iterations,
-      repoSource,
-      outputDir,
-      undefined,
-      techStack,
-    );
-    await onSessionUpdate(session);
-
-    // Push scaffold to GitHub if available
-    if (githubAdapter?.isAvailable()) {
-      await githubAdapter.createRepository({
-        name: scaffoldCtx.projectName,
-        description: scaffoldCtx.ideaDescription,
-      });
-      io.writeActivity(`Created GitHub repository: ${githubAdapter.getRepoUrl()}`);
-    }
-
-    // ── npm install ────────────────────────────────────────────────────────
-    if (!this.aborted) {
-      io.writeActivity('Running npm install...');
+      io.writeActivity('Scaffolding PoC project structure...');
       spinner?.startThinking();
 
-      const installResult = await runNpmInstall(outputDir);
-      spinner?.stop();
+      const scaffolder = this.options.scaffolder ?? new PocScaffolder();
+      const scaffoldStart = Date.now();
 
-      if (!installResult.success) {
-        io.writeActivity(`npm install failed: ${installResult.error}`);
-        // Fail fast after scaffold npm install failure
+      try {
+        scaffoldResult = await scaffolder.scaffold(scaffoldCtx);
+      } catch (err: unknown) {
+        spinner?.stop();
+        const msg = err instanceof Error ? err.message : String(err);
         return this.terminate(
           session,
           iterations,
@@ -269,15 +250,76 @@ export class RalphLoop {
           repoSource,
           techStack,
           onEvent,
-          `npm install failed: ${installResult.error}`,
+          `Scaffold failed: ${msg}`,
         );
       }
 
-      io.writeActivity('npm install complete');
+      const scaffoldIteration: PocIteration = {
+        iteration: iterations.length + 1,
+        startedAt: new Date(scaffoldStart).toISOString(),
+        endedAt: new Date().toISOString(),
+        outcome: 'scaffold',
+        filesChanged: scaffoldResult.createdFiles,
+        changesSummary: `Scaffold created ${scaffoldResult.createdFiles.length} files`,
+      };
+      iterations.push(scaffoldIteration);
+
+      spinner?.stop();
+      io.writeActivity(`Scaffold complete: ${scaffoldResult.createdFiles.length} files created`);
+
+      // Persist after scaffold
+      session = this.updateSessionPoc(
+        session,
+        iterations,
+        repoSource,
+        outputDir,
+        undefined,
+        techStack,
+      );
+      await onSessionUpdate(session);
+
+      // Push scaffold to GitHub if available
+      if (githubAdapter?.isAvailable()) {
+        await githubAdapter.createRepository({
+          name: scaffoldCtx.projectName,
+          description: scaffoldCtx.ideaDescription,
+        });
+        io.writeActivity(`Created GitHub repository: ${githubAdapter.getRepoUrl()}`);
+      }
     }
 
+    // ── Dependency install (FR-003: always re-run on resume) ───────────────
+    if (!this.aborted) {
+      io.writeActivity(`Re-running dependency installation (${installCommand})`);
+      spinner?.startThinking();
+
+      const installResult = await runInstallCommand(outputDir, installCommand);
+      spinner?.stop();
+
+      if (!installResult.success) {
+        io.writeActivity(`${installCommand} failed: ${installResult.error}`);
+        return this.terminate(
+          session,
+          iterations,
+          'failed',
+          'error',
+          startTime,
+          outputDir,
+          repoSource,
+          techStack,
+          onEvent,
+          `${installCommand} failed: ${installResult.error}`,
+        );
+      }
+
+      io.writeActivity(`${installCommand} complete`);
+    }
+
+    // ── Iteration loop ─────────────────────────────────────────────────────
+    const testRunner = this.options.testRunner ??
+      new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
     // Push scaffold files to GitHub after install
-    if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+    if (scaffoldResult && githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
       const filesWithContent = await Promise.all(
         scaffoldResult.createdFiles.map(async (f) => {
           if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
@@ -306,14 +348,20 @@ export class RalphLoop {
     }
 
     // ── Iteration 2..max ──────────────────────────────────────────────────
-    const testRunner = this.options.testRunner ?? new TestRunner();
     const codeGenerator = new CodeGenerator(outputDir);
     const enricher = this.options.enricher;
 
     let stuckIterations = 0;
     let prevFailingTests: string[] = [];
 
-    for (let iterNum = 2; iterNum <= maxIterations; iterNum++) {
+    // FR-004: Build prior iteration history for LLM context
+    const priorHistoryContext = checkpoint?.hasPriorRun
+      ? this.buildPriorHistoryContext(checkpoint.priorIterations)
+      : '';
+
+    const startIterNum = iterations.length + 1;
+
+    for (let iterNum = startIterNum; iterNum <= maxIterations; iterNum++) {
       if (this.aborted) break;
 
       const iterStart = Date.now();
@@ -452,7 +500,7 @@ export class RalphLoop {
         previousOutcome: prevOutcome,
         testResults,
         filesInPoc,
-        mcpContext: mcpContext || undefined,
+        mcpContext: [priorHistoryContext, mcpContext].filter(Boolean).join('\n') || undefined,
         fileContents,
       });
 
@@ -519,11 +567,11 @@ export class RalphLoop {
         `Applied ${applyResult.writtenFiles.length} file(s): ${applyResult.writtenFiles.slice(0, 5).join(', ')}`,
       );
 
-      // Re-run npm install if dependencies changed
+      // Re-run install command if dependencies changed
       if (applyResult.dependenciesChanged) {
-        io.writeActivity('New dependencies detected — running npm install...');
+        io.writeActivity(`New dependencies detected — running ${installCommand}...`);
         spinner?.startThinking();
-        const reinstall = await runNpmInstall(outputDir);
+        const reinstall = await runInstallCommand(outputDir, installCommand);
         spinner?.stop();
 
         if (!reinstall.success) {
@@ -578,6 +626,13 @@ export class RalphLoop {
           files: validFiles,
           commitMessage: `chore: iteration ${iterNum} — ${testResults.failed} test(s) failing`,
         });
+      }
+
+      // FR-022: Rescan TODO markers after applying changes
+      try {
+        await PocScaffolder.scanAndRecordTodos(outputDir);
+      } catch {
+        // Non-critical — ignore scanning errors
       }
 
       const failIteration: PocIteration = {
@@ -752,6 +807,26 @@ export class RalphLoop {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Build a concise summary of prior iteration history for LLM context (FR-004).
+   */
+  private buildPriorHistoryContext(priorIterations: PocIteration[]): string {
+    if (priorIterations.length === 0) return '';
+
+    const lines = ['## Prior Iteration History (Resume Context)', ''];
+    for (const iter of priorIterations) {
+      const status = iter.testResults
+        ? `${iter.testResults.passed} passed, ${iter.testResults.failed} failed`
+        : iter.outcome;
+      const files = iter.filesChanged?.length
+        ? ` — files: ${iter.filesChanged.slice(0, 5).join(', ')}`
+        : '';
+      lines.push(`- Iteration ${iter.iteration}: ${status}${files}`);
+    }
+    lines.push('');
+    return lines.join('\n');
+  }
 
   /** Maximum total size of file contents to include in the prompt (50KB). */
   private static readonly MAX_FILE_CONTENT_BYTES = 50 * 1024;

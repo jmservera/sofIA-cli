@@ -336,3 +336,116 @@ describe('validatePocOutput', () => {
     expect(result.errors).toContain('package.json is missing "test" script');
   });
 });
+
+// ── Template entry construction (T036) ────────────────────────────────────
+
+describe('PocScaffolder with TemplateEntry', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'scaffolder-template-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('uses TemplateEntry.files when constructed with a template entry (T036)', async () => {
+    const { PYTHON_PYTEST_TEMPLATE } = await import('../../../src/develop/templateRegistry.js');
+    const scaffolder = new PocScaffolder(PYTHON_PYTEST_TEMPLATE);
+
+    // The template should contain Python-specific file paths
+    const filePaths = scaffolder.getTemplateFiles();
+    expect(filePaths).toContain('requirements.txt');
+    expect(filePaths).toContain('src/main.py');
+    expect(filePaths).toContain('tests/test_main.py');
+    // Should NOT contain TypeScript files
+    expect(filePaths).not.toContain('tsconfig.json');
+    expect(filePaths).not.toContain('src/index.ts');
+  });
+
+  it('uses TemplateEntry.techStack in buildContext (T010)', async () => {
+    const { PYTHON_PYTEST_TEMPLATE } = await import('../../../src/develop/templateRegistry.js');
+    const session = makeSession();
+    const ctx = PocScaffolder.buildContext(session, tmpDir, PYTHON_PYTEST_TEMPLATE);
+    expect(ctx.techStack.language).toBe('Python');
+    expect(ctx.techStack.runtime).toBe('Python 3.11');
+  });
+
+  it('falls back to default TypeScript techStack when no template entry provided', () => {
+    const session = makeSession();
+    const ctx = PocScaffolder.buildContext(session, tmpDir);
+    expect(ctx.techStack.language).toBe('TypeScript');
+    expect(ctx.techStack.runtime).toBe('Node.js 20');
+  });
+});
+
+// ── T072: TODO marker scanning records totalInitial, remaining, markers ───
+
+describe('PocScaffolder.scanAndRecordTodos (T072)', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'todo-scan-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('scans scaffold files for TODO markers and records counts in .sofia-metadata.json', async () => {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+
+    // Create a minimal project with TODO markers
+    await mkdir(join(tmpDir, 'src'), { recursive: true });
+    await writeFile(
+      join(tmpDir, 'src/index.ts'),
+      '// TODO: Implement the core functionality\nexport function main() {}\n// TODO: Add error handling\n',
+    );
+    await writeFile(
+      join(tmpDir, 'src/utils.ts'),
+      'export function helper() { return 42; }\n',
+    );
+    await writeFile(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({ sessionId: 'test-001', scaffoldedAt: new Date().toISOString() }),
+    );
+
+    const result = await PocScaffolder.scanAndRecordTodos(tmpDir);
+
+    // Verify return value
+    expect(result.totalInitial).toBe(2);
+    expect(result.remaining).toBe(2);
+    expect(result.markers).toHaveLength(2);
+    expect(result.markers[0]).toContain('src/index.ts:1');
+    expect(result.markers[0]).toContain('TODO:');
+    expect(result.markers[1]).toContain('src/index.ts:3');
+
+    // Verify .sofia-metadata.json was updated
+    const metaRaw = await readFile(join(tmpDir, '.sofia-metadata.json'), 'utf-8');
+    const metadata = JSON.parse(metaRaw);
+    expect(metadata.todos).toBeDefined();
+    expect(metadata.todos.totalInitial).toBe(2);
+    expect(metadata.todos.remaining).toBe(2);
+    expect(metadata.todos.markers).toHaveLength(2);
+  });
+
+  it('records zero TODOs when no markers exist', async () => {
+    const { writeFile } = await import('node:fs/promises');
+
+    await writeFile(
+      join(tmpDir, 'index.ts'),
+      'export function main() { return "clean"; }\n',
+    );
+    await writeFile(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({ sessionId: 'test-002' }),
+    );
+
+    const result = await PocScaffolder.scanAndRecordTodos(tmpDir);
+
+    expect(result.totalInitial).toBe(0);
+    expect(result.remaining).toBe(0);
+    expect(result.markers).toHaveLength(0);
+  });
+});
