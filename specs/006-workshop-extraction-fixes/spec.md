@@ -116,6 +116,9 @@ As a facilitator exporting workshop results, I want `sofia export` to produce ma
 - What if context summarization loses critical details (e.g., a specific technology choice from the Plan)? The system should preserve key fields (business context, selected idea, plan milestones) verbatim, and only summarize conversation turns.
 - What if the user's session has 0 turns for a phase (e.g., the Select timeout scenario)? The export phase file should still be generated with a note that the phase had no conversation content.
 - What if multiple JSON blocks exist in a single LLM response? The extractor should try all blocks against the expected schema, not just the first one.
+- What if the LLM drifts into the next phase's content before the decision gate? The system prompt should enforce phase boundaries explicitly.
+- What if the Select phase still times out even after context summarization? The system should have a secondary fallback (minimal-context retry or user-directed selection).
+- What if the Zava assessment live test provides more or fewer inputs than the LLM expects? The test harness should detect input exhaustion and signal completion gracefully rather than silently consuming inputs across phase boundaries. (Test infrastructure concern — not a production code issue.)
 
 ## Requirements _(mandatory)_
 
@@ -130,6 +133,12 @@ As a facilitator exporting workshop results, I want `sofia export` to produce ma
 - **FR-005**: If the summarization call fails or returns invalid data, the system MUST log a warning and continue without blocking the phase transition. Existing per-turn extraction results (if any) MUST be preserved.
 - **FR-006**: The summarization call MUST be implemented as a method on `ConversationLoop` (or a utility invoked by it) so that all phases benefit without duplicating logic per handler.
 - **FR-007**: The existing `extractJsonBlock()` function MUST be enhanced to try multiple JSON blocks in a response (not just the first match) and return the first one that validates against the expected schema.
+- **FR-007a**: The Design phase summarization prompt (FR-002) MUST also request a Mermaid architecture diagram alongside the structured evaluation JSON, fulfilling spec 001 FR-030. The diagram MUST be stored in the session (as part of `evaluation` or a dedicated field) for export.
+
+#### Phase Boundary Enforcement
+
+- **FR-007b**: The system prompt for each phase MUST include an explicit instruction prohibiting the LLM from introducing or transitioning to the next phase. The instruction MUST state: "You are in the [Phase] phase. Do NOT introduce or begin the next phase. The user will be offered a decision gate when this phase is complete."
+- **FR-007c**: The `ConversationLoop` (or phase handler `buildSystemPrompt`) MUST inject the phase-boundary instruction automatically for all phases, without requiring per-handler duplication.
 
 #### Lazy Web Search Configuration (BUG-001)
 
@@ -141,6 +150,7 @@ As a facilitator exporting workshop results, I want `sofia export` to produce ma
 
 - **FR-011**: `workshopCommand.ts` MUST create an `McpManager` instance at startup (if MCP configuration exists in `.vscode/mcp.json` or equivalent).
 - **FR-012**: `workshopCommand.ts` MUST create a `WebSearchClient` from the configured Foundry agent credentials (if web search is configured) and pass it to the Discover phase handler via `DiscoverHandlerConfig`.
+- **FR-012a**: `workshopCommand.ts` MUST pass the `McpManager` to the Discover phase handler so that it can check WorkIQ availability. When WorkIQ is available, the Discover handler MUST prompt the user for explicit consent before querying WorkIQ (per spec 001 FR-020 and spec 003 US4). WorkIQ insights MUST be stored in `session.discovery.enrichment.workiqInsights`.
 - **FR-013**: The Design phase handler MUST accept optional MCP configuration and use Context7 to fetch library documentation for technologies referenced in the ideas, when available.
 - **FR-014**: The Plan phase handler MUST accept optional MCP configuration and use Azure MCP / Microsoft Learn to fetch architecture guidance for Azure services referenced in the plan, when available.
 - **FR-015**: All MCP tool calls from workshop phase handlers MUST degrade gracefully — if a tool is unavailable or errors, the phase continues with LLM-only output.
@@ -148,9 +158,10 @@ As a facilitator exporting workshop results, I want `sofia export` to produce ma
 #### Context Window Management (BUG-003)
 
 - **FR-016**: When starting a new phase, the `ConversationLoop` MUST NOT include raw conversation turns from previous phases in the system prompt. Instead, it MUST include a summarized context block.
-- **FR-017**: The summarized context MUST preserve: business context, topic, key decisions, selected idea (if applicable), plan milestones (if applicable), and any other structured session fields already extracted.
+- **FR-017**: The summarized context MUST preserve: business context, topic, key decisions, selected idea (if applicable), plan milestones (if applicable), discovery enrichment data (web search results, WorkIQ insights — if populated), and any other structured session fields already extracted.
 - **FR-018**: Only conversation turns from the current phase MUST be included in the session history injection (for resume scenarios). Turns from prior phases MUST be summarized.
 - **FR-019**: The system SHOULD use the SDK's `infiniteSessions` configuration for long-running sessions as an additional protection against context exhaustion.
+- **FR-019a**: If a phase times out even after context summarization (FR-016–FR-018), the system MUST retry once with a minimal context payload containing only the structured session fields (no conversation turns at all). If the retry also fails, the system MUST fall back to asking the user to manually confirm or provide the expected output (e.g., for Select: present the top-ranked idea from Design and ask the user to confirm).
 
 #### Export Completeness (BUG-004)
 
