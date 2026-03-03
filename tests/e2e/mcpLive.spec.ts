@@ -87,8 +87,8 @@ describe.skipIf(!LIVE)('Live MCP Smoke Tests (T039)', () => {
     }
 
     const webSearch = createWebSearchTool({
-      endpoint: process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT!,
-      apiKey: process.env.SOFIA_FOUNDRY_AGENT_KEY!,
+      projectEndpoint: process.env.FOUNDRY_PROJECT_ENDPOINT!,
+      modelDeploymentName: process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME!,
     });
 
     const result = await webSearch('TypeScript Node.js framework 2025');

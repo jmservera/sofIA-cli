@@ -6,12 +6,24 @@ sofIA uses environment variables for optional integrations. All are optional —
 
 | Variable | Description |
 |----------|-------------|
-| `SOFIA_FOUNDRY_AGENT_ENDPOINT` | Azure AI Foundry Bing Search agent endpoint URL |
-| `SOFIA_FOUNDRY_AGENT_KEY` | API key for the Foundry agent |
+| `FOUNDRY_PROJECT_ENDPOINT` | Azure AI Foundry project endpoint URL (e.g., `https://<name>.services.ai.azure.com/api/projects/<project>`) |
+| `FOUNDRY_MODEL_DEPLOYMENT_NAME` | Model deployment name for the web search agent (e.g., `gpt-4.1-mini`) |
 
 Both must be set for the `web.search` tool to be available. When not configured, the web search tool is disabled and the workshop proceeds without web search capabilities.
 
-**Security:** `SOFIA_FOUNDRY_AGENT_KEY` is never logged or persisted. The logger redacts fields named `key`, `secret`, `token`, `apiKey`, `api_key`, `authorization`, `auth`, `credential`, and `credentials`.
+**Authentication:** sofIA authenticates to the Azure AI Foundry Agent Service using `DefaultAzureCredential` from `@azure/identity`. No API key is required — ensure you are logged in via `az login` or have another credential available (Managed Identity, environment variables, etc.).
+
+### Migrating from Legacy Configuration
+
+If you previously used `SOFIA_FOUNDRY_AGENT_ENDPOINT` / `SOFIA_FOUNDRY_AGENT_KEY`:
+
+1. **Remove** the old variables from your environment
+2. **Set** the new variables (`FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`)
+3. **Ensure** you are logged in via `az login`
+
+The CLI will display an error if it detects the old variables, guiding you through the migration.
+
+> **Note**: `SOFIA_FOUNDRY_AGENT_ENDPOINT` and `SOFIA_FOUNDRY_AGENT_KEY` are no longer used. API key authentication has been replaced by Azure Identity credentials.
 
 ## Copilot SDK
 
