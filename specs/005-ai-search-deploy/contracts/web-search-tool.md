@@ -33,9 +33,9 @@ const WEB_SEARCH_TOOL_DEFINITION: ToolDefinition = {
 
 ## Input
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | string | yes | Web search query (e.g., "Contoso Ltd competitors in healthcare AI") |
+| Parameter | Type   | Required | Description                                                         |
+| --------- | ------ | -------- | ------------------------------------------------------------------- |
+| `query`   | string | yes      | Web search query (e.g., "Contoso Ltd competitors in healthcare AI") |
 
 ## Output
 
@@ -44,18 +44,19 @@ const WEB_SEARCH_TOOL_DEFINITION: ToolDefinition = {
 ```typescript
 interface WebSearchResult {
   results: WebSearchResultItem[];
-  sources?: string[];     // Deduplicated citation URLs
+  sources?: string[]; // Deduplicated citation URLs
   degraded?: false;
 }
 
 interface WebSearchResultItem {
-  title: string;          // Page title from citation
-  url: string;            // Source URL (from url_citation annotation)
-  snippet: string;        // Relevant text excerpt
+  title: string; // Page title from citation
+  url: string; // Source URL (from url_citation annotation)
+  snippet: string; // Relevant text excerpt
 }
 ```
 
 **Example**:
+
 ```json
 {
   "results": [
@@ -70,10 +71,7 @@ interface WebSearchResultItem {
       "snippet": "The healthcare AI market is dominated by... Contoso ranks #3..."
     }
   ],
-  "sources": [
-    "https://contoso.com/about",
-    "https://techreview.com/healthcare-ai-2026"
-  ]
+  "sources": ["https://contoso.com/about", "https://techreview.com/healthcare-ai-2026"]
 }
 ```
 
@@ -91,14 +89,14 @@ Returned when the Foundry Agent Service is unavailable, misconfigured, or return
 
 ### Degradation scenarios
 
-| Condition | `degraded` | `error` message |
-|-----------|-----------|-----------------|
-| `FOUNDRY_PROJECT_ENDPOINT` not set | `true` | "Web search not configured — set FOUNDRY_PROJECT_ENDPOINT and FOUNDRY_MODEL_DEPLOYMENT_NAME" |
-| `DefaultAzureCredential` fails | `true` | "Azure authentication failed — run `az login`" |
-| Agent creation fails | `true` | "Failed to create web search agent: {details}" |
-| Query returns error | `true` | "Web search query failed: {status} {message}" |
-| Network error | `true` | "Network error: {message}" |
-| Rate limited (429) | `true` | "Web search rate limited — retry in {seconds}s" |
+| Condition                          | `degraded` | `error` message                                                                              |
+| ---------------------------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| `FOUNDRY_PROJECT_ENDPOINT` not set | `true`     | "Web search not configured — set FOUNDRY_PROJECT_ENDPOINT and FOUNDRY_MODEL_DEPLOYMENT_NAME" |
+| `DefaultAzureCredential` fails     | `true`     | "Azure authentication failed — run `az login`"                                               |
+| Agent creation fails               | `true`     | "Failed to create web search agent: {details}"                                               |
+| Query returns error                | `true`     | "Web search query failed: {status} {message}"                                                |
+| Network error                      | `true`     | "Network error: {message}"                                                                   |
+| Rate limited (429)                 | `true`     | "Web search rate limited — retry in {seconds}s"                                              |
 
 ## Integration Points
 
@@ -116,10 +114,10 @@ Returned when the Foundry Agent Service is unavailable, misconfigured, or return
 
 ### Required environment variables
 
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `FOUNDRY_PROJECT_ENDPOINT` | `https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project` | Foundry project endpoint URL |
-| `FOUNDRY_MODEL_DEPLOYMENT_NAME` | `gpt-4.1-mini` | Model deployment name for agent creation |
+| Variable                        | Example                                                                         | Description                              |
+| ------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------- |
+| `FOUNDRY_PROJECT_ENDPOINT`      | `https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project` | Foundry project endpoint URL             |
+| `FOUNDRY_MODEL_DEPLOYMENT_NAME` | `gpt-4.1-mini`                                                                  | Model deployment name for agent creation |
 
 ### Authentication
 
@@ -128,6 +126,7 @@ Uses `DefaultAzureCredential` — no API key environment variables. User must be
 ### Legacy env var rejection (FR-016)
 
 If either `SOFIA_FOUNDRY_AGENT_ENDPOINT` or `SOFIA_FOUNDRY_AGENT_KEY` is set:
+
 - Preflight check fails with `required: true`
 - Error message: `"Legacy web search env vars detected. Migrate: replace SOFIA_FOUNDRY_AGENT_ENDPOINT with FOUNDRY_PROJECT_ENDPOINT and remove SOFIA_FOUNDRY_AGENT_KEY (API key auth is no longer used). See docs/environment.md"`
 
@@ -173,8 +172,8 @@ function destroyWebSearchSession(): Promise<void>;
 
 ```bash
 ./infra/deploy.sh \
-  --subscription <subscription-id> \
   --resource-group <resource-group-name> \
+  [--subscription <subscription-id>] \
   [--location <azure-region>] \
   [--account-name <foundry-account-name>] \
   [--model <model-deployment-name>]
@@ -182,31 +181,33 @@ function destroyWebSearchSession(): Promise<void>;
 
 ### Parameters
 
-| Flag | Required | Default | Description |
-|------|----------|---------|-------------|
-| `--subscription`, `-s` | yes | — | Azure subscription ID |
-| `--resource-group`, `-g` | yes | — | Resource group name (created if missing) |
-| `--location`, `-l` | no | `swedencentral` | Azure region |
-| `--account-name`, `-n` | no | `sofia-foundry` | Foundry account name |
-| `--model`, `-m` | no | `gpt-4.1-mini` | Model deployment name |
+| Flag                     | Required | Default                     | Description                              |
+| ------------------------ | -------- | --------------------------- | ---------------------------------------- |
+| `--resource-group`, `-g` | yes      | —                           | Resource group name (created if missing) |
+| `--subscription`, `-s`   | no       | current az CLI subscription | Azure subscription ID                    |
+| `--location`, `-l`       | no       | `swedencentral`             | Azure region                             |
+| `--account-name`, `-n`   | no       | `sofia-foundry`             | Foundry account name                     |
+| `--model`, `-m`          | no       | `gpt-4.1-mini`              | Model deployment name                    |
 
 ### Exit codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Deployment succeeded |
-| 1 | Prerequisite check failed (az CLI, login, subscription) |
-| 2 | Deployment failed (Bicep error) |
+| Code | Meaning                                                 |
+| ---- | ------------------------------------------------------- |
+| 0    | Deployment succeeded                                    |
+| 1    | Prerequisite check failed (az CLI, login, subscription) |
+| 2    | Deployment failed (Bicep error)                         |
 
 ### Output (stdout on success)
+
+The script writes `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` to a `.env` file in the workspace root (creating or updating it), then prints:
 
 ```
 ✅ Deployment complete!
 
-Set these environment variables to configure sofIA:
+Environment variables written to /path/to/workspace/.env:
 
-  export FOUNDRY_PROJECT_ENDPOINT="https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project"
-  export FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
+  FOUNDRY_PROJECT_ENDPOINT="https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project"
+  FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
 
 To tear down: ./infra/teardown.sh --resource-group <resource-group-name>
 ```
@@ -221,17 +222,17 @@ To tear down: ./infra/teardown.sh --resource-group <resource-group-name>
 
 ### Parameters
 
-| Flag | Required | Default | Description |
-|------|----------|---------|-------------|
-| `--resource-group`, `-g` | yes | — | Resource group to delete |
+| Flag                     | Required | Default | Description              |
+| ------------------------ | -------- | ------- | ------------------------ |
+| `--resource-group`, `-g` | yes      | —       | Resource group to delete |
 
 ### Exit codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Teardown succeeded or resource group doesn't exist |
-| 1 | Prerequisite check failed |
-| 2 | Deletion failed |
+| Code | Meaning                                            |
+| ---- | -------------------------------------------------- |
+| 0    | Teardown succeeded or resource group doesn't exist |
+| 1    | Prerequisite check failed                          |
+| 2    | Deletion failed                                    |
 
 ### Behavior
 

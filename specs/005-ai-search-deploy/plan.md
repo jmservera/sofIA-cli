@@ -10,7 +10,7 @@ Provide one-command deployment of Azure AI Foundry infrastructure (account, proj
 ## Technical Context
 
 **Language/Version**: Node.js 20 LTS + TypeScript 5.3, Bash (deployment scripts), Bicep (IaC)  
-**Primary Dependencies**: `@github/copilot-sdk ^0.1.28`, `@azure/ai-projects` (new), `@azure/identity` (new), `zod ^4.3.6`  
+**Primary Dependencies**: `@github/copilot-sdk ^0.1.28`, `@azure/ai-projects` (new), `@azure/identity` (new), `dotenv` (new), `zod ^4.3.6`  
 **Storage**: N/A (stateless infrastructure provisioning; session state handled by existing `SessionStore`)  
 **Testing**: Vitest 4.x (unit + integration), TDD Red→Green→Review per constitution  
 **Target Platform**: CLI — Linux, macOS, Windows (WSL/Git Bash); Azure for infrastructure deployment  
@@ -21,7 +21,7 @@ Provide one-command deployment of Azure AI Foundry infrastructure (account, proj
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Default gates for this repository (sofIA Copilot CLI) — derived from `.specify/memory/constitution.md`:
 
@@ -51,9 +51,10 @@ specs/005-ai-search-deploy/
 
 ```text
 infra/                          # NEW — Infrastructure-as-Code
-├── main.bicep                  # Foundry account, project, model deployment
+├── main.bicep                  # Subscription-scoped entry point (resource group + module)
+├── resources.bicep             # Resource-group-scoped module (account, model, project, capability hosts)
 ├── main.bicepparam             # Default parameters (swedencentral, gpt-4.1-mini)
-├── deploy.sh                   # One-command deployment script (FR-002)
+├── deploy.sh                   # One-command deployment script (FR-002), writes .env (FR-018)
 └── teardown.sh                 # Resource group deletion (FR-007)
 
 src/
@@ -62,6 +63,8 @@ src/
 │                               #   to @azure/ai-projects SDK + DefaultAzureCredential
 │                               #   + ephemeral agent lifecycle (create/query/delete)
 ├── cli/
+│   ├── envLoader.ts            # NEW — Loads .env file at startup via dotenv (FR-017)
+│   ├── index.ts                # MODIFIED — Calls loadEnvFile() at startup
 │   └── preflight.ts            # MODIFIED — Add legacy env var detection check (FR-016)
 ├── shared/
 │   └── copilotClient.ts        # UNCHANGED — ToolDefinition interface still used
@@ -85,6 +88,6 @@ tests/
 
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
+| Violation                                                     | Why Needed                                                                                                                                                                                 | Simpler Alternative Rejected Because                                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | MCP-first exception: direct SDK call to Foundry Agent Service | Azure AI Foundry Agent Service has no MCP server; `@azure/ai-projects` is the only supported client SDK. The tool is still exposed as a Copilot SDK tool and consumed by MCP-aware phases. | No MCP adapter exists for this service. Writing a custom MCP proxy would add complexity with no ecosystem benefit. |

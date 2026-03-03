@@ -67,10 +67,10 @@
 
 - [x] T009 [US1] Create Bicep template `infra/main.bicep` with all 5 resources: `Microsoft.CognitiveServices/accounts` (kind: AIServices, allowProjectManagement: true, customSubDomainName), `accounts/deployments` (gpt-4.1-mini, GlobalStandard), `accounts/projects`, `accounts/capabilityHosts` (Agents), `accounts/projects/capabilityHosts` (Agents). Use `targetScope = 'subscription'` with resource group creation per research.md R1
 - [x] T010 [US1] Create Bicep parameter file `infra/main.bicepparam` with defaults: location=swedencentral, modelDeploymentName=gpt-4.1-mini, modelName=gpt-4.1-mini, modelVersion=2025-04-14, modelSkuName=GlobalStandard per data-model.md FoundryDeploymentConfig
-- [x] T011 [US1] Implement deployment script `infra/deploy.sh` — parse CLI flags (--subscription, --resource-group, --location, --account-name, --model), validate prerequisites (az CLI installed, user logged in, subscription accessible), run `az deployment sub create`, query Bicep outputs (projectEndpoint, modelDeploymentName), print env var export instructions per contracts/web-search-tool.md deploy.sh contract
+- [x] T011 [US1] Implement deployment script `infra/deploy.sh` — parse CLI flags (--subscription, --resource-group, --location, --account-name, --model), validate prerequisites (az CLI installed, user logged in, subscription accessible), run `az deployment sub create`, query Bicep outputs (projectEndpoint, modelDeploymentName), write env vars to `.env` file per contracts/web-search-tool.md deploy.sh contract
 - [x] T012 [US1] Make `infra/deploy.sh` executable (chmod +x) and add shebang `#!/usr/bin/env bash`, set error handling (`set -euo pipefail`), add clear error messages with exit codes (0=success, 1=prereq fail, 2=deploy fail) per FR-006 and contracts
 
-**Checkpoint**: User Story 1 complete — `./infra/deploy.sh -s <sub> -g <rg>` provisions all resources and prints working env var values. Tests in T007/T008 pass.
+**Checkpoint**: User Story 1 complete — `./infra/deploy.sh -g <rg>` provisions all resources and writes env vars to `.env`. Tests in T007/T008 pass.
 
 ---
 
@@ -165,6 +165,11 @@
 - [x] T037 Run `npm run typecheck` and fix any remaining TypeScript errors across all modified files
 - [x] T038 Run `npm run lint` and fix any ESLint `import/order` warnings across all modified files
 - [x] T039 Run full test suite (`npm test`) and ensure no regressions in existing tests
+- [x] T040 [P] Install `dotenv` as a production dependency and create `src/cli/envLoader.ts` — load `.env` file at startup without overwriting existing env vars (FR-017)
+- [x] T041 [P] Wire `loadEnvFile()` call into `src/cli/index.ts` before CLI setup (FR-017)
+- [x] T042 [P] Create unit tests for envLoader in `tests/unit/cli/envLoader.spec.ts` — test loading, no-overwrite, and missing file scenarios
+- [x] T043 [P] Update `infra/deploy.sh` to write `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` to `.env` file in workspace root (FR-018)
+- [x] T044 Make `--subscription` flag optional in `infra/deploy.sh` — defaults to current az CLI subscription
 
 ---
 
@@ -266,14 +271,14 @@ With multiple developers after Foundational phase:
 
 ## Notes
 
-- Total tasks: **39**
+- Total tasks: **44**
 - US1: 6 tasks (2 test + 4 impl)
 - US2: 5 tasks (2 test + 3 impl)
 - US3: 14 tasks (6 test + 8 impl) — largest story, core SDK migration
 - US4: 3 tasks (1 test + 2 impl) — smallest story
 - Setup: 3 tasks
 - Foundational: 3 tasks
-- Polish: 5 tasks
+- Polish: 10 tasks (includes dotenv integration T040-T042, .env writing T043, subscription-optional T044)
 - Parallel opportunities: US1 ‖ US3 ‖ US4 after Foundational; numerous within-story [P] tasks
 - MVP: US1 alone delivers deployable infrastructure (12 tasks through Phase 3)
 - Each story is independently testable per spec acceptance scenarios

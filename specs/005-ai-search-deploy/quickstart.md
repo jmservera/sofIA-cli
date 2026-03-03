@@ -13,22 +13,22 @@
 ## 1. Deploy the Infrastructure
 
 ```bash
-# From the repository root
-./infra/deploy.sh \
-  --subscription <your-subscription-id> \
-  --resource-group sofia-workshop-rg
+# From the repository root (uses your current az CLI subscription)
+./infra/deploy.sh --resource-group sofia-workshop-rg
 ```
 
 This provisions:
+
 - Azure AI Foundry account with SystemAssigned managed identity
 - Model deployment (`gpt-4.1-mini` by default)
 - Foundry project with Agent Service capability enabled
 
 **Customize** (optional):
+
 ```bash
 ./infra/deploy.sh \
-  --subscription <id> \
   --resource-group sofia-workshop-rg \
+  --subscription <id> \
   --location eastus \
   --account-name my-foundry \
   --model gpt-4o-mini
@@ -36,14 +36,14 @@ This provisions:
 
 ## 2. Configure sofIA
 
-After deployment, the script prints the required environment variables:
+After deployment, the script automatically writes the required environment variables to a `.env` file in the workspace root:
 
 ```bash
-export FOUNDRY_PROJECT_ENDPOINT="https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project"
-export FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
+FOUNDRY_PROJECT_ENDPOINT="https://sofia-foundry-abc123.services.ai.azure.com/api/projects/sofia-project"
+FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
 ```
 
-Add these to your shell profile or `.env` file.
+The sofIA CLI loads this `.env` file automatically at startup — no manual configuration needed.
 
 > **Note**: No API key needed. sofIA authenticates using your Azure login credentials (`az login`).
 
@@ -77,15 +77,15 @@ The CLI will display an error if it detects the old variables, guiding you throu
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| "Web search not configured" | Env vars not set | Set `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` |
-| "Azure authentication failed" | Not logged in or token expired | Run `az login` |
-| "Legacy web search env vars detected" | Old `SOFIA_FOUNDRY_*` vars still set | Remove them, set new vars |
-| Deploy fails: "subscription not found" | Wrong subscription selected | Run `az account set --subscription <id>` |
-| Deploy fails: "insufficient permissions" | Not Owner/Contributor | Ask an admin to grant access |
-| Web search returns no results | Model didn't use web search | This is normal — the model decides when to search |
-| "Web search disabled at subscription" | Admin blocked the tool | Run `az feature unregister --name OpenAI.BlockedTools.web_search --namespace Microsoft.CognitiveServices` |
+| Symptom                                  | Cause                                | Fix                                                                                                       |
+| ---------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| "Web search not configured"              | Env vars not set                     | Set `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME`                                        |
+| "Azure authentication failed"            | Not logged in or token expired       | Run `az login`                                                                                            |
+| "Legacy web search env vars detected"    | Old `SOFIA_FOUNDRY_*` vars still set | Remove them, set new vars                                                                                 |
+| Deploy fails: "subscription not found"   | Wrong subscription selected          | Run `az account set --subscription <id>`                                                                  |
+| Deploy fails: "insufficient permissions" | Not Owner/Contributor                | Ask an admin to grant access                                                                              |
+| Web search returns no results            | Model didn't use web search          | This is normal — the model decides when to search                                                         |
+| "Web search disabled at subscription"    | Admin blocked the tool               | Run `az feature unregister --name OpenAI.BlockedTools.web_search --namespace Microsoft.CognitiveServices` |
 
 ## Cost Expectations
 
