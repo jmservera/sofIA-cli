@@ -47,8 +47,8 @@ describe.skipIf(!LIVE)('Discovery web search relevance validation (T041 / SC-003
     const { createWebSearchTool } = await import('../../src/mcp/webSearch.js');
 
     const webSearchFn = createWebSearchTool({
-      endpoint: process.env.SOFIA_FOUNDRY_AGENT_ENDPOINT!,
-      apiKey: process.env.SOFIA_FOUNDRY_AGENT_KEY!,
+      projectEndpoint: process.env.FOUNDRY_PROJECT_ENDPOINT!,
+      modelDeploymentName: process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME!,
     });
 
     const webSearchClient = {

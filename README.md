@@ -101,6 +101,13 @@ See [docs/cli-usage.md](docs/cli-usage.md) for full command reference.
 ## Project Structure
 
 ```
+infra/                # Azure AI Foundry IaC (Bicep + deployment scripts)
+├── main.bicep        # Foundry account, project, model deployment
+├── resources.bicep   # Resource-group-scoped resources (module)
+├── main.bicepparam   # Default parameters
+├── deploy.sh         # One-command deployment
+└── teardown.sh       # Resource group deletion
+
 src/
 ├── cli/              # Command handlers (workshop, dev, status, export)
 ├── develop/          # PoC generation & Ralph loop
@@ -176,6 +183,27 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for detai
 - **Feature 001** (Workshop CLI): Discover → Ideate → Design → Select → Plan — **implemented and tested**
 - **Feature 002** (PoC Generation): Develop phase with Ralph loop — **implemented and tested** (MCP integrations are simulated; see [specs/003-next-spec-gaps.md](specs/003-next-spec-gaps.md))
 - **Feature 003** (MCP Integration): Real MCP tool invocation, resume/checkpoint, additional templates — **planned**
+- **Feature 005** (AI Search Deploy): Azure AI Foundry infrastructure deployment + SDK-based web search integration — **implemented and tested**
+
+## Web Search Setup
+
+sofIA can search the web during the Discover phase to research companies, competitors, and industry trends. This requires an Azure AI Foundry deployment.
+
+**Quick setup:**
+
+```bash
+# Deploy infrastructure (requires Azure CLI + subscription)
+./infra/deploy.sh --subscription <id> --resource-group sofia-workshop-rg
+
+# Configure sofIA with the output values
+export FOUNDRY_PROJECT_ENDPOINT="<endpoint from deploy output>"
+export FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
+
+# Teardown when done
+./infra/teardown.sh --resource-group sofia-workshop-rg
+```
+
+See [specs/005-ai-search-deploy/quickstart.md](specs/005-ai-search-deploy/quickstart.md) for detailed deployment instructions.
 
 ## License
 
