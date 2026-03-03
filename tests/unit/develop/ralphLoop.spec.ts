@@ -1078,6 +1078,18 @@ describe('RalphLoop', () => {
           priorFinalStatus: undefined,
           priorIterations: session.poc!.iterations,
         },
+      });
+
+      await ralph.run();
+
+      // Scaffold SHOULD have been called since canSkipScaffold is false
+      expect(scaffolder.scaffold).toHaveBeenCalled();
+      expect(io.writeActivity).toHaveBeenCalledWith(
+        expect.stringContaining('re-scaffolding'),
+      );
+    });
+  });
+
   describe('post-scaffold push (T024 — US2)', () => {
     it('pushes scaffold files to GitHub after npm install, before first test iteration', async () => {
       const session = makeSession();
@@ -1124,11 +1136,31 @@ describe('RalphLoop', () => {
 
       await ralph.run();
 
-      // Scaffold SHOULD have been called since canSkipScaffold is false
-      expect(scaffolder.scaffold).toHaveBeenCalled();
-      expect(io.writeActivity).toHaveBeenCalledWith(
-        expect.stringContaining('re-scaffolding'),
-      );
+      // pushFiles should have been called at least once for the scaffold
+      expect(pushFilesMock).toHaveBeenCalled();
+      const firstPushArgs = pushFilesMock.mock.calls[0][0] as {
+        repoUrl: string;
+        files: Array<{ path: string; content: string }>;
+        commitMessage: string;
+      };
+
+      // Should push the scaffold files ('package.json', 'src/index.ts')
+      expect(firstPushArgs.files.length).toBeGreaterThanOrEqual(1);
+      const packageJson = firstPushArgs.files.find((f) => f.path === 'package.json');
+      expect(packageJson).toBeDefined();
+      expect(packageJson!.content).not.toBe('');
+
+      const indexTs = firstPushArgs.files.find((f) => f.path === 'src/index.ts');
+      expect(indexTs).toBeDefined();
+      expect(indexTs!.content).not.toBe('');
+
+      // Commit message should indicate scaffold
+      expect(firstPushArgs.commitMessage).toContain('scaffold');
+
+      // The scaffold push should come BEFORE the first test run
+      const firstPush = pushOrder.indexOf('pushFiles');
+      const firstTest = pushOrder.indexOf('testRun');
+      expect(firstPush).toBeLessThan(firstTest);
     });
 
     it('always re-runs dependency install even when scaffolding is skipped (T065, FR-003)', async () => {
@@ -1336,31 +1368,25 @@ describe('RalphLoop', () => {
       };
       const testRunner = makeAlwaysFailingTestRunner();
       const client = makePassingClient();
-      // pushFiles should have been called at least once for the scaffold
-      expect(pushFilesMock).toHaveBeenCalled();
-      const firstPushArgs = pushFilesMock.mock.calls[0][0] as {
-        repoUrl: string;
-        files: Array<{ path: string; content: string }>;
-        commitMessage: string;
-      };
+      const scaffolder = makeFakeScaffolder(tmpDir);
 
-      // Should push the scaffold files ('package.json', 'src/index.ts')
-      expect(firstPushArgs.files.length).toBeGreaterThanOrEqual(1);
-      const packageJson = firstPushArgs.files.find((f) => f.path === 'package.json');
-      expect(packageJson).toBeDefined();
-      expect(packageJson!.content).not.toBe('');
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
 
-      const indexTs = firstPushArgs.files.find((f) => f.path === 'src/index.ts');
-      expect(indexTs).toBeDefined();
-      expect(indexTs!.content).not.toBe('');
+      await ralph.run();
 
-      // Commit message should indicate scaffold
-      expect(firstPushArgs.commitMessage).toContain('scaffold');
+      // scanAndRecordTodos should have been called for each failing iteration
+      expect(scanSpy).toHaveBeenCalled();
+      expect(scanSpy).toHaveBeenCalledWith(tmpDir);
 
-      // The scaffold push should come BEFORE the first test run
-      const firstPush = pushOrder.indexOf('pushFiles');
-      const firstTest = pushOrder.indexOf('testRun');
-      expect(firstPush).toBeLessThan(firstTest);
+      scanSpy.mockRestore();
     });
   });
 
@@ -1398,11 +1424,6 @@ describe('RalphLoop', () => {
 
       await ralph.run();
 
-      // scanAndRecordTodos should have been called after failing iterations
-      expect(scanSpy).toHaveBeenCalled();
-      expect(scanSpy).toHaveBeenCalledWith(tmpDir);
-
-      scanSpy.mockRestore();
       expect(createSessionSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           infiniteSessions: {
