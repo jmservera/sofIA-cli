@@ -68,7 +68,6 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: aiAccount
   name: projectName
   location: location
-  kind: 'Project'
   identity: {
     type: 'SystemAssigned'
   }
@@ -111,4 +110,4 @@ resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/ca
 
 // ── Outputs ──────────────────────────────────────────────────────────────────
 
-output projectEndpoint string = project.properties.endpoint
+output projectEndpoint string = project.properties.endpoints['AI Foundry API']

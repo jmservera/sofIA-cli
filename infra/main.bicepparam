@@ -4,6 +4,7 @@ using 'main.bicep'
 // Override at deploy time via:
 //   az deployment sub create --parameters resourceGroupName='my-rg' location='eastus'
 
+param resourceGroupName = 'sofia-rg'
 param location = 'swedencentral'
 param accountName = 'sofia-foundry'
 param projectName = 'sofia-project'

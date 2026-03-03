@@ -9,7 +9,7 @@
 #   - Agent Service capability hosts
 #
 # Usage:
-#   ./infra/deploy.sh --subscription <id> --resource-group <name> [options]
+#   ./infra/deploy.sh --resource-group <name> [options]
 #
 # Exit codes:
 #   0 — Deployment succeeded
@@ -35,10 +35,10 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Required:
-  -s, --subscription <id>       Azure subscription ID
   -g, --resource-group <name>   Resource group name (created if missing)
 
 Optional:
+  -s, --subscription <id>       Azure subscription ID (default: current az CLI subscription)
   -l, --location <region>       Azure region (default: swedencentral)
   -n, --account-name <name>     Foundry account name (default: sofia-foundry)
   -m, --model <name>            Model deployment name (default: gpt-4.1-mini)
@@ -69,12 +69,6 @@ done
 
 # ── Validate required parameters ─────────────────────────────────────────────
 
-if [[ -z "$SUBSCRIPTION" ]]; then
-  echo "❌ Missing required parameter: --subscription (-s)" >&2
-  usage >&2
-  exit 1
-fi
-
 if [[ -z "$RESOURCE_GROUP" ]]; then
   echo "❌ Missing required parameter: --resource-group (-g)" >&2
   usage >&2
@@ -98,12 +92,14 @@ if ! az account show &>/dev/null; then
   exit 1
 fi
 
-# Set subscription
-echo "📋 Setting subscription to: $SUBSCRIPTION"
-if ! az account set --subscription "$SUBSCRIPTION" 2>/dev/null; then
-  echo "❌ Could not set subscription '$SUBSCRIPTION'." >&2
-  echo "   Check the subscription ID and your permissions." >&2
-  exit 1
+# Optionally set subscription
+if [[ -n "$SUBSCRIPTION" ]]; then
+  echo "📋 Setting subscription to: $SUBSCRIPTION"
+  if ! az account set --subscription "$SUBSCRIPTION" 2>/dev/null; then
+    echo "❌ Could not set subscription '$SUBSCRIPTION'." >&2
+    echo "   Check the subscription ID and your permissions." >&2
+    exit 1
+  fi
 fi
 
 echo "✅ Prerequisites passed"
@@ -154,14 +150,32 @@ MODEL_DEPLOYMENT_NAME=$(az deployment sub show \
   --query "properties.outputs.modelDeploymentName.value" \
   --output tsv 2>/dev/null || echo "$MODEL")
 
+# ── Write .env file ───────────────────────────────────────────────────────────
+
+ENV_FILE="$SCRIPT_DIR/../.env"
+
+# Helper: set or update a KEY=VALUE in the .env file
+set_env_var() {
+  local key="$1" value="$2"
+  if [[ -f "$ENV_FILE" ]] && grep -q "^${key}=" "$ENV_FILE"; then
+    # Update existing entry (portable sed -i)
+    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$ENV_FILE"
+  else
+    echo "${key}=\"${value}\"" >> "$ENV_FILE"
+  fi
+}
+
+set_env_var "FOUNDRY_PROJECT_ENDPOINT" "$PROJECT_ENDPOINT"
+set_env_var "FOUNDRY_MODEL_DEPLOYMENT_NAME" "$MODEL_DEPLOYMENT_NAME"
+
 # ── Output ────────────────────────────────────────────────────────────────────
 
 echo ""
 echo "✅ Deployment complete!"
 echo ""
-echo "Set these environment variables to configure sofIA:"
+echo "Environment variables written to $(realpath "$ENV_FILE"):"
 echo ""
-echo "  export FOUNDRY_PROJECT_ENDPOINT=\"$PROJECT_ENDPOINT\""
-echo "  export FOUNDRY_MODEL_DEPLOYMENT_NAME=\"$MODEL_DEPLOYMENT_NAME\""
+echo "  FOUNDRY_PROJECT_ENDPOINT=\"$PROJECT_ENDPOINT\""
+echo "  FOUNDRY_MODEL_DEPLOYMENT_NAME=\"$MODEL_DEPLOYMENT_NAME\""
 echo ""
 echo "To tear down: ./infra/teardown.sh --resource-group $RESOURCE_GROUP"
