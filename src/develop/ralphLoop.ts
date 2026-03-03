@@ -219,6 +219,7 @@ export class RalphLoop {
 
     // ── Scaffold (skip if resuming with valid output dir) ──────────────────
     const shouldSkipScaffold = checkpoint?.canSkipScaffold === true;
+    let scaffoldResult: Awaited<ReturnType<PocScaffolder['scaffold']>> | undefined;
 
     if (shouldSkipScaffold) {
       io.writeActivity('Skipping scaffold — output directory and .sofia-metadata.json present');
@@ -234,7 +235,6 @@ export class RalphLoop {
       const scaffolder = this.options.scaffolder ?? new PocScaffolder();
       const scaffoldStart = Date.now();
 
-      let scaffoldResult;
       try {
         scaffoldResult = await scaffolder.scaffold(scaffoldCtx);
       } catch (err: unknown) {
@@ -319,7 +319,7 @@ export class RalphLoop {
     const testRunner = this.options.testRunner ??
       new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
     // Push scaffold files to GitHub after install
-    if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+    if (scaffoldResult && githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
       const filesWithContent = await Promise.all(
         scaffoldResult.createdFiles.map(async (f) => {
           if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
