@@ -100,7 +100,7 @@
 - [ ] T031 [US1] Implement `phaseSummarize()` in src/loop/phaseSummarizer.ts — create new session, send transcript, extract with handler (FR-001, FR-003, FR-004, FR-005, FR-006). The Discover phase MAY skip this call if `businessContext` is already populated.
 - [ ] T032 [US1] Implement `needsSummarization()` in src/loop/phaseSummarizer.ts — check if phase's session field is null
 - [ ] T033 [US1] Implement `buildPhaseTranscript()` in src/loop/phaseSummarizer.ts — concatenate user+assistant turns for the phase
-- [ ] T034 [US1] Implement Mermaid diagram extraction in Design summarization path in src/loop/phaseSummarizer.ts — extract ``` mermaid ``` block from summarization response and store in session `evaluation.architectureDiagram` (FR-007a)
+- [ ] T034 [US1] Implement Mermaid diagram extraction in Design summarization path in src/loop/phaseSummarizer.ts — extract `mermaid` block from summarization response and store in session `evaluation.architectureDiagram` (FR-007a)
 - [ ] T035 [US1] Hook `phaseSummarize()` into ConversationLoop.run() after while loop exits, before return, in src/loop/conversationLoop.ts (FR-006)
 - [ ] T036 [US1] Run `npm run test:unit && npm run test:integration` — T020–T025 must PASS; all existing tests must still PASS
 
