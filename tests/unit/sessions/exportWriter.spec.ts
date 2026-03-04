@@ -484,4 +484,110 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
       ]),
     );
   });
+
+  // ── Conversation Fallback Export Tests (T072-T076) ───────────────────────
+
+  it('generates ideate.md with conversation turns when ideas are null', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      ideas: undefined,
+      turns: [
+        { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: now },
+        { phase: 'Ideate', sequence: 2, role: 'user', content: 'brainstorm AI ideas', timestamp: now },
+        { phase: 'Ideate', sequence: 3, role: 'assistant', content: 'Here are some ideas for AI-powered solutions.', timestamp: now },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).toContain('ideate.md');
+
+    const content = await readFile(join(tmpDir, 'ideate.md'), 'utf-8');
+    expect(content).toContain('# Ideate Phase');
+    expect(content).toContain('## Conversation');
+    expect(content).toContain('brainstorm AI ideas');
+  });
+
+  it('generates design.md with conversation turns when evaluation is null', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      evaluation: undefined,
+      turns: [
+        { phase: 'Design', sequence: 1, role: 'user', content: 'evaluate ideas', timestamp: now },
+        { phase: 'Design', sequence: 2, role: 'assistant', content: 'Let me evaluate.', timestamp: now },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).toContain('design.md');
+
+    const content = await readFile(join(tmpDir, 'design.md'), 'utf-8');
+    expect(content).toContain('# Design Phase');
+    expect(content).toContain('## Conversation');
+    expect(content).toContain('evaluate ideas');
+  });
+
+  it('renders structured data first then conversation when both exist', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      turns: [
+        { phase: 'Ideate', sequence: 1, role: 'user', content: 'give ideas', timestamp: now },
+        { phase: 'Ideate', sequence: 2, role: 'assistant', content: 'here are ideas', timestamp: now },
+      ],
+    });
+    // session already has ideas from createFullSession
+
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'ideate.md'), 'utf-8');
+    // Structured data (Ideas section) should come before Conversation
+    const ideasIdx = content.indexOf('## Ideas');
+    const convIdx = content.indexOf('## Conversation');
+    expect(ideasIdx).toBeGreaterThan(-1);
+    expect(convIdx).toBeGreaterThan(-1);
+    expect(ideasIdx).toBeLessThan(convIdx);
+  });
+
+  it('summary.json lists all 6 phase files when all phases have turns', async () => {
+    const now = new Date().toISOString();
+    const phases = ['Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop'] as const;
+    const turns = phases.flatMap((phase, i) => [
+      { phase, sequence: i * 2 + 1, role: 'user' as const, content: `${phase} input`, timestamp: now },
+      { phase, sequence: i * 2 + 2, role: 'assistant' as const, content: `${phase} response`, timestamp: now },
+    ]);
+
+    const session = createFullSession({ turns });
+
+    await exportSession(session, tmpDir);
+    const summaryRaw = await readFile(join(tmpDir, 'summary.json'), 'utf-8');
+    const summary = JSON.parse(summaryRaw) as { files: Array<{ path: string }> };
+
+    const mdFiles = summary.files.filter((f) => f.path.endsWith('.md'));
+    expect(mdFiles.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('summary.json highlights include one entry per phase with turns', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      ideas: undefined,
+      evaluation: undefined,
+      selection: undefined,
+      plan: undefined,
+      poc: undefined,
+      turns: [
+        { phase: 'Ideate', sequence: 1, role: 'user', content: 'ideas please', timestamp: now },
+        { phase: 'Ideate', sequence: 2, role: 'assistant', content: 'Here are creative ideas.', timestamp: now },
+        { phase: 'Design', sequence: 3, role: 'user', content: 'evaluate', timestamp: now },
+        { phase: 'Design', sequence: 4, role: 'assistant', content: 'Evaluation results.', timestamp: now },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const summaryRaw = await readFile(join(tmpDir, 'summary.json'), 'utf-8');
+    const summary = JSON.parse(summaryRaw) as { highlights?: string[] };
+    expect(summary.highlights).toBeDefined();
+    // Should have highlights for phases with turns (fallback to first assistant turn)
+    expect(summary.highlights!.some((h) => h.includes('Ideate'))).toBe(true);
+    expect(summary.highlights!.some((h) => h.includes('Design'))).toBe(true);
+  });
 });

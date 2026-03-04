@@ -327,3 +327,83 @@ describe('extractSessionName', () => {
     expect(result).toBeNull();
   });
 });
+
+// ── Multi-block extraction tests (T006, T007) ──────────────────────────────
+
+import {
+  extractAllJsonBlocks,
+  extractJsonBlockForSchema,
+} from '../../../src/phases/phaseExtractors.js';
+import { z } from '../../../src/vendor/zod.js';
+
+describe('extractAllJsonBlocks', () => {
+  it('returns empty array when no JSON blocks found', () => {
+    const response = 'This is a plain text response with no JSON.';
+    expect(extractAllJsonBlocks(response)).toEqual([]);
+  });
+
+  it('extracts a single fenced JSON block', () => {
+    const response = `Here are the results:\n\`\`\`json\n{"key": "value"}\n\`\`\`\nDone.`;
+    const results = extractAllJsonBlocks(response);
+    expect(results).toEqual([{ key: 'value' }]);
+  });
+
+  it('extracts two fenced JSON blocks', () => {
+    const response = `First:\n\`\`\`json\n{"a": 1}\n\`\`\`\nSecond:\n\`\`\`json\n{"b": 2}\n\`\`\``;
+    const results = extractAllJsonBlocks(response);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({ a: 1 });
+    expect(results[1]).toEqual({ b: 2 });
+  });
+
+  it('extracts three fenced JSON blocks', () => {
+    const response = `\`\`\`json\n[1]\n\`\`\`\n\`\`\`json\n[2]\n\`\`\`\n\`\`\`json\n[3]\n\`\`\``;
+    const results = extractAllJsonBlocks(response);
+    expect(results).toHaveLength(3);
+  });
+
+  it('falls back to bracket-depth counting when no fenced blocks', () => {
+    const response = 'Result: {"key": "value"} and also [1, 2, 3]';
+    const results = extractAllJsonBlocks(response);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({ key: 'value' });
+    expect(results[1]).toEqual([1, 2, 3]);
+  });
+
+  it('skips invalid JSON in fenced blocks', () => {
+    const response = `\`\`\`json\n{invalid}\n\`\`\`\n\`\`\`json\n{"valid": true}\n\`\`\``;
+    const results = extractAllJsonBlocks(response);
+    expect(results).toEqual([{ valid: true }]);
+  });
+});
+
+describe('extractJsonBlockForSchema', () => {
+  const simpleSchema = z.object({
+    name: z.string(),
+    age: z.number(),
+  });
+
+  it('returns null when no blocks match schema', () => {
+    const response = `\`\`\`json\n{"unrelated": true}\n\`\`\``;
+    expect(extractJsonBlockForSchema(response, simpleSchema)).toBeNull();
+  });
+
+  it('returns the first matching block when multiple blocks present', () => {
+    const response = `\`\`\`json\n{"unrelated": true}\n\`\`\`\n\`\`\`json\n{"name": "Alice", "age": 30}\n\`\`\``;
+    const result = extractJsonBlockForSchema(response, simpleSchema);
+    expect(result).toEqual({ name: 'Alice', age: 30 });
+  });
+
+  it('skips first block that does not match and returns second that does', () => {
+    const response = `\`\`\`json\n{"name": 123}\n\`\`\`\n\`\`\`json\n{"name": "Bob", "age": 25}\n\`\`\``;
+    const result = extractJsonBlockForSchema(response, simpleSchema);
+    expect(result).toEqual({ name: 'Bob', age: 25 });
+  });
+
+  it('works with array schemas', () => {
+    const arraySchema = z.array(z.object({ id: z.string() }));
+    const response = `\`\`\`json\n{"not": "array"}\n\`\`\`\n\`\`\`json\n[{"id": "a"}]\n\`\`\``;
+    const result = extractJsonBlockForSchema(response, arraySchema);
+    expect(result).toEqual([{ id: 'a' }]);
+  });
+});
