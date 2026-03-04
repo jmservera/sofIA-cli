@@ -470,7 +470,7 @@ describe('phaseHandlers', () => {
       expect(prompt).toContain('Prior Phase Context');
     });
 
-    it('handlers return empty context for empty session', async () => {
+    it('handlers omit Prior Phase Context section when session is empty', async () => {
       for (const phase of ['Ideate', 'Design', 'Select', 'Plan', 'Develop'] as PhaseValue[]) {
         const handler = createPhaseHandler(phase);
         await handler._preload();
