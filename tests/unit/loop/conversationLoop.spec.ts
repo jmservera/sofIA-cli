@@ -281,7 +281,7 @@ describe('ConversationLoop', () => {
 
       expect(createSessionSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          systemPrompt: 'Custom system prompt for discover',
+          systemPrompt: expect.stringContaining('Custom system prompt for discover'),
         }),
       );
     });
@@ -614,8 +614,8 @@ describe('ConversationLoop', () => {
       await loop.run();
 
       const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
-      // System prompt should be exactly what the handler returned
-      expect(passedOpts.systemPrompt).toBe('You are a workshop facilitator.');
+      // System prompt should contain what the handler returned plus phase boundary
+      expect(passedOpts.systemPrompt).toContain('You are a workshop facilitator.');
     });
 
     it('only includes turns for the current phase in the history', async () => {

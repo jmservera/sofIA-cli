@@ -24,6 +24,7 @@ import type { ActivitySpinner } from '../shared/activitySpinner.js';
 import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
+import { phaseSummarize } from './phaseSummarizer.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,9 @@ export class ConversationLoop {
     this.setupSignalHandler();
 
     let systemPrompt = this.handler.buildSystemPrompt(this.session);
+
+    // FR-007b, FR-007c: Inject phase boundary instruction to prevent LLM drift
+    systemPrompt += `\n\nYou are in the ${this.handler.phase} phase. Do NOT introduce or begin the next phase. The user will be offered a decision gate when this phase is complete.`;
 
     // Inject prior conversation history into the system prompt when resuming
     // so the LLM has context from previous turns in this phase.
@@ -235,6 +239,27 @@ export class ConversationLoop {
 
       // Persist after every turn (FR-039a)
       await this.onSessionUpdate(this.session);
+    }
+
+    // FR-006: Post-phase summarization fallback
+    // If structured data wasn't extracted during conversation, try a dedicated summarization call
+    try {
+      const summarizationUpdates = await phaseSummarize(
+        this.client,
+        this.handler.phase,
+        this.session,
+        this.handler,
+      );
+      if (Object.keys(summarizationUpdates).length > 0) {
+        this.session = {
+          ...this.session,
+          ...summarizationUpdates,
+          updatedAt: new Date().toISOString(),
+        };
+        await this.onSessionUpdate(this.session);
+      }
+    } catch {
+      // Summarization failure is non-fatal
     }
 
     return this.session;

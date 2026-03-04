@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run build:assets",
-    "build:assets": "cp -r src/prompts/*.md dist/src/prompts/ && cp src/shared/data/cards.json dist/src/shared/data/",
+    "build:assets": "cp -r src/prompts/*.md dist/src/prompts/ && mkdir -p dist/src/prompts/summarize && cp -r src/prompts/summarize/*.md dist/src/prompts/summarize/ && cp src/shared/data/cards.json dist/src/shared/data/",
     "dev": "tsx watch src/cli/index.ts",
     "start": "tsx src/cli/index.ts",
     "clean": "rimraf dist coverage .nyc_output",

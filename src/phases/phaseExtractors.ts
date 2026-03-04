@@ -69,6 +69,85 @@ export function extractJsonBlock(response: string): unknown {
 }
 
 // ---------------------------------------------------------------------------
+// Multi-block JSON extraction (FR-007)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract ALL JSON objects/arrays from a response string.
+ * Uses /g flag for fenced blocks and bracket-depth counting for raw JSON.
+ * Returns an array of parsed values.
+ */
+export function extractAllJsonBlocks(response: string): unknown[] {
+  const results: unknown[] = [];
+  const seen = new Set<string>();
+
+  // 1. Try all fenced code blocks
+  const fenceRegex = /```(?:json)?\s*\n([\s\S]*?)\n```/g;
+  let fenceMatch;
+  while ((fenceMatch = fenceRegex.exec(response)) !== null) {
+    const raw = fenceMatch[1].trim();
+    if (seen.has(raw)) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      results.push(parsed);
+      seen.add(raw);
+    } catch {
+      // skip invalid JSON
+    }
+  }
+
+  // 2. Try bracket-depth counter for raw JSON (only if no fenced blocks found)
+  if (results.length === 0) {
+    for (const opener of ['{', '['] as const) {
+      const closer = opener === '{' ? '}' : ']';
+      let depth = 0;
+      let start = -1;
+
+      for (let i = 0; i < response.length; i++) {
+        const ch = response[i];
+        if (ch === opener) {
+          if (depth === 0) start = i;
+          depth++;
+        } else if (ch === closer) {
+          depth--;
+          if (depth === 0 && start >= 0) {
+            const raw = response.slice(start, i + 1);
+            if (!seen.has(raw)) {
+              try {
+                const parsed = JSON.parse(raw);
+                results.push(parsed);
+                seen.add(raw);
+              } catch {
+                // skip invalid
+              }
+            }
+            start = -1;
+          }
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Extract the first JSON block from a response that validates against a Zod schema.
+ * Tries each extracted block with safeParse, returns the first valid match.
+ */
+export function extractJsonBlockForSchema<T>(
+  response: string,
+  schema: z.ZodType<T>,
+): T | null {
+  const blocks = extractAllJsonBlocks(response);
+  for (const block of blocks) {
+    const result = schema.safeParse(block);
+    if (result.success) return result.data;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Typed extractors
 // ---------------------------------------------------------------------------
 

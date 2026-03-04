@@ -57,6 +57,16 @@ const PHASE_REFERENCES: Record<PhaseValue, string[]> = {
   Complete: ['documentGenerator', 'documentExample', 'guardrails'],
 };
 
+// ── Summarization prompt mapping ─────────────────────────────────────────────
+
+const SUMMARIZATION_PROMPTS: Record<string, string> = {
+  Ideate: 'summarize/ideate-summary.md',
+  Design: 'summarize/design-summary.md',
+  Select: 'summarize/select-summary.md',
+  Plan: 'summarize/plan-summary.md',
+  Develop: 'summarize/develop-summary.md',
+};
+
 // ── Cache ────────────────────────────────────────────────────────────────────
 
 const promptCache = new Map<string, string>();
@@ -160,4 +170,29 @@ export function listPrompts(): string[] {
  */
 export function listReferences(): string[] {
   return Object.keys(REFERENCE_DOCS);
+}
+
+/**
+ * Load a summarization prompt for the given phase.
+ * Returns the prompt content or a generic fallback if no phase-specific prompt exists.
+ */
+export async function loadSummarizationPrompt(phase: string): Promise<string> {
+  const cacheKey = `summarize:${phase}`;
+  if (promptCache.has(cacheKey)) {
+    return promptCache.get(cacheKey)!;
+  }
+
+  const fileName = SUMMARIZATION_PROMPTS[phase];
+  if (!fileName) {
+    return 'You are a data extraction assistant. Extract structured JSON data from the conversation transcript. Output ONLY a fenced JSON code block.';
+  }
+
+  const filePath = join(__dirname, fileName);
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    promptCache.set(cacheKey, content);
+    return content;
+  } catch {
+    return 'You are a data extraction assistant. Extract structured JSON data from the conversation transcript. Output ONLY a fenced JSON code block.';
+  }
 }
