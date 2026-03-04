@@ -112,10 +112,30 @@ describe('DiscoveryEnricher', () => {
 
       expect(result.companyNews).toHaveLength(2);
       expect(result.companyNews![0]).toContain('Acme raises $10M');
-      expect(result.competitorInfo).toHaveLength(1);
-      expect(result.competitorInfo![0]).toContain('Widget Inc grows');
-      expect(result.industryTrends).toHaveLength(1);
-      expect(result.industryTrends![0]).toContain('AI in manufacturing');
+      expect(result.competitorInfo ?? []).toHaveLength(0);
+      expect(result.industryTrends ?? []).toHaveLength(0);
+    });
+
+    it('stops after first successful query to reduce web search calls', async () => {
+      const searchFn = vi
+        .fn()
+        .mockResolvedValueOnce({
+          results: [{ title: 'Acme news', url: 'https://a.com', snippet: 'Acme in manufacturing' }],
+          degraded: false,
+        })
+        .mockResolvedValue({
+          results: [{ title: 'Should not be used', url: 'https://b.com', snippet: 'unused' }],
+          degraded: false,
+        });
+
+      const result = await enricher.enrichFromWebSearch('Acme Corp makes widgets', {
+        search: searchFn,
+      });
+
+      expect(searchFn).toHaveBeenCalledTimes(1);
+      expect(result.companyNews).toHaveLength(1);
+      expect(result.competitorInfo ?? []).toHaveLength(0);
+      expect(result.industryTrends ?? []).toHaveLength(0);
     });
 
     it('returns gracefully with empty arrays when search throws', async () => {

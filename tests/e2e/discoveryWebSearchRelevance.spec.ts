@@ -16,28 +16,27 @@ const LIVE = process.env.SOFIA_LIVE_MCP_TESTS === 'true';
 
 const TEST_COMPANIES = [
   {
-    summary:
-      '"Contoso Healthcare" is a mid-sized healthcare company specializing in telemedicine and patient management software.',
-    keywords: ['health', 'tele', 'patient', 'medical', 'care'],
+    summary: '"Nestlé" is a global food and beverage company headquartered in Switzerland.',
+    keywords: ['food', 'beverage', 'switzerland', 'global', 'company'],
+  },
+  {
+    summary: '"Zara" is a global retail company headquartered in Spain.',
+    keywords: ['retail', 'fashion', 'spain', 'global', 'company'],
   },
   {
     summary:
-      '"Northwind Traders" is a global food distribution company managing supply chains across 30 countries.',
-    keywords: ['food', 'supply', 'trade', 'distribution', 'logistics'],
+      '"Microsoft Corporation" is a global technology company headquartered in Redmond, Washington.',
+    keywords: ['technology', 'software', 'hardware', 'cloud', 'global'],
   },
   {
     summary:
-      '"Fabrikam Financial" provides fintech solutions for small business lending and payment processing.',
-    keywords: ['fintech', 'financial', 'lending', 'payment', 'bank'],
+      '"Maersk" is a global shipping and logistics company headquartered in Copenhagen, Denmark.',
+    keywords: ['shipping', 'logistics', 'denmark', 'global', 'company'],
   },
   {
     summary:
-      '"AdventureWorks Cycles" manufactures premium bicycles and cycling accessories for professional athletes.',
-    keywords: ['bicycle', 'cycling', 'sport', 'adventure', 'manufactur'],
-  },
-  {
-    summary: '"Tailspin Toys" designs and sells educational STEM toys for children ages 5-12.',
-    keywords: ['toy', 'education', 'STEM', 'children', 'learn'],
+      '"Hasbro" is a global toy and entertainment company headquartered in Pawtucket, Rhode Island.',
+    keywords: ['toy', 'entertainment', 'rhode island', 'global', 'company'],
   },
 ];
 

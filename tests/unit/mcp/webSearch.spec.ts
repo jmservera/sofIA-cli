@@ -68,7 +68,8 @@ describe('web.search tool', () => {
 
   describe('isWebSearchConfigured', () => {
     it('returns true when both project endpoint and model deployment name are set', () => {
-      process.env.FOUNDRY_PROJECT_ENDPOINT = 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
+      process.env.FOUNDRY_PROJECT_ENDPOINT =
+        'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
       process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME = 'gpt-4.1-mini';
       expect(isWebSearchConfigured()).toBe(true);
     });
@@ -80,7 +81,8 @@ describe('web.search tool', () => {
     });
 
     it('returns false when model deployment name is missing', () => {
-      process.env.FOUNDRY_PROJECT_ENDPOINT = 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
+      process.env.FOUNDRY_PROJECT_ENDPOINT =
+        'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project';
       delete process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME;
       expect(isWebSearchConfigured()).toBe(false);
     });
@@ -103,19 +105,25 @@ describe('web.search tool', () => {
   describe('WebSearchConfig validation (T018)', () => {
     it('accepts valid config with projectEndpoint and modelDeploymentName', () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://sofia-foundry.services.ai.azure.com/api/projects/sofia-project',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
       expect(tool).toBeTypeOf('function');
     });
 
     it('creates client with the provided projectEndpoint', async () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://my-foundry.services.ai.azure.com/api/projects/proj',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://my-foundry.services.ai.azure.com/api/projects/proj',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
       await tool('test');
       expect(deps.createClient).toHaveBeenCalledWith(
         'https://my-foundry.services.ai.azure.com/api/projects/proj',
@@ -124,10 +132,13 @@ describe('web.search tool', () => {
 
     it('passes modelDeploymentName to agent creation', async () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'my-model',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'my-model',
+        },
+        deps,
+      );
       await tool('test');
       expect(deps.createAgentVersion).toHaveBeenCalledWith(
         expect.anything(),
@@ -153,10 +164,13 @@ describe('web.search tool', () => {
   describe('createWebSearchTool', () => {
     it('returns structured results with citations on success', async () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       const result = await tool('Contoso healthcare');
 
@@ -168,10 +182,13 @@ describe('web.search tool', () => {
 
     it('reuses agent on second call (lazy initialization)', async () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       await tool('first query');
       await tool('second query');
@@ -183,13 +200,18 @@ describe('web.search tool', () => {
 
     it('degrades gracefully when credential fails (T020)', async () => {
       const deps = createFakeDeps({
-        getOpenAIClient: vi.fn().mockRejectedValue(new Error('Azure authentication failed — run `az login`')),
+        getOpenAIClient: vi
+          .fn()
+          .mockRejectedValue(new Error('Azure authentication failed — run `az login`')),
       });
 
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       const result = await tool('test query');
 
@@ -200,13 +222,18 @@ describe('web.search tool', () => {
 
     it('degrades gracefully when agent creation fails (T020)', async () => {
       const deps = createFakeDeps({
-        createAgentVersion: vi.fn().mockRejectedValue(new Error('Failed to create web search agent: 403 Forbidden')),
+        createAgentVersion: vi
+          .fn()
+          .mockRejectedValue(new Error('Failed to create web search agent: 403 Forbidden')),
       });
 
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       const result = await tool('test query');
 
@@ -217,13 +244,18 @@ describe('web.search tool', () => {
 
     it('degrades gracefully on network error (T020)', async () => {
       const deps = createFakeDeps({
-        createClient: vi.fn().mockImplementation(() => { throw new Error('Network error: ECONNREFUSED'); }),
+        createClient: vi.fn().mockImplementation(() => {
+          throw new Error('Network error: ECONNREFUSED');
+        }),
       });
 
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       const result = await tool('test query');
 
@@ -234,19 +266,222 @@ describe('web.search tool', () => {
 
     it('returns empty results with degraded flag when query fails', async () => {
       const deps = createFakeDeps({
-        createResponse: vi.fn().mockRejectedValue(new Error('Web search query failed: 429 Rate limited')),
+        createResponse: vi
+          .fn()
+          .mockRejectedValue(new Error('Web search query failed: 429 Rate limited')),
       });
 
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       const result = await tool('test query');
 
       expect(result.results).toHaveLength(0);
       expect(result.degraded).toBe(true);
       expect(result.error).toContain('429');
+    }, 12000);
+
+    it('falls back to output text snippets when citations are missing', async () => {
+      const deps = createFakeDeps({
+        createResponse: vi.fn().mockResolvedValue({
+          output: [
+            {
+              type: 'message',
+              content: [
+                {
+                  type: 'output_text',
+                  text: 'Microsoft expands cloud infrastructure in Europe.',
+                  annotations: [],
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
+
+      const result = await tool('microsoft cloud europe');
+
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].snippet).toContain('cloud infrastructure');
+      expect(result.results[0].title).toBe('Foundry response');
+    });
+
+    it('returns citations on subsequent calls by isolating each query conversation', async () => {
+      let conversationCounter = 0;
+      const seenByConversation = new Map<string, number>();
+
+      const deps = createFakeDeps({
+        createConversation: vi.fn().mockImplementation(async () => {
+          conversationCounter += 1;
+          return { id: `conv-${conversationCounter}` };
+        }),
+        createResponse: vi
+          .fn()
+          .mockImplementation(async (_openAIClient, conversationId: string) => {
+            const calls = (seenByConversation.get(conversationId) ?? 0) + 1;
+            seenByConversation.set(conversationId, calls);
+
+            // Simulate Foundry behavior where only the first turn in a conversation
+            // contains URL citations; follow-up turns may return plain text.
+            if (calls > 1) {
+              return {
+                output: [
+                  {
+                    type: 'message',
+                    content: [
+                      {
+                        type: 'output_text',
+                        text: 'No citations in follow-up turn.',
+                        annotations: [],
+                      },
+                    ],
+                  },
+                ],
+              };
+            }
+
+            return {
+              output: [
+                {
+                  type: 'message',
+                  content: [
+                    {
+                      type: 'output_text',
+                      text: 'Result with source.',
+                      annotations: [
+                        {
+                          type: 'url_citation',
+                          url: `https://example.com/${conversationId}`,
+                          title: `Source ${conversationId}`,
+                          start_index: 0,
+                          end_index: 18,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            };
+          }),
+      });
+
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
+
+      const first = await tool('first query');
+      const second = await tool('second query');
+
+      expect(first.results).toHaveLength(1);
+      expect(second.results).toHaveLength(1);
+      expect(deps.createConversation).toHaveBeenCalledTimes(2);
+      expect(deps.deleteConversation).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries on 429 rate limiting with exponential backoff', async () => {
+      let callCount = 0;
+      const deps = createFakeDeps({
+        createResponse: vi.fn().mockImplementation(async () => {
+          callCount += 1;
+          if (callCount < 2) {
+            const error = new Error('Web search query failed: 429 Too Many Requests');
+            throw error;
+          }
+          return {
+            output: [
+              {
+                type: 'message',
+                content: [
+                  {
+                    type: 'output_text',
+                    text: 'Result after retry.',
+                    annotations: [
+                      {
+                        type: 'url_citation',
+                        url: 'https://example.com',
+                        title: 'Example',
+                        start_index: 0,
+                        end_index: 18,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+        }),
+      });
+
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
+
+      const result = await tool('test query');
+
+      expect(result.results).toHaveLength(1);
+      expect(deps.createResponse).toHaveBeenCalledTimes(2);
+    }, 6000);
+
+    it('stops retrying after MAX_RETRIES and returns degraded', async () => {
+      const deps = createFakeDeps({
+        createResponse: vi
+          .fn()
+          .mockRejectedValue(new Error('Web search query failed: 429 Too Many Requests')),
+      });
+
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
+
+      const result = await tool('test query');
+
+      expect(result.results).toHaveLength(0);
+      expect(result.degraded).toBe(true);
+      expect(deps.createResponse).toHaveBeenCalledTimes(3); // initial + 2 retries
+    }, 12000);
+
+    it('rotates the underlying agent after several queries', async () => {
+      const deps = createFakeDeps();
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
+
+      await tool('query one');
+      await tool('query two');
+      await tool('query three');
+      await tool('query four');
+
+      expect(deps.createAgentVersion).toHaveBeenCalledTimes(2);
+      expect(deps.deleteAgentVersion).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -290,8 +525,20 @@ describe('web.search tool', () => {
               type: 'output_text',
               text: 'First ref. Second ref to same source.',
               annotations: [
-                { type: 'url_citation', url: 'https://example.com', title: 'A', start_index: 0, end_index: 10 },
-                { type: 'url_citation', url: 'https://example.com', title: 'B', start_index: 11, end_index: 37 },
+                {
+                  type: 'url_citation',
+                  url: 'https://example.com',
+                  title: 'A',
+                  start_index: 0,
+                  end_index: 10,
+                },
+                {
+                  type: 'url_citation',
+                  url: 'https://example.com',
+                  title: 'B',
+                  start_index: 11,
+                  end_index: 37,
+                },
               ],
             },
           ],
@@ -313,8 +560,20 @@ describe('web.search tool', () => {
               type: 'output_text',
               text: 'Result text with multiple sources.',
               annotations: [
-                { type: 'url_citation', url: 'https://a.com', title: 'Source A', start_index: 0, end_index: 10 },
-                { type: 'url_citation', url: 'https://b.com', title: 'Source B', start_index: 11, end_index: 33 },
+                {
+                  type: 'url_citation',
+                  url: 'https://a.com',
+                  title: 'Source A',
+                  start_index: 0,
+                  end_index: 10,
+                },
+                {
+                  type: 'url_citation',
+                  url: 'https://b.com',
+                  title: 'Source B',
+                  start_index: 11,
+                  end_index: 33,
+                },
               ],
             },
           ],
@@ -357,7 +616,13 @@ describe('web.search tool', () => {
               text: 'Some text',
               annotations: [
                 { type: 'file_citation', url: 'file://local', title: 'File' },
-                { type: 'url_citation', url: 'https://valid.com', title: 'Valid', start_index: 0, end_index: 9 },
+                {
+                  type: 'url_citation',
+                  url: 'https://valid.com',
+                  title: 'Valid',
+                  start_index: 0,
+                  end_index: 9,
+                },
               ],
             },
           ],
@@ -380,7 +645,13 @@ describe('web.search tool', () => {
               type: 'output_text',
               text: 'Result text.',
               annotations: [
-                { type: 'url_citation', url: 'https://found.com', title: 'Found', start_index: 0, end_index: 12 },
+                {
+                  type: 'url_citation',
+                  url: 'https://found.com',
+                  title: 'Found',
+                  start_index: 0,
+                  end_index: 12,
+                },
               ],
             },
           ],
@@ -395,12 +666,15 @@ describe('web.search tool', () => {
   });
 
   describe('destroyWebSearchSession', () => {
-    it('cleans up agent and conversation on destroy', async () => {
+    it('cleans up the agent on destroy (conversations are per-query)', async () => {
       const deps = createFakeDeps();
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       // Initialize the session
       await tool('trigger init');
@@ -409,7 +683,11 @@ describe('web.search tool', () => {
       await destroyWebSearchSession();
 
       expect(deps.deleteConversation).toHaveBeenCalledWith(expect.anything(), 'conv-123');
-      expect(deps.deleteAgentVersion).toHaveBeenCalledWith(expect.anything(), 'sofia-web-search', 'v1');
+      expect(deps.deleteAgentVersion).toHaveBeenCalledWith(
+        expect.anything(),
+        'sofia-web-search',
+        'v1',
+      );
     });
 
     it('is safe to call when not initialized', async () => {
@@ -423,10 +701,13 @@ describe('web.search tool', () => {
         deleteAgentVersion: vi.fn().mockRejectedValue(new Error('cleanup failed')),
       });
 
-      const tool = createWebSearchTool({
-        projectEndpoint: 'https://foundry.example.com',
-        modelDeploymentName: 'gpt-4.1-mini',
-      }, deps);
+      const tool = createWebSearchTool(
+        {
+          projectEndpoint: 'https://foundry.example.com',
+          modelDeploymentName: 'gpt-4.1-mini',
+        },
+        deps,
+      );
 
       await tool('trigger init');
 

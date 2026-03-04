@@ -44,8 +44,11 @@ param modelVersion string = '2025-04-14'
 @description('SKU name for the model deployment. GlobalStandard provides broadest region availability.')
 param modelSkuName string = 'GlobalStandard'
 
-@description('SKU capacity (TPM in thousands). 1 is sufficient for workshop usage.')
-param modelSkuCapacity int = 1
+@description('SKU capacity (TPM in thousands). Default value=5000.')
+param modelSkuCapacity int = 5000
+
+@description('Object ID of the user principal to grant Azure AI Developer access. Obtain with: az ad signed-in-user show --query id -o tsv')
+param userPrincipalId string
 
 // ── Unique suffix for globally unique names ──────────────────────────────────
 
@@ -74,6 +77,7 @@ module resources 'resources.bicep' = {
     modelSkuName: modelSkuName
     modelSkuCapacity: modelSkuCapacity
     uniqueSuffix: uniqueSuffix
+    userPrincipalId: userPrincipalId
   }
 }
 

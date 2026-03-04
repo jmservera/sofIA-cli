@@ -1,18 +1,16 @@
 /**
  * Integration test for ephemeral agent lifecycle (T022).
  *
- * Tests the full lifecycle: create → query → reuse → cleanup
+ * Tests the full lifecycle: create agent → query with per-call conversation → cleanup
  * using faked AIProjectClient to verify:
  * - Agent is created on first call
  * - Agent is reused on second call
+ * - Conversations are created/deleted per query
  * - Agent is deleted on destroyWebSearchSession()
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import {
-  createWebSearchTool,
-  destroyWebSearchSession,
-} from '../../src/mcp/webSearch.js';
+import { createWebSearchTool, destroyWebSearchSession } from '../../src/mcp/webSearch.js';
 import type { AgentSessionDeps } from '../../src/mcp/webSearch.js';
 
 function createFakeAgentDeps(): AgentSessionDeps & { callLog: string[] } {
@@ -77,10 +75,13 @@ describe('ephemeral agent lifecycle (T022)', () => {
 
   it('creates agent on first call, reuses on second, cleans up on destroy', async () => {
     const deps = createFakeAgentDeps();
-    const tool = createWebSearchTool({
-      projectEndpoint: 'https://foundry.example.com',
-      modelDeploymentName: 'gpt-4.1-mini',
-    }, deps);
+    const tool = createWebSearchTool(
+      {
+        projectEndpoint: 'https://foundry.example.com',
+        modelDeploymentName: 'gpt-4.1-mini',
+      },
+      deps,
+    );
 
     // First call — should initialize
     const result1 = await tool('first query');
@@ -91,26 +92,30 @@ describe('ephemeral agent lifecycle (T022)', () => {
       'createAgent',
       'createConversation',
       'createResponse',
+      'deleteConversation',
     ]);
 
-    // Second call — should reuse (no new agent creation)
+    // Second call — should reuse agent and create/delete a fresh conversation
     deps.callLog.length = 0;
     const result2 = await tool('second query');
     expect(result2.results).toHaveLength(1);
-    expect(deps.callLog).toEqual(['createResponse']);
+    expect(deps.callLog).toEqual(['createConversation', 'createResponse', 'deleteConversation']);
 
-    // Cleanup — should delete conversation and agent
+    // Cleanup — should delete agent (conversation already deleted per query)
     deps.callLog.length = 0;
     await destroyWebSearchSession();
-    expect(deps.callLog).toEqual(['deleteConversation', 'deleteAgent']);
+    expect(deps.callLog).toEqual(['deleteAgent']);
   });
 
   it('transitions: uninitialized → initialized → cleaned up', async () => {
     const deps = createFakeAgentDeps();
-    const tool = createWebSearchTool({
-      projectEndpoint: 'https://foundry.example.com',
-      modelDeploymentName: 'gpt-4.1-mini',
-    }, deps);
+    const tool = createWebSearchTool(
+      {
+        projectEndpoint: 'https://foundry.example.com',
+        modelDeploymentName: 'gpt-4.1-mini',
+      },
+      deps,
+    );
 
     // State: uninitialized — destroy is a no-op
     await destroyWebSearchSession();
@@ -134,10 +139,13 @@ describe('ephemeral agent lifecycle (T022)', () => {
     deps.deleteConversation = vi.fn().mockRejectedValue(new Error('404 Not Found'));
     deps.deleteAgentVersion = vi.fn().mockRejectedValue(new Error('500 Internal Error'));
 
-    const tool = createWebSearchTool({
-      projectEndpoint: 'https://foundry.example.com',
-      modelDeploymentName: 'gpt-4.1-mini',
-    }, deps);
+    const tool = createWebSearchTool(
+      {
+        projectEndpoint: 'https://foundry.example.com',
+        modelDeploymentName: 'gpt-4.1-mini',
+      },
+      deps,
+    );
 
     await tool('init');
 
