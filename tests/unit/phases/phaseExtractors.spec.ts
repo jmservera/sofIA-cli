@@ -16,8 +16,11 @@ import {
   extractPlan,
   extractPocState,
   extractSessionName,
+  extractAllJsonBlocks,
+  extractJsonBlockForSchema,
 } from '../../../src/phases/phaseExtractors.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
+import { z } from '../../../src/vendor/zod.js';
 
 function _emptySession(): WorkshopSession {
   return {
@@ -329,12 +332,6 @@ describe('extractSessionName', () => {
 });
 
 // ── Multi-block extraction tests (T006, T007) ──────────────────────────────
-
-import {
-  extractAllJsonBlocks,
-  extractJsonBlockForSchema,
-} from '../../../src/phases/phaseExtractors.js';
-import { z } from '../../../src/vendor/zod.js';
 
 describe('extractAllJsonBlocks', () => {
   it('returns empty array when no JSON blocks found', () => {

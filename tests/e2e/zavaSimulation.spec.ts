@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { ConversationLoop } from '../../src/loop/conversationLoop.js';
-import type { LoopIO, PhaseHandler } from '../../src/loop/conversationLoop.js';
+import type { LoopIO } from '../../src/loop/conversationLoop.js';
 import type { CopilotClient, ConversationSession, SessionOptions } from '../../src/shared/copilotClient.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { createPhaseHandler, getPhaseOrder } from '../../src/phases/phaseHandlers.js';
@@ -352,7 +352,7 @@ describe('Zava Industries E2E Simulation', () => {
 
     // ── Export and verify all 6 phase files generated ───────────────────
 
-    const exportResult = await exportSession(session, tmpDir);
+    await exportSession(session, tmpDir);
     const files = await readdir(tmpDir);
 
     expect(files).toContain('discover.md');

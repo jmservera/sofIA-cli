@@ -62,7 +62,7 @@ describe('export fallback flow', () => {
       // All other structured fields are null/undefined
     };
 
-    const result = await exportSession(session, tmpDir);
+    await exportSession(session, tmpDir);
 
     const files = await readdir(tmpDir);
     expect(files).toContain('discover.md');
@@ -104,7 +104,7 @@ describe('export fallback flow', () => {
       turns: [],
     };
 
-    const result = await exportSession(session, tmpDir);
+    await exportSession(session, tmpDir);
     const files = await readdir(tmpDir);
 
     // Only summary.json should be generated — no phase files
