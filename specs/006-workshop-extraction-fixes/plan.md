@@ -43,8 +43,7 @@ specs/006-workshop-extraction-fixes/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output
-│   ├── summarization-call.md
-│   └── export-fallback.md
+│   └── summarization-and-export.md
 ├── checklists/
 │   └── requirements.md  # Quality checklist
 └── tasks.md             # Phase 2 output (NOT created by /speckit.plan)
