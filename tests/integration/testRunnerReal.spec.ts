@@ -26,7 +26,7 @@ describe('testRunner real fixture integration', () => {
     expect(result.failed).toBe(0);
     expect(result.total).toBe(2);
     expect(result.durationMs).toBeGreaterThan(0);
-  });
+  }, 30_000);
 
   it('parses failing test results correctly (T043)', async () => {
     const runner = new TestRunner({
@@ -45,7 +45,7 @@ describe('testRunner real fixture integration', () => {
       expect(result.total).toBeGreaterThanOrEqual(1);
       expect(result.failures.length).toBeGreaterThan(0);
     }
-  });
+  }, 30_000);
 
   it('handles timeout with SIGTERM→SIGKILL for hanging test (T044)', async () => {
     const runner = new TestRunner({

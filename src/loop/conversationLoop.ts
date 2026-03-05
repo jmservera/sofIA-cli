@@ -83,6 +83,10 @@ export interface ConversationLoopOptions {
   initialMessage?: string;
   /** Activity spinner for visual feedback (no-op spinner used if omitted). */
   spinner?: ActivitySpinner;
+  /** SDK hooks for tool-call visibility (FR-021, FR-022). */
+  hooks?: SessionOptions['hooks'];
+  /** Callback for token usage tracking (FR-024). */
+  onUsage?: SessionOptions['onUsage'];
 }
 
 // ── ConversationLoop ─────────────────────────────────────────────────────────
@@ -97,6 +101,8 @@ export class ConversationLoop {
   private readonly onSessionUpdate: (session: WorkshopSession) => Promise<void>;
   private readonly initialMessage?: string;
   private readonly spinner: ActivitySpinner;
+  private readonly hooks?: SessionOptions['hooks'];
+  private readonly onUsage?: SessionOptions['onUsage'];
 
   constructor(options: ConversationLoopOptions) {
     this.client = options.client;
@@ -107,6 +113,8 @@ export class ConversationLoop {
     this.onSessionUpdate = options.onSessionUpdate ?? (async () => {});
     this.initialMessage = options.initialMessage;
     this.spinner = options.spinner ?? createNoOpSpinner();
+    this.hooks = options.hooks;
+    this.onUsage = options.onUsage;
   }
 
   /** Run the conversation loop for the current phase. */
@@ -124,7 +132,12 @@ export class ConversationLoop {
     }
 
     const references = this.handler.getReferences?.(this.session) ?? [];
-    const sessionOpts: SessionOptions = { systemPrompt, references };
+    const sessionOpts: SessionOptions = {
+      systemPrompt,
+      references,
+      ...(this.hooks ? { hooks: this.hooks } : {}),
+      ...(this.onUsage ? { onUsage: this.onUsage } : {}),
+    };
 
     const conversationSession = await this.client.createSession(sessionOpts);
 

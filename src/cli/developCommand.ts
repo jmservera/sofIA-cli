@@ -22,6 +22,8 @@ import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
 import { deriveCheckpointState } from '../develop/checkpointState.js';
 import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';
 import { PocScaffolder } from '../develop/pocScaffolder.js';
+import { createSdkHooks, createUsageCallback } from '../shared/sdkHooks.js';
+import { getLogger } from '../logging/logger.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +216,16 @@ export async function developCommand(
   const enricher = mcpManager ? new McpContextEnricher(mcpManager) : undefined;
   const githubAdapter = mcpManager ? new GitHubMcpAdapter(mcpManager) : undefined;
 
+  // FR-021/022: Create SDK hooks for tool-call visibility and error handling
+  const eventHandler = (event: import('../shared/events.js').SofiaEvent) => {
+    if (opts.debug) {
+      io.writeActivity(`[event] ${event.type}: ${JSON.stringify(event)}`);
+    }
+  };
+  const logger = getLogger();
+  const hooks = createSdkHooks({ onEvent: eventHandler, spinner, logger });
+  const onUsage = createUsageCallback({ onEvent: eventHandler, logger });
+
   const ralph = new RalphLoop({
     client,
     io,
@@ -226,14 +238,12 @@ export async function developCommand(
     checkpoint,
     scaffolder: new PocScaffolder(template),
     templateEntry: template,
+    hooks,
+    onUsage,
     onSessionUpdate: async (updated) => {
       await store.save(updated);
     },
-    onEvent: (event) => {
-      if (opts.debug) {
-        io.writeActivity(`[event] ${event.type}: ${JSON.stringify(event)}`);
-      }
-    },
+    onEvent: eventHandler,
   });
 
   // ── Run the loop ─────────────────────────────────────────────────────────

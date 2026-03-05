@@ -716,4 +716,90 @@ describe('ConversationLoop', () => {
       expect(opts.onUsage).toBeUndefined();
     });
   });
+
+  // ── FR-021/022/024: Consumer wiring of hooks and onUsage ──────────────────
+
+  describe('hooks and onUsage consumer forwarding (FR-021, FR-022, FR-024)', () => {
+    it('forwards hooks to createSession when provided', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      const hooks: SessionOptions['hooks'] = {
+        onPreToolUse: vi.fn(),
+        onPostToolUse: vi.fn(),
+        onErrorOccurred: vi.fn(),
+      };
+
+      const io = makeIO([]);
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Hello',
+        hooks,
+      });
+
+      await loop.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.hooks).toBe(hooks);
+    });
+
+    it('forwards onUsage to createSession when provided', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      const onUsage = vi.fn();
+      const io = makeIO([]);
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Hello',
+        onUsage,
+      });
+
+      await loop.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.onUsage).toBe(onUsage);
+    });
+
+    it('omits hooks and onUsage from createSession when not provided', async () => {
+      const createSessionSpy = vi.fn();
+      const client = createFakeCopilotClient([{ role: 'assistant', content: 'ok' }]);
+      const originalCreateSession = client.createSession.bind(client);
+      client.createSession = async (opts: SessionOptions) => {
+        createSessionSpy(opts);
+        return originalCreateSession(opts);
+      };
+
+      const io = makeIO([]);
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session: makeSession(),
+        phaseHandler: makePhaseHandler(),
+        initialMessage: 'Hello',
+      });
+
+      await loop.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0] as SessionOptions;
+      expect(passedOpts.hooks).toBeUndefined();
+      expect(passedOpts.onUsage).toBeUndefined();
+    });
+  });
 });

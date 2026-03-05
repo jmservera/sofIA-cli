@@ -16,6 +16,7 @@ import { createLoopIO } from './ioContext.js';
 import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../phases/phaseHandlers.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
+import { createSdkHooks, createUsageCallback } from '../shared/sdkHooks.js';
 
 export interface WorkshopCommandOptions {
   session?: string;
@@ -149,6 +150,17 @@ async function runWorkshop(
       debugMode: options.debug,
     });
 
+    // FR-021/022/024: Create SDK hooks for tool-call visibility and usage tracking
+    const logger = getLogger();
+    const eventHandler = (e: SofiaEvent) => {
+      events.push(e);
+      if (options.debug && e.type === 'Activity') {
+        io.writeActivity(e.message);
+      }
+    };
+    const hooks = createSdkHooks({ onEvent: eventHandler, spinner, logger });
+    const onUsage = createUsageCallback({ onEvent: eventHandler, logger });
+
     const loop = new ConversationLoop({
       client,
       io,
@@ -156,12 +168,9 @@ async function runWorkshop(
       phaseHandler: handler,
       initialMessage,
       spinner,
-      onEvent: (e) => {
-        events.push(e);
-        if (options.debug && e.type === 'Activity') {
-          io.writeActivity(e.message);
-        }
-      },
+      hooks,
+      onUsage,
+      onEvent: eventHandler,
       onSessionUpdate: async (updatedSession) => {
         session = updatedSession;
         await store.save(session);

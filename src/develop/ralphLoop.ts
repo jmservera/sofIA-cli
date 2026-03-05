@@ -11,6 +11,7 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
+import type { SessionOptions } from '../shared/copilotClient.js';
 import type { LoopIO } from '../loop/conversationLoop.js';
 import type { ActivitySpinner } from '../shared/activitySpinner.js';
 import type { SofiaEvent } from '../shared/events.js';
@@ -23,6 +24,7 @@ import type {
 } from '../shared/schemas/session.js';
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
 import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
+import type { ScaffoldResult } from './pocScaffolder.js';
 import { TestRunner } from './testRunner.js';
 import { CodeGenerator, isPathWithinDirectory, isUnsafePath } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
@@ -61,6 +63,10 @@ export interface RalphLoopOptions {
   checkpoint?: CheckpointState;
   /** Template entry for install/test commands */
   templateEntry?: TemplateEntry;
+  /** SDK hooks for tool-call visibility (FR-021, FR-022). */
+  hooks?: SessionOptions['hooks'];
+  /** Callback for token usage tracking (FR-024). */
+  onUsage?: SessionOptions['onUsage'];
 }
 
 export interface RalphLoopResult {
@@ -220,6 +226,8 @@ export class RalphLoop {
     // ── Scaffold (skip if resuming with valid output dir) ──────────────────
     const shouldSkipScaffold = checkpoint?.canSkipScaffold === true;
 
+    let scaffoldResult: ScaffoldResult | undefined;
+
     if (shouldSkipScaffold) {
       io.writeActivity('Skipping scaffold — output directory and .sofia-metadata.json present');
     } else {
@@ -233,8 +241,6 @@ export class RalphLoop {
 
       const scaffolder = this.options.scaffolder ?? new PocScaffolder();
       const scaffoldStart = Date.now();
-
-      let scaffoldResult;
       try {
         scaffoldResult = await scaffolder.scaffold(scaffoldCtx);
       } catch (err: unknown) {
@@ -320,7 +326,7 @@ export class RalphLoop {
       this.options.testRunner ??
       new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
     // Push scaffold files to GitHub after install
-    if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
+    if (scaffoldResult && githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
       const filesWithContent = await Promise.all(
         scaffoldResult.createdFiles.map(async (f) => {
           if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
@@ -909,6 +915,8 @@ export class RalphLoop {
         backgroundCompactionThreshold: 0.7,
         bufferExhaustionThreshold: 0.9,
       },
+      ...(this.options.hooks ? { hooks: this.options.hooks } : {}),
+      ...(this.options.onUsage ? { onUsage: this.options.onUsage } : {}),
     });
 
     let response = '';

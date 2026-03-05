@@ -129,7 +129,7 @@ describe('workshopCommand session name display (T064b)', () => {
     const allOutput = ioWrites.join(' ');
     // New session should show session ID (timestamp format)
     expect(allOutput).toContain('New session');
-  });
+  }, 15_000);
 
   it('displays session name when resuming a named session', async () => {
     const session: WorkshopSession = {

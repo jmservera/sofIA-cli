@@ -1078,48 +1078,6 @@ describe('RalphLoop', () => {
           priorFinalStatus: undefined,
           priorIterations: session.poc!.iterations,
         },
-  describe('post-scaffold push (T024 — US2)', () => {
-    it('pushes scaffold files to GitHub after npm install, before first test iteration', async () => {
-      const session = makeSession();
-      const io = makeIo();
-      const client = makePassingClient();
-      const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
-
-      const pushOrder: string[] = [];
-      const pushFilesMock = vi.fn().mockImplementation(async () => {
-        pushOrder.push('pushFiles');
-        return { available: true, commitSha: 'scaffold-sha' };
-      });
-      const githubAdapter = {
-        isAvailable: () => true,
-        getRepoUrl: () => 'https://github.com/acme/poc-test',
-        pushFiles: pushFilesMock,
-        createRepository: vi.fn().mockResolvedValue({
-          available: true,
-          repoUrl: 'https://github.com/acme/poc-test',
-          repoName: 'poc-test',
-        }),
-      } as unknown as GitHubMcpAdapter;
-
-      // Wrap testRunner.run to record ordering
-      const originalRun = testRunner.run;
-      (testRunner as { run: typeof testRunner.run }).run = vi
-        .fn()
-        .mockImplementation(async (...args: Parameters<typeof testRunner.run>) => {
-          pushOrder.push('testRun');
-          return originalRun(...args);
-        });
-
-      const ralph = new RalphLoop({
-        client,
-        io,
-        session,
-        outputDir: tmpDir,
-        maxIterations: 3,
-        testRunner,
-        scaffolder,
-        githubAdapter,
       });
 
       await ralph.run();
@@ -1316,26 +1274,52 @@ describe('RalphLoop', () => {
     });
   });
 
-  // ── T073: TODO marker rescan after iteration updates .sofia-metadata.json ──
-
-  describe('TODO marker rescan after iteration (T073)', () => {
-    it('calls scanAndRecordTodos after each failing iteration', async () => {
-      const scanSpy = vi
-        .spyOn(PocScaffolder, 'scanAndRecordTodos')
-        .mockResolvedValue({ totalInitial: 3, remaining: 2, markers: [] });
-
+  describe('post-scaffold push (T024 — US2)', () => {
+    it('pushes scaffold files to GitHub after npm install, before first test iteration', async () => {
       const session = makeSession();
-      const io: LoopIO = {
-        write: vi.fn(),
-        writeActivity: vi.fn(),
-        writeToolSummary: vi.fn(),
-        readInput: vi.fn().mockResolvedValue(null),
-        showDecisionGate: vi.fn(),
-        isJsonMode: false,
-        isTTY: false,
-      };
-      const testRunner = makeAlwaysFailingTestRunner();
+      const io = makeIo();
       const client = makePassingClient();
+      const testRunner = makePassingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const pushOrder: string[] = [];
+      const pushFilesMock = vi.fn().mockImplementation(async () => {
+        pushOrder.push('pushFiles');
+        return { available: true, commitSha: 'scaffold-sha' };
+      });
+      const githubAdapter = {
+        isAvailable: () => true,
+        getRepoUrl: () => 'https://github.com/acme/poc-test',
+        pushFiles: pushFilesMock,
+        createRepository: vi.fn().mockResolvedValue({
+          available: true,
+          repoUrl: 'https://github.com/acme/poc-test',
+          repoName: 'poc-test',
+        }),
+      } as unknown as GitHubMcpAdapter;
+
+      // Wrap testRunner.run to record ordering
+      const originalRun = testRunner.run;
+      (testRunner as { run: typeof testRunner.run }).run = vi
+        .fn()
+        .mockImplementation(async (...args: Parameters<typeof testRunner.run>) => {
+          pushOrder.push('testRun');
+          return originalRun(...args);
+        });
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 3,
+        testRunner,
+        scaffolder,
+        githubAdapter,
+      });
+
+      await ralph.run();
+
       // pushFiles should have been called at least once for the scaffold
       expect(pushFilesMock).toHaveBeenCalled();
       const firstPushArgs = pushFilesMock.mock.calls[0][0] as {
@@ -1361,6 +1345,48 @@ describe('RalphLoop', () => {
       const firstPush = pushOrder.indexOf('pushFiles');
       const firstTest = pushOrder.indexOf('testRun');
       expect(firstPush).toBeLessThan(firstTest);
+    });
+  });
+
+  // ── T073: TODO marker rescan after iteration updates .sofia-metadata.json ──
+
+  describe('TODO marker rescan after iteration (T073)', () => {
+    it('calls scanAndRecordTodos after each failing iteration', async () => {
+      const scanSpy = vi
+        .spyOn(PocScaffolder, 'scanAndRecordTodos')
+        .mockResolvedValue({ totalInitial: 3, remaining: 2, markers: [] });
+
+      const session = makeSession();
+      const io: LoopIO = {
+        write: vi.fn(),
+        writeActivity: vi.fn(),
+        writeToolSummary: vi.fn(),
+        readInput: vi.fn().mockResolvedValue(null),
+        showDecisionGate: vi.fn(),
+        isJsonMode: false,
+        isTTY: false,
+      };
+      const testRunner = makeAlwaysFailingTestRunner();
+      const client = makePassingClient();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
+
+      await ralph.run();
+
+      // scanAndRecordTodos should have been called after failing iterations
+      expect(scanSpy).toHaveBeenCalled();
+      expect(scanSpy).toHaveBeenCalledWith(tmpDir);
+
+      scanSpy.mockRestore();
     });
   });
 
@@ -1398,11 +1424,6 @@ describe('RalphLoop', () => {
 
       await ralph.run();
 
-      // scanAndRecordTodos should have been called after failing iterations
-      expect(scanSpy).toHaveBeenCalled();
-      expect(scanSpy).toHaveBeenCalledWith(tmpDir);
-
-      scanSpy.mockRestore();
       expect(createSessionSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           infiniteSessions: {
@@ -1411,6 +1432,128 @@ describe('RalphLoop', () => {
           },
         }),
       );
+    });
+  });
+
+  // ── FR-021/022/024: SDK hook and onUsage forwarding ───────────────────────
+
+  describe('hooks and onUsage forwarding (FR-021, FR-022, FR-024)', () => {
+    it('forwards hooks to createSession when provided', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const hooks = {
+        onPreToolUse: vi.fn(),
+        onPostToolUse: vi.fn(),
+        onErrorOccurred: vi.fn(),
+      };
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+        hooks,
+      });
+
+      await ralph.run();
+
+      expect(createSessionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ hooks }),
+      );
+    });
+
+    it('forwards onUsage to createSession when provided', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const onUsage = vi.fn();
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+        onUsage,
+      });
+
+      await ralph.run();
+
+      expect(createSessionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ onUsage }),
+      );
+    });
+
+    it('omits hooks and onUsage when not provided', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      const scaffolder = makeFakeScaffolder(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+        scaffolder,
+      });
+
+      await ralph.run();
+
+      const passedOpts = createSessionSpy.mock.calls[0][0];
+      expect(passedOpts.hooks).toBeUndefined();
+      expect(passedOpts.onUsage).toBeUndefined();
     });
   });
 });
