@@ -20,7 +20,6 @@ import { RalphLoop } from '../develop/ralphLoop.js';
 import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
 import { deriveCheckpointState } from '../develop/checkpointState.js';
 import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';
-import { PocScaffolder } from '../develop/pocScaffolder.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -221,7 +220,6 @@ export async function developCommand(
     outputDir,
     enricher,
     checkpoint,
-    scaffolder: new PocScaffolder(template),
     templateEntry: template,
     onSessionUpdate: async (updated) => {
       await store.save(updated);

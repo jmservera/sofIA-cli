@@ -6,7 +6,7 @@
  *
  * Contract: specs/004-dev-resume-hardening/contracts/cli.md
  */
-import type { TemplateFile, ScaffoldContext } from './pocScaffolder.js';
+import type { TemplateFile, ScaffoldContext } from './pocUtils.js';
 import type { TechStack } from '../shared/schemas/session.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@
  * - status: display session status
  * - export: export session artifacts
  */
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
@@ -18,6 +19,15 @@ import type { PhaseValue } from '../shared/schemas/session.js';
 // ── Load .env from workspace root ──────────────────────────────────────────
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadEnvFile(path.resolve(__dirname, '../../.env'));
+
+// ── Read version from package.json (works from both src/ and dist/) ────────
+let _pkgRoot = __dirname;
+while (_pkgRoot !== path.dirname(_pkgRoot) && !existsSync(path.join(_pkgRoot, 'package.json'))) {
+  _pkgRoot = path.dirname(_pkgRoot);
+}
+const { version } = JSON.parse(readFileSync(path.join(_pkgRoot, 'package.json'), 'utf-8')) as {
+  version: string;
+};
 
 // ── Handler types ──────────────────────────────────────────────────────────
 
@@ -36,7 +46,7 @@ export interface CliHandlers {
 export function buildCli(handlers?: Partial<CliHandlers>): Command {
   const program = new Command();
 
-  program.name('sofia').description('sofIA — AI Discovery Workshop CLI').version('0.1.0');
+  program.name('sofia').description('sofIA — AI Discovery Workshop CLI').version(version);
 
   // ── Global options ──────────────────────────────────────────────────────
 

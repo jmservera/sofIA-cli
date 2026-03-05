@@ -15,7 +15,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { RalphLoop } from '../../../src/develop/ralphLoop.js';
-import { PocScaffolder, validatePocOutput } from '../../../src/develop/pocScaffolder.js';
+import { validatePocOutput } from '../../../src/develop/pocUtils.js';
+import * as pocUtils from '../../../src/develop/pocUtils.js';
+import { generateDynamicScaffold } from '../../../src/develop/dynamicScaffolder.js';
 import { TestRunner } from '../../../src/develop/testRunner.js';
 import { GitHubMcpAdapter } from '../../../src/develop/githubMcpAdapter.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
@@ -50,13 +52,18 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 // Mock validatePocOutput — default: valid
-vi.mock('../../../src/develop/pocScaffolder.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/develop/pocScaffolder.js')>();
+vi.mock('../../../src/develop/pocUtils.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/develop/pocUtils.js')>();
   return {
     ...actual,
     validatePocOutput: vi.fn().mockResolvedValue({ valid: true, missingFiles: [], errors: [] }),
   };
 });
+
+// Mock generateDynamicScaffold to create minimal files for tests
+vi.mock('../../../src/develop/dynamicScaffolder.js', () => ({
+  generateDynamicScaffold: vi.fn(),
+}));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -178,40 +185,27 @@ function makeAlwaysFailingTestRunner(): TestRunner {
   } as unknown as TestRunner;
 }
 
-function makeFakeScaffolder(outputDir: string): PocScaffolder {
-  return {
-    scaffold: vi.fn().mockImplementation(async () => {
-      // Create minimal required files
-      const { writeFile, mkdir } = await import('node:fs/promises');
-      await mkdir(join(outputDir, 'src'), { recursive: true });
-      await mkdir(join(outputDir, 'tests'), { recursive: true });
-      await writeFile(
-        join(outputDir, 'package.json'),
-        JSON.stringify({
-          name: 'test-poc',
-          scripts: { test: 'vitest run' },
-          dependencies: {},
-          devDependencies: {},
-        }),
-        'utf-8',
-      );
-      await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
-      return {
-        createdFiles: ['package.json', 'src/index.ts'],
-        skippedFiles: [],
-        context: {
-          projectName: 'test-poc',
-          ideaTitle: 'Test',
-          ideaDescription: 'Test',
-          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
-          planSummary: 'Test',
-          sessionId: 'ralph-test-session',
-          outputDir,
-        },
-      };
-    }),
-    getTemplateFiles: () => ['package.json', 'src/index.ts'],
-  } as unknown as PocScaffolder;
+function setupDynamicScaffoldMock(outputDir: string): void {
+  vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    await mkdir(join(outputDir, 'src'), { recursive: true });
+    await mkdir(join(outputDir, 'tests'), { recursive: true });
+    await writeFile(
+      join(outputDir, 'package.json'),
+      JSON.stringify({
+        name: 'test-poc',
+        scripts: { test: 'vitest run' },
+        dependencies: {},
+        devDependencies: {},
+      }),
+      'utf-8',
+    );
+    await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
+    return {
+      createdFiles: ['package.json', 'src/index.ts'],
+      techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
+    };
+  });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -268,7 +262,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -277,7 +271,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -291,7 +284,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -300,7 +293,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -314,7 +306,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
       const onSessionUpdate = vi.fn().mockResolvedValue(undefined);
 
       const ralph = new RalphLoop({
@@ -324,7 +316,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 3,
         testRunner,
-        scaffolder,
         onSessionUpdate,
       });
 
@@ -339,7 +330,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -348,7 +339,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -366,7 +356,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makeAlwaysFailingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -375,7 +365,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 3,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -402,7 +391,7 @@ describe('RalphLoop', () => {
         } satisfies TestResults),
       } as unknown as TestRunner;
 
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -411,7 +400,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 2,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -425,7 +413,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makeAlwaysFailingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -434,7 +422,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 2,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -447,7 +434,7 @@ describe('RalphLoop', () => {
       const session = makeSession();
       const io = makeIo();
       const testRunner = makeAlwaysFailingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       // Client that emits SIGINT mid-generation to simulate Ctrl+C
       const client: CopilotClient = {
@@ -474,7 +461,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder,
         onSessionUpdate: async (s) => {
           sessionUpdates.push(s);
         },
@@ -497,7 +483,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
       const events: string[] = [];
 
       const ralph = new RalphLoop({
@@ -507,7 +493,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 3,
         testRunner,
-        scaffolder,
         onEvent: (e) => events.push(e.type),
       });
 
@@ -523,7 +508,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -532,7 +517,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 3,
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -545,7 +529,7 @@ describe('RalphLoop', () => {
       const session = makeSession();
       const io = makeIo();
       const client = makePassingClient();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       // First test run fails, second (final run after loop) passes
       let runCount = 0;
@@ -582,7 +566,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 2, // scaffold + 1 iterate = 2 iterations, then final test
         testRunner,
-        scaffolder,
       });
 
       const result = await ralph.run();
@@ -598,7 +581,7 @@ describe('RalphLoop', () => {
       const session = makeSession();
       const io = makeIo();
       const client = makePassingClient();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
       let persistedSession: WorkshopSession | null = null;
 
       // Slow test runner: yields after first call so SIGINT can fire
@@ -633,7 +616,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
         onSessionUpdate,
       });
 
@@ -659,7 +641,7 @@ describe('RalphLoop', () => {
       const session = makeSession();
       const io = makeIo();
       const client = makePassingClient();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       // Partially passing test runner that delays so SIGINT can fire
       let runCount = 0;
@@ -688,7 +670,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
       });
 
       const runPromise = ralph.run();
@@ -755,7 +736,7 @@ describe('RalphLoop', () => {
         }),
       } as unknown as TestRunner;
 
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       // Create a mock GitHub adapter that captures pushFiles calls
       const pushFilesMock = vi.fn().mockResolvedValue({ available: true, commitSha: 'abc123' });
@@ -777,7 +758,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder,
       });
 
       await ralph.run();
@@ -826,7 +806,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder: makeFakeScaffolder(tmpDir),
       });
 
       const result = await ralph.run();
@@ -865,7 +844,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 5,
         testRunner,
-        scaffolder: makeFakeScaffolder(tmpDir),
       });
 
       const result = await ralph.run();
@@ -918,7 +896,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder: makeFakeScaffolder(tmpDir),
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 2,
@@ -940,7 +917,7 @@ describe('RalphLoop', () => {
     it('skips scaffold when checkpoint says canSkipScaffold=true (T014)', async () => {
       const io = makeIo();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const session = makeSession({
         poc: {
@@ -964,7 +941,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 1,
@@ -979,7 +955,7 @@ describe('RalphLoop', () => {
       await ralph.run();
 
       // Scaffold should NOT have been called — it was skipped
-      expect(scaffolder.scaffold).not.toHaveBeenCalled();
+      expect(generateDynamicScaffold).not.toHaveBeenCalled();
       // Should log that scaffold was skipped
       expect(io.writeActivity).toHaveBeenCalledWith(
         expect.stringContaining('Skipping scaffold'),
@@ -1021,7 +997,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder: makeFakeScaffolder(tmpDir),
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 1,
@@ -1045,7 +1020,7 @@ describe('RalphLoop', () => {
     it('re-scaffolds when output directory is missing but iterations exist (T018, FR-007)', async () => {
       const io = makeIo();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const session = makeSession({
         poc: {
@@ -1069,7 +1044,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 1,
@@ -1084,7 +1058,7 @@ describe('RalphLoop', () => {
       await ralph.run();
 
       // Scaffold SHOULD have been called since canSkipScaffold is false
-      expect(scaffolder.scaffold).toHaveBeenCalled();
+      expect(generateDynamicScaffold).toHaveBeenCalled();
       expect(io.writeActivity).toHaveBeenCalledWith(
         expect.stringContaining('re-scaffolding'),
       );
@@ -1099,7 +1073,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const client = makePassingClient();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const pushOrder: string[] = [];
       const pushFilesMock = vi.fn().mockImplementation(async () => {
@@ -1133,7 +1107,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 3,
         testRunner,
-        scaffolder,
       });
 
       await ralph.run();
@@ -1168,7 +1141,7 @@ describe('RalphLoop', () => {
     it('always re-runs dependency install even when scaffolding is skipped (T065, FR-003)', async () => {
       const io = makeIo();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const session = makeSession({
         poc: {
@@ -1192,7 +1165,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 1,
@@ -1207,7 +1179,7 @@ describe('RalphLoop', () => {
       await ralph.run();
 
       // Scaffold should be skipped
-      expect(scaffolder.scaffold).not.toHaveBeenCalled();
+      expect(generateDynamicScaffold).not.toHaveBeenCalled();
       // But install should still run
       expect(io.writeActivity).toHaveBeenCalledWith(
         expect.stringContaining('Re-running dependency installation'),
@@ -1277,7 +1249,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 4,
         testRunner,
-        scaffolder: makeFakeScaffolder(tmpDir),
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 2,
@@ -1303,7 +1274,7 @@ describe('RalphLoop', () => {
     it('resume decision logging emits info-level messages (T067, FR-007a)', async () => {
       const io = makeIo();
       const testRunner = makePassingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const session = makeSession({
         poc: {
@@ -1327,7 +1298,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 10,
         testRunner,
-        scaffolder,
         checkpoint: {
           hasPriorRun: true,
           completedIterations: 1,
@@ -1355,7 +1325,7 @@ describe('RalphLoop', () => {
   describe('TODO marker rescan after iteration (T073)', () => {
     it('calls scanAndRecordTodos after each failing iteration', async () => {
       const scanSpy = vi
-        .spyOn(PocScaffolder, 'scanAndRecordTodos')
+        .spyOn(pocUtils, 'scanAndRecordTodos')
         .mockResolvedValue({ totalInitial: 3, remaining: 2, markers: [] });
 
       const session = makeSession();
@@ -1370,7 +1340,7 @@ describe('RalphLoop', () => {
       };
       const testRunner = makeAlwaysFailingTestRunner();
       const client = makePassingClient();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -1379,7 +1349,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 2,
         testRunner,
-        scaffolder,
       });
 
       await ralph.run();
@@ -1412,7 +1381,7 @@ describe('RalphLoop', () => {
       const io = makeIo();
       const session = makeSession();
       const testRunner = makeAlwaysFailingTestRunner();
-      const scaffolder = makeFakeScaffolder(tmpDir);
+      setupDynamicScaffoldMock(tmpDir);
 
       const ralph = new RalphLoop({
         client,
@@ -1421,7 +1390,6 @@ describe('RalphLoop', () => {
         outputDir: tmpDir,
         maxIterations: 2,
         testRunner,
-        scaffolder,
       });
 
       await ralph.run();

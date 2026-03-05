@@ -16,7 +16,8 @@ src/
 ├── develop/                 # PoC generation & Ralph loop
 │   ├── index.ts             # Barrel export
 │   ├── ralphLoop.ts         # Autonomous iteration orchestrator
-│   ├── pocScaffolder.ts     # PoC project scaffolding + output validation
+│   ├── pocUtils.ts          # PoC output validation & scaffold utilities
+│   ├── dynamicScaffolder.ts # LLM-driven dynamic PoC scaffolding
 │   ├── codeGenerator.ts     # LLM-driven code generation & prompt building
 │   ├── testRunner.ts        # Test execution and result parsing
 │   ├── mcpContextEnricher.ts# MCP-driven context enrichment (Context7, Azure, web search)

@@ -9,15 +9,13 @@
  * It validates the CLI plumbing, argument parsing, and file creation.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
 import { buildCli } from '../../src/cli/index.js';
 import { validateSessionForDevelop } from '../../src/cli/developCommand.js';
-import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
-import { validatePocOutput } from '../../src/develop/pocScaffolder.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 
 const require = createRequire(import.meta.url);
@@ -93,60 +91,4 @@ describe('E2E: sofia dev command', () => {
     });
   });
 
-  describe('PocScaffolder with fixture session', () => {
-    let outputDir: string;
-
-    beforeEach(async () => {
-      outputDir = await mkdtemp(join(tmpdir(), 'sofia-e2e-poc-'));
-    });
-
-    afterEach(async () => {
-      await rm(outputDir, { recursive: true, force: true });
-    });
-
-    it('scaffolds valid PoC output from fixture session', async () => {
-      const scaffolder = new PocScaffolder();
-      const ctx = PocScaffolder.buildContext(fixtureSession, outputDir);
-      await scaffolder.scaffold(ctx);
-
-      const validation = await validatePocOutput(outputDir);
-      expect(validation.valid).toBe(true);
-    });
-
-    it('generated package.json has correct project name from fixture', async () => {
-      const scaffolder = new PocScaffolder();
-      const ctx = PocScaffolder.buildContext(fixtureSession, outputDir);
-      await scaffolder.scaffold(ctx);
-
-      const pkgContent = await readFile(join(outputDir, 'package.json'), 'utf-8');
-      const pkg = JSON.parse(pkgContent) as { name: string };
-      expect(pkg.name).toBe('ai-powered-route-optimizer');
-    });
-
-    it('session JSON would be updated with poc state after loop', () => {
-      // Verify the shape of poc state that RalphLoop would produce
-      const expectedPocShape = {
-        repoSource: 'local',
-        iterations: expect.arrayContaining([
-          expect.objectContaining({
-            outcome: 'scaffold',
-          }),
-        ]),
-      };
-      // This test verifies the schema is correct
-      const poc = {
-        repoSource: 'local' as const,
-        repoPath: outputDir,
-        iterations: [
-          {
-            iteration: 1,
-            startedAt: new Date().toISOString(),
-            outcome: 'scaffold' as const,
-            filesChanged: ['package.json', 'src/index.ts'],
-          },
-        ],
-      };
-      expect(poc).toMatchObject(expectedPocShape);
-    });
-  });
 });

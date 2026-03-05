@@ -23,7 +23,7 @@ import type {
 } from '../shared/schemas/session.js';
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
 import { exportWorkshopDocs } from '../sessions/exportWriter.js';
-import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
+import { initializeGitRepo, scanAndRecordTodos, validatePocOutput } from './pocUtils.js';
 import { generateDynamicScaffold } from './dynamicScaffolder.js';
 import type { DynamicScaffoldResult } from './dynamicScaffolder.js';
 import { TestRunner } from './testRunner.js';
@@ -55,8 +55,6 @@ export interface RalphLoopOptions {
   enricher?: McpContextEnricher;
   /** Override TestRunner for testing */
   testRunner?: TestRunner;
-  /** Override PocScaffolder for testing */
-  scaffolder?: PocScaffolder;
   /** Checkpoint state for resume behavior */
   checkpoint?: CheckpointState;
   /** Template entry for install/test commands */
@@ -249,29 +247,11 @@ export class RalphLoop {
       const scaffoldStart = Date.now();
 
       try {
-        // Use injected scaffolder (for tests) or dynamic LLM-based scaffolder
-        if (this.options.scaffolder) {
-          const scaffoldCtx = PocScaffolder.buildContext(session, outputDir, templateEntry);
-          const legacyResult = await this.options.scaffolder.scaffold(scaffoldCtx);
-          scaffoldResult = {
-            createdFiles: legacyResult.createdFiles,
-            techStack: scaffoldCtx.techStack
-              ? {
-                  language: scaffoldCtx.techStack.language ?? 'unknown',
-                  runtime: scaffoldCtx.techStack.runtime ?? 'unknown',
-                  testRunner: scaffoldCtx.techStack.testRunner ?? 'unknown',
-                  framework: scaffoldCtx.techStack.framework,
-                  buildCommand: scaffoldCtx.techStack.buildCommand,
-                }
-              : { language: 'unknown', runtime: 'unknown', testRunner: 'unknown' },
-          };
-        } else {
-          scaffoldResult = await generateDynamicScaffold({
-            client,
-            session,
-            outputDir,
-          });
-        }
+        scaffoldResult = await generateDynamicScaffold({
+          client,
+          session,
+          outputDir,
+        });
         techStack = scaffoldResult.techStack;
       } catch (err: unknown) {
         spinner?.stop();
@@ -315,7 +295,7 @@ export class RalphLoop {
       }
 
       // Initialize local git repository
-      const gitInitialized = await PocScaffolder.initializeGitRepo(outputDir);
+      const gitInitialized = await initializeGitRepo(outputDir);
       if (gitInitialized) {
         io.writeActivity('✓ Initialized git repository with initial commit');
         io.writeActivity('');
@@ -629,7 +609,7 @@ export class RalphLoop {
 
       // FR-022: Rescan TODO markers after applying changes
       try {
-        await PocScaffolder.scanAndRecordTodos(outputDir);
+        await scanAndRecordTodos(outputDir);
       } catch {
         // Non-critical — ignore scanning errors
       }

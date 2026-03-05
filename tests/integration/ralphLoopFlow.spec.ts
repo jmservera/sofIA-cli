@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
 import { RalphLoop } from '../../src/develop/ralphLoop.js';
-import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
+import { generateDynamicScaffold } from '../../src/develop/dynamicScaffolder.js';
 import { TestRunner } from '../../src/develop/testRunner.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../src/loop/conversationLoop.js';
@@ -42,13 +42,18 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 // Mock validatePocOutput to always pass in integration tests
-vi.mock('../../src/develop/pocScaffolder.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/develop/pocScaffolder.js')>();
+vi.mock('../../src/develop/pocUtils.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/develop/pocUtils.js')>();
   return {
     ...actual,
     validatePocOutput: vi.fn().mockResolvedValue({ valid: true, missingFiles: [], errors: [] }),
   };
 });
+
+// Mock generateDynamicScaffold to create minimal files for tests
+vi.mock('../../src/develop/dynamicScaffolder.js', () => ({
+  generateDynamicScaffold: vi.fn(),
+}));
 
 const require = createRequire(import.meta.url);
 const fixtureSession: WorkshopSession =
@@ -68,48 +73,36 @@ function makeIo(): LoopIO {
   };
 }
 
-function makeFakeScaffolder(outputDir: string): PocScaffolder {
-  return {
-    scaffold: vi.fn().mockImplementation(async () => {
-      const { writeFile, mkdir } = await import('node:fs/promises');
-      await mkdir(join(outputDir, 'src'), { recursive: true });
-      await mkdir(join(outputDir, 'tests'), { recursive: true });
-      await writeFile(
-        join(outputDir, 'package.json'),
-        JSON.stringify({
-          name: 'route-optimizer-poc',
-          scripts: { test: 'vitest run' },
-          dependencies: {},
-          devDependencies: { vitest: '^3.0.0' },
-        }),
-        'utf-8',
-      );
-      await writeFile(
-        join(outputDir, 'src', 'index.ts'),
-        '// TODO: implement\nexport function optimize() { return []; }',
-        'utf-8',
-      );
-      await writeFile(
-        join(outputDir, 'tests', 'index.test.ts'),
-        'import { describe, it, expect } from "vitest";\nimport { optimize } from "../src/index.js";\ndescribe("optimizer", () => { it("should return stops", () => { expect(optimize().length).toBeGreaterThan(0); }); });',
-        'utf-8',
-      );
-      return {
-        createdFiles: ['package.json', 'src/index.ts', 'tests/index.test.ts'],
-        skippedFiles: [],
-        context: {
-          projectName: 'route-optimizer-poc',
-          ideaTitle: 'AI-Powered Route Optimizer',
-          ideaDescription: 'Optimize routes',
-          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
-          planSummary: 'Route optimization',
-          sessionId: fixtureSession.sessionId,
-          outputDir,
-        },
-      };
-    }),
-    getTemplateFiles: () => ['package.json', 'src/index.ts', 'tests/index.test.ts'],
-  } as unknown as PocScaffolder;
+function setupDynamicScaffoldMock(outputDir: string): void {
+  vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    await mkdir(join(outputDir, 'src'), { recursive: true });
+    await mkdir(join(outputDir, 'tests'), { recursive: true });
+    await writeFile(
+      join(outputDir, 'package.json'),
+      JSON.stringify({
+        name: 'route-optimizer-poc',
+        scripts: { test: 'vitest run' },
+        dependencies: {},
+        devDependencies: { vitest: '^3.0.0' },
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(outputDir, 'src', 'index.ts'),
+      '// TODO: implement\nexport function optimize() { return []; }',
+      'utf-8',
+    );
+    await writeFile(
+      join(outputDir, 'tests', 'index.test.ts'),
+      'import { describe, it, expect } from "vitest";\nimport { optimize } from "../src/index.js";\ndescribe("optimizer", () => { it("should return stops", () => { expect(optimize().length).toBeGreaterThan(0); }); });',
+      'utf-8',
+    );
+    return {
+      createdFiles: ['package.json', 'src/index.ts', 'tests/index.test.ts'],
+      techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
+    };
+  });
 }
 
 // ── SC-002-003: Iterative refinement test ────────────────────────────────────
@@ -128,7 +121,7 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
 
   it('scaffold → fail tests → LLM fix → tests pass → success', async () => {
     const io = makeIo();
-    const scaffolder = makeFakeScaffolder(tmpDir);
+    setupDynamicScaffoldMock(tmpDir);
 
     // Test runner: fails first, passes second
     let testCallCount = 0;
@@ -200,7 +193,6 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
       outputDir: tmpDir,
       maxIterations: 5,
       testRunner,
-      scaffolder,
       onSessionUpdate: async (session) => {
         sessionUpdates.push({ ...session });
       },
@@ -231,7 +223,7 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
 
   it('verifies failing tests are passed to LLM in iteration prompt (SC-002-003)', async () => {
     const io = makeIo();
-    const scaffolder = makeFakeScaffolder(tmpDir);
+    setupDynamicScaffoldMock(tmpDir);
 
     let testCallCount = 0;
     const testRunner: TestRunner = {
@@ -287,7 +279,6 @@ describe('RalphLoop integration — iterative refinement (SC-002-003)', () => {
       outputDir: tmpDir,
       maxIterations: 3,
       testRunner,
-      scaffolder,
     });
 
     await ralph.run();
@@ -314,9 +305,8 @@ describe('TODO tracking integration (T074)', () => {
   it('writes TODO counts to .sofia-metadata.json during scaffold and updates after iteration', async () => {
     const { writeFile, mkdir } = await import('node:fs/promises');
 
-    // Create a scaffolder that writes files with TODO markers
-    const todoScaffolder: PocScaffolder = {
-      scaffold: vi.fn().mockImplementation(async () => {
+    function setupTodoScaffoldMock(): void {
+      vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
         await mkdir(join(tmpDir, 'src'), { recursive: true });
         await mkdir(join(tmpDir, 'tests'), { recursive: true });
         await writeFile(
@@ -344,20 +334,11 @@ describe('TODO tracking integration (T074)', () => {
         );
         return {
           createdFiles: ['package.json', 'src/index.ts', '.sofia-metadata.json'],
-          skippedFiles: [],
-          context: {
-            projectName: 'todo-test-poc',
-            ideaTitle: 'Test',
-            ideaDescription: 'Test',
-            techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
-            planSummary: 'Test',
-            sessionId: fixtureSession.sessionId,
-            outputDir: tmpDir,
-          },
+          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
         };
-      }),
-      getTemplateFiles: () => ['package.json', 'src/index.ts'],
-    } as unknown as PocScaffolder;
+      });
+    }
+    setupTodoScaffoldMock();
 
     // Test runner that fails on first call (triggering TODO rescan), then passes
     let runCount = 0;
@@ -412,7 +393,6 @@ describe('TODO tracking integration (T074)', () => {
       outputDir: tmpDir,
       maxIterations: 3,
       testRunner: failThenPassRunner,
-      scaffolder: todoScaffolder,
     });
 
     await ralph.run();

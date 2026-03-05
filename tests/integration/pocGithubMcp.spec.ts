@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 
 import { RalphLoop } from '../../src/develop/ralphLoop.js';
 import { GitHubMcpAdapter } from '../../src/develop/githubMcpAdapter.js';
-import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
+import { generateDynamicScaffold } from '../../src/develop/dynamicScaffolder.js';
 import { TestRunner } from '../../src/develop/testRunner.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../src/loop/conversationLoop.js';
@@ -42,6 +42,11 @@ vi.mock('node:child_process', async (importOriginal) => {
   };
 });
 
+// Mock generateDynamicScaffold
+vi.mock('../../src/develop/dynamicScaffolder.js', () => ({
+  generateDynamicScaffold: vi.fn(),
+}));
+
 const require = createRequire(import.meta.url);
 const fixtureSession: WorkshopSession =
   require('../fixtures/completedSession.json') as WorkshopSession;
@@ -58,38 +63,26 @@ function makeIo(): LoopIO {
   };
 }
 
-function makeFakeScaffolder(outputDir: string): PocScaffolder {
-  return {
-    scaffold: vi.fn().mockImplementation(async () => {
-      const { writeFile, mkdir } = await import('node:fs/promises');
-      await mkdir(join(outputDir, 'src'), { recursive: true });
-      await writeFile(
-        join(outputDir, 'package.json'),
-        JSON.stringify({
-          name: 'test',
-          scripts: { test: 'vitest run' },
-          dependencies: {},
-          devDependencies: {},
-        }),
-        'utf-8',
-      );
-      await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
-      return {
-        createdFiles: ['package.json', 'src/index.ts'],
-        skippedFiles: [],
-        context: {
-          projectName: 'ai-powered-route-optimizer',
-          ideaTitle: 'AI Route Optimizer',
-          ideaDescription: 'Optimize routes',
-          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
-          planSummary: 'Route optimization',
-          sessionId: fixtureSession.sessionId,
-          outputDir,
-        },
-      };
-    }),
-    getTemplateFiles: () => [],
-  } as unknown as PocScaffolder;
+function setupDynamicScaffoldMock(outputDir: string): void {
+  vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
+    const { writeFile, mkdir } = await import('node:fs/promises');
+    await mkdir(join(outputDir, 'src'), { recursive: true });
+    await writeFile(
+      join(outputDir, 'package.json'),
+      JSON.stringify({
+        name: 'test',
+        scripts: { test: 'vitest run' },
+        dependencies: {},
+        devDependencies: {},
+      }),
+      'utf-8',
+    );
+    await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
+    return {
+      createdFiles: ['package.json', 'src/index.ts'],
+      techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'npm test' },
+    };
+  });
 }
 
 function makePassingClient(): CopilotClient {
@@ -137,7 +130,7 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
     const io = makeIo();
     const client = makePassingClient();
     const testRunner = makePassingTestRunner();
-    const scaffolder = makeFakeScaffolder(tmpDir);
+    setupDynamicScaffoldMock(tmpDir);
 
     // Available GitHub MCP
     const availableMcpManager: McpManager = {
@@ -152,7 +145,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       outputDir: tmpDir,
       maxIterations: 3,
       testRunner,
-      scaffolder,
     });
 
     const result = await ralph.run();
@@ -164,7 +156,7 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
     const io = makeIo();
     const client = makePassingClient();
     const testRunner = makePassingTestRunner();
-    const scaffolder = makeFakeScaffolder(tmpDir);
+    setupDynamicScaffoldMock(tmpDir);
 
     const availableMcpManager: McpManager = {
       isAvailable: (name: string) => name === 'github',
@@ -180,7 +172,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       outputDir: tmpDir,
       maxIterations: 3,
       testRunner,
-      scaffolder,
     });
 
     const result = await ralph.run();
@@ -196,7 +187,7 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
     const io = makeIo();
     const client = makePassingClient();
     const testRunner = makePassingTestRunner();
-    const scaffolder = makeFakeScaffolder(tmpDir);
+    setupDynamicScaffoldMock(tmpDir);
 
     const availableMcpManager: McpManager = {
       isAvailable: (name: string) => name === 'github',
@@ -211,7 +202,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       outputDir: tmpDir,
       maxIterations: 3,
       testRunner,
-      scaffolder,
     });
 
     await ralph.run();
