@@ -69,22 +69,34 @@ sofIA uses [Model Context Protocol](https://modelcontextprotocol.io/) servers to
 ```bash
 # Prerequisites: Node.js >= 20, a GitHub Copilot subscription
 
-# Clone & install
+# Install globally from npm
+npm install -g sofia-cli
+
+# Or run directly with npx (no install required)
+npx sofia-cli workshop
+
+# Start an interactive workshop
+sofia workshop
+
+# Check session status
+sofia status
+
+# Generate a PoC from a completed session
+sofia dev --session <id>
+
+# Export workshop artifacts
+sofia export --session <id>
+```
+
+### Development Setup
+
+If you want to contribute or run from source:
+
+```bash
 git clone https://github.com/jmservera/sofia-cli.git
 cd sofia-cli
 npm install
-
-# Start an interactive workshop
 npm run start -- workshop
-
-# Check session status
-npm run start -- status
-
-# Generate a PoC from a completed session
-npm run start -- dev --session <id>
-
-# Export workshop artifacts
-npm run start -- export --session <id>
 ```
 
 ## CLI Commands
@@ -111,24 +123,28 @@ infra/                # Azure AI Foundry IaC (Bicep + deployment scripts)
 src/
 ├── cli/              # Command handlers (workshop, dev, status, export)
 ├── develop/          # PoC generation & Ralph loop
-│   ├── ralphLoop.ts  # Autonomous iteration orchestrator
-│   ├── pocScaffolder.ts  # Project scaffolding
-│   ├── codeGenerator.ts  # LLM-driven code generation
-│   ├── testRunner.ts     # Test execution & result parsing
+│   ├── ralphLoop.ts          # Autonomous iteration orchestrator
+│   ├── dynamicScaffolder.ts  # LLM-based project scaffolding
+│   ├── codeGenerator.ts      # LLM-driven code generation
+│   ├── testRunner.ts         # Test execution & result parsing
+│   ├── checkpointState.ts    # Resume/checkpoint detection
 │   └── ...
 ├── loop/             # Multi-turn conversation orchestrator
 ├── phases/           # Phase handlers & JSON extractors
 ├── prompts/          # Versioned prompt templates
 ├── sessions/         # Session persistence & export
-├── mcp/              # MCP server connection manager
+├── mcp/              # MCP server connection manager & transports
 ├── shared/           # Schemas, events, error classification
 │   └── schemas/      # Zod schemas for session state
 └── vendor/           # Re-exports of external packages
 
 specs/
-├── 001-cli-workshop-rebuild/   # Workshop phases spec & tasks
-├── 002-poc-generation/         # Develop phase spec & tasks
-└── 003-next-spec-gaps.md       # Outstanding gaps for next feature
+├── 001-cli-workshop-rebuild/       # Workshop phases orchestration
+├── 002-poc-generation/             # Develop phase & Ralph loop
+├── 003-mcp-transport-integration/  # Real MCP server connections
+├── 004-dev-resume-hardening/       # Checkpoint, resume, --force
+├── 005-ai-search-deploy/           # Azure AI Foundry infrastructure
+└── 006-workshop-extraction-fixes/  # Extraction, wiring, context mgmt
 
 docs/                 # User-facing documentation
 tests/
@@ -183,10 +199,16 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for detai
 
 ## Current Status
 
-- **Feature 001** (Workshop CLI): Discover → Ideate → Design → Select → Plan — **implemented and tested**
-- **Feature 002** (PoC Generation): Develop phase with Ralph loop — **implemented and tested** (MCP integrations are simulated; see [specs/003-next-spec-gaps.md](specs/003-next-spec-gaps.md))
-- **Feature 003** (MCP Integration): Real MCP tool invocation, resume/checkpoint, additional templates — **planned**
-- **Feature 005** (AI Search Deploy): Azure AI Foundry infrastructure deployment + SDK-based web search integration — **implemented and tested**
+All six features have been implemented and tested:
+
+| Feature | Title                                                           | Description                                                            | Status          |
+| ------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------- |
+| 001     | [Workshop Rebuild](specs/001-cli-workshop-rebuild/spec.md)      | 5-phase orchestration (Discover → Plan), session persistence, export   | **Implemented** |
+| 002     | [PoC Generation](specs/002-poc-generation/spec.md)              | Develop phase with Ralph loop, LLM-based dynamic scaffolding           | **Implemented** |
+| 003     | [MCP Transport](specs/003-mcp-transport-integration/spec.md)    | Real MCP tool invocation (GitHub, Context7, Azure, web search, WorkIQ) | **Implemented** |
+| 004     | [Dev Hardening](specs/004-dev-resume-hardening/spec.md)         | Checkpoint/resume, `--force` flag, template registry, test coverage    | **Implemented** |
+| 005     | [Search Deployment](specs/005-ai-search-deploy/spec.md)         | Azure AI Foundry Bicep infrastructure with one-command deploy/teardown | **Implemented** |
+| 006     | [Extraction Fixes](specs/006-workshop-extraction-fixes/spec.md) | Fallback extraction, MCP wiring per phase, context window management   | **Implemented** |
 
 ## Web Search Setup
 
