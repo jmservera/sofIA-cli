@@ -5,8 +5,19 @@
  * Orchestrates: scaffold → install → iterate (test → fix → repeat) → complete.
  */
 
-export { validatePocOutput, initializeGitRepo, scanAndRecordTodos, toKebabCase, buildScaffoldContext } from './pocUtils.js';
-export type { ScaffoldContext, ScaffoldResult, TemplateFile, ValidationResult } from './pocUtils.js';
+export {
+  validatePocOutput,
+  initializeGitRepo,
+  scanAndRecordTodos,
+  toKebabCase,
+  buildScaffoldContext,
+} from './pocUtils.js';
+export type {
+  ScaffoldContext,
+  ScaffoldResult,
+  TemplateFile,
+  ValidationResult,
+} from './pocUtils.js';
 
 export { generateDynamicScaffold } from './dynamicScaffolder.js';
 export type { DynamicScaffoldContext, DynamicScaffoldResult } from './dynamicScaffolder.js';

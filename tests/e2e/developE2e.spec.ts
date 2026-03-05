@@ -19,7 +19,8 @@ import { validateSessionForDevelop } from '../../src/cli/developCommand.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 describe('E2E: sofia dev command', () => {
   let workDir: string;
@@ -90,5 +91,4 @@ describe('E2E: sofia dev command', () => {
       expect(fixtureSession.plan!.milestones.length).toBeGreaterThan(0);
     });
   });
-
 });

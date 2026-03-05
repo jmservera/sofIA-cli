@@ -46,7 +46,8 @@ vi.mock('../../src/develop/dynamicScaffolder.js', () => ({
 }));
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 describe('E2E: failure/recovery (T050)', () => {
   let tmpDir: string;
@@ -70,8 +71,12 @@ describe('E2E: failure/recovery (T050)', () => {
     return {
       writtenLines,
       activityLines,
-      write: vi.fn((text: string) => { writtenLines.push(text); }),
-      writeActivity: vi.fn((text: string) => { activityLines.push(text); }),
+      write: vi.fn((text: string) => {
+        writtenLines.push(text);
+      }),
+      writeActivity: vi.fn((text: string) => {
+        activityLines.push(text);
+      }),
       writeToolSummary: vi.fn(),
       readInput: vi.fn().mockResolvedValue(null),
       showDecisionGate: vi.fn(),
@@ -84,12 +89,16 @@ describe('E2E: failure/recovery (T050)', () => {
     vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
       const { writeFile, mkdir } = await import('node:fs/promises');
       await mkdir(join(outputDir, 'src'), { recursive: true });
-      await writeFile(join(outputDir, 'package.json'), JSON.stringify({
-        name: 'test-poc',
-        scripts: { test: 'vitest run' },
-        dependencies: {},
-        devDependencies: {},
-      }), 'utf-8');
+      await writeFile(
+        join(outputDir, 'package.json'),
+        JSON.stringify({
+          name: 'test-poc',
+          scripts: { test: 'vitest run' },
+          dependencies: {},
+          devDependencies: {},
+        }),
+        'utf-8',
+      );
       await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
       return {
         createdFiles: ['package.json', 'src/index.ts'],
@@ -266,10 +275,7 @@ describe('E2E: failure/recovery (T050)', () => {
     });
 
     try {
-      await developCommand(
-        { session: fixtureSession.sessionId },
-        { store, io: devIo, client },
-      );
+      await developCommand({ session: fixtureSession.sessionId }, { store, io: devIo, client });
     } finally {
       RalphLoop.prototype.run = originalRun;
     }

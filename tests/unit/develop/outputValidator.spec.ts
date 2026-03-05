@@ -24,24 +24,44 @@ describe('validatePocOutput', () => {
   async function createCompleteScaffold(): Promise<void> {
     await mkdir(join(tmpDir, 'src'), { recursive: true });
     await mkdir(join(tmpDir, 'tests'), { recursive: true });
-    await writeFile(join(tmpDir, 'package.json'), JSON.stringify({
-      name: 'test-poc',
-      version: '0.1.0',
-      scripts: { test: 'vitest run', build: 'tsc', start: 'node dist/index.js' },
-      dependencies: {},
-      devDependencies: { vitest: '^3.0.0', typescript: '^5.0.0' },
-    }), 'utf-8');
+    await writeFile(
+      join(tmpDir, 'package.json'),
+      JSON.stringify({
+        name: 'test-poc',
+        version: '0.1.0',
+        scripts: { test: 'vitest run', build: 'tsc', start: 'node dist/index.js' },
+        dependencies: {},
+        devDependencies: { vitest: '^3.0.0', typescript: '^5.0.0' },
+      }),
+      'utf-8',
+    );
     await writeFile(join(tmpDir, 'README.md'), '# Test PoC\n\nA test proof of concept.', 'utf-8');
-    await writeFile(join(tmpDir, 'tsconfig.json'), JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'Node16', strict: true },
-    }), 'utf-8');
+    await writeFile(
+      join(tmpDir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: { target: 'ES2022', module: 'Node16', strict: true },
+      }),
+      'utf-8',
+    );
     await writeFile(join(tmpDir, '.gitignore'), 'node_modules/\ndist/\ncoverage/\n', 'utf-8');
-    await writeFile(join(tmpDir, '.sofia-metadata.json'), JSON.stringify({
-      sessionId: 'test-001',
-      featureSpec: '002-poc-generation',
-    }), 'utf-8');
-    await writeFile(join(tmpDir, 'src', 'index.ts'), 'export function main() { return "ok"; }', 'utf-8');
-    await writeFile(join(tmpDir, 'tests', 'index.test.ts'), 'import { test, expect } from "vitest"; test("works", () => { expect(true).toBe(true); });', 'utf-8');
+    await writeFile(
+      join(tmpDir, '.sofia-metadata.json'),
+      JSON.stringify({
+        sessionId: 'test-001',
+        featureSpec: '002-poc-generation',
+      }),
+      'utf-8',
+    );
+    await writeFile(
+      join(tmpDir, 'src', 'index.ts'),
+      'export function main() { return "ok"; }',
+      'utf-8',
+    );
+    await writeFile(
+      join(tmpDir, 'tests', 'index.test.ts'),
+      'import { test, expect } from "vitest"; test("works", () => { expect(true).toBe(true); });',
+      'utf-8',
+    );
   }
 
   it('1. validates package.json exists and has test script', async () => {
@@ -115,10 +135,14 @@ describe('validatePocOutput', () => {
 
   it('reports error when package.json has no test script', async () => {
     await createCompleteScaffold();
-    await writeFile(join(tmpDir, 'package.json'), JSON.stringify({
-      name: 'test-poc',
-      scripts: { build: 'tsc' }, // no test script
-    }), 'utf-8');
+    await writeFile(
+      join(tmpDir, 'package.json'),
+      JSON.stringify({
+        name: 'test-poc',
+        scripts: { build: 'tsc' }, // no test script
+      }),
+      'utf-8',
+    );
     const result = await validatePocOutput(tmpDir);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('package.json is missing "test" script');

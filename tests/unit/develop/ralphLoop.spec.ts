@@ -957,9 +957,7 @@ describe('RalphLoop', () => {
       // Scaffold should NOT have been called — it was skipped
       expect(generateDynamicScaffold).not.toHaveBeenCalled();
       // Should log that scaffold was skipped
-      expect(io.writeActivity).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping scaffold'),
-      );
+      expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('Skipping scaffold'));
     });
 
     it('pops incomplete last iteration and re-runs it (T015, FR-001a)', async () => {
@@ -1059,9 +1057,7 @@ describe('RalphLoop', () => {
 
       // Scaffold SHOULD have been called since canSkipScaffold is false
       expect(generateDynamicScaffold).toHaveBeenCalled();
-      expect(io.writeActivity).toHaveBeenCalledWith(
-        expect.stringContaining('re-scaffolding'),
-      );
+      expect(io.writeActivity).toHaveBeenCalledWith(expect.stringContaining('re-scaffolding'));
     });
   });
 
