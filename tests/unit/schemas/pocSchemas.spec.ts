@@ -352,16 +352,13 @@ describe('pocDevelopmentStateSchema (extended)', () => {
     expect(result.success).toBe(true);
   });
 
-  it('parses a poc state with repoSource=github-mcp and repoUrl', () => {
+  it('rejects a poc state with repoSource=github-mcp (always-local policy)', () => {
     const result = pocDevelopmentStateSchema.safeParse({
       repoSource: 'github-mcp',
       repoUrl: 'https://github.com/acme/poc-route-optimizer',
       iterations: [],
     });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.repoUrl).toBe('https://github.com/acme/poc-route-optimizer');
-    }
+    expect(result.success).toBe(false);
   });
 
   it('parses a completed poc state with all fields', () => {
