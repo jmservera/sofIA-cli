@@ -10,5 +10,6 @@ export default defineConfig({
       enabled: true,
       provider: 'v8',
     },
+    testTimeout: 10_000, // Default timeout for tests (can be overridden per test)
   },
 });

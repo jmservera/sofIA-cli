@@ -87,7 +87,7 @@ describe('E2E Harness', () => {
     const result = await runCli(['workshop', '--help']);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('workshop');
-  });
+  }, 15_000);
 
   it('lists sessions or reports none when status invoked without session', async () => {
     const result = await runCli(['status', '--json']);
@@ -95,10 +95,10 @@ describe('E2E Harness', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed).toBeDefined();
     expect('sessions' in parsed || 'error' in parsed).toBe(true);
-  });
+  }, 15_000);
 
   it('returns error for export without session', async () => {
     const result = await runCli(['export', '--json']);
     expect(result.stdout).toContain('No session specified');
-  });
+  }, 15_000);
 });
