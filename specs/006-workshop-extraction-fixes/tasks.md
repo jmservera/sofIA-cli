@@ -21,11 +21,11 @@
 
 **Purpose**: Project structure for new modules; no behavior changes yet
 
-- [ ] T001 Create empty module file src/loop/phaseSummarizer.ts with JSDoc header and type-only imports
-- [ ] T002 [P] Create empty module file src/phases/contextSummarizer.ts with JSDoc header and type-only imports
-- [ ] T003 [P] Create prompt directory src/prompts/summarize/ with placeholder README
-- [ ] T004 [P] Update src/prompts/promptLoader.ts to support loading summarization prompts from `summarize/` subdirectory
-- [ ] T005 Verify `npm run typecheck` and `npm run lint` pass with empty modules
+- [x] T001 Create empty module file src/loop/phaseSummarizer.ts with JSDoc header and type-only imports
+- [x] T002 [P] Create empty module file src/phases/contextSummarizer.ts with JSDoc header and type-only imports
+- [x] T003 [P] Create prompt directory src/prompts/summarize/ with placeholder README
+- [x] T004 [P] Update src/prompts/promptLoader.ts to support loading summarization prompts from `summarize/` subdirectory
+- [x] T005 Verify `npm run typecheck` and `npm run lint` pass with empty modules
 
 ---
 
@@ -37,16 +37,16 @@
 
 ### Tests (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T006 [P] Add failing tests for `extractAllJsonBlocks()` in tests/unit/phases/phaseExtractors.spec.ts — test with 0, 1, 2, and 3 JSON blocks in a single response
-- [ ] T007 [P] Add failing tests for `extractJsonBlockForSchema()` in tests/unit/phases/phaseExtractors.spec.ts — test with multiple blocks where only the second matches the schema
-- [ ] T008 [P] Add failing test for phase boundary injection in tests/unit/phases/phaseHandlers.spec.ts — verify system prompt contains "Do NOT introduce or begin the next phase"
+- [x] T006 [P] Add failing tests for `extractAllJsonBlocks()` in tests/unit/phases/phaseExtractors.spec.ts — test with 0, 1, 2, and 3 JSON blocks in a single response
+- [x] T007 [P] Add failing tests for `extractJsonBlockForSchema()` in tests/unit/phases/phaseExtractors.spec.ts — test with multiple blocks where only the second matches the schema
+- [x] T008 [P] Add failing test for phase boundary injection in tests/unit/phases/phaseHandlers.spec.ts — verify system prompt contains "Do NOT introduce or begin the next phase"
 
 ### Implementation
 
-- [ ] T009 Implement `extractAllJsonBlocks()` in src/phases/phaseExtractors.ts — use `/g` flag for fenced blocks, bracket-depth counter for raw JSON (FR-007)
-- [ ] T010 Implement `extractJsonBlockForSchema<T>()` in src/phases/phaseExtractors.ts — try each block with `safeParse()`, return first valid match (FR-007)
-- [ ] T011 [P] Inject phase-boundary instruction in ConversationLoop system prompt builder in src/loop/conversationLoop.ts (FR-007b, FR-007c)
-- [ ] T012 Run `npm run test:unit` — T006, T007, T008 must now PASS; all existing 709 tests must still PASS
+- [x] T009 Implement `extractAllJsonBlocks()` in src/phases/phaseExtractors.ts — use `/g` flag for fenced blocks, bracket-depth counter for raw JSON (FR-007)
+- [x] T010 Implement `extractJsonBlockForSchema<T>()` in src/phases/phaseExtractors.ts — try each block with `safeParse()`, return first valid match (FR-007)
+- [x] T011 [P] Inject phase-boundary instruction in ConversationLoop system prompt builder in src/loop/conversationLoop.ts (FR-007b, FR-007c)
+- [x] T012 Run `npm run test:unit` — T006, T007, T008 must now PASS; all existing 709 tests must still PASS
 
 **Checkpoint**: Foundational extraction + boundary enforcement ready. User story work can begin.
 
@@ -60,16 +60,16 @@
 
 ### Tests for US2 (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T013 [P] [US2] Add failing test in tests/unit/mcp/webSearch.spec.ts — set env vars AFTER module import, verify `isWebSearchConfigured()` returns true
-- [ ] T014 [P] [US2] Add failing test in tests/unit/mcp/webSearch.spec.ts — verify returns false when vars absent
-- [ ] T015 [P] [US2] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify `loadEnvFile()` is called before workshop logic starts
+- [x] T013 [P] [US2] Add failing test in tests/unit/mcp/webSearch.spec.ts — set env vars AFTER module import, verify `isWebSearchConfigured()` returns true
+- [x] T014 [P] [US2] Add failing test in tests/unit/mcp/webSearch.spec.ts — verify returns false when vars absent
+- [x] T015 [P] [US2] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify `loadEnvFile()` is called before workshop logic starts
 
 ### Implementation for US2
 
-- [ ] T016 [US2] Verify `isWebSearchConfigured()` in src/mcp/webSearch.ts reads `process.env` at call time with no caching (FR-008, FR-009)
-- [ ] T017 [US2] Add `loadEnvFile()` call at top of `workshopCommand()` in src/cli/workshopCommand.ts (FR-010)
-- [ ] T018 [P] [US2] Add `loadEnvFile()` call at top of `developCommand()` in src/cli/developCommand.ts (FR-010)
-- [ ] T019 [US2] Run `npm run test:unit` — T013, T014, T015 must now PASS
+- [x] T016 [US2] Verify `isWebSearchConfigured()` in src/mcp/webSearch.ts reads `process.env` at call time with no caching (FR-008, FR-009)
+- [x] T017 [US2] Add `loadEnvFile()` call at top of `workshopCommand()` in src/cli/workshopCommand.ts (FR-010)
+- [x] T018 [P] [US2] Add `loadEnvFile()` call at top of `developCommand()` in src/cli/developCommand.ts (FR-010)
+- [x] T019 [US2] Run `npm run test:unit` — T013, T014, T015 must now PASS
 
 **Checkpoint**: Web search configuration works reliably. Can be verified in isolation.
 
@@ -83,26 +83,26 @@
 
 ### Tests for US1 (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T020 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — with fake client returning JSON block, verify session field populated
-- [ ] T021 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — with fake client returning invalid response, verify session unchanged (no crash)
-- [ ] T022 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — field already populated, verify summarization skipped (no-op)
-- [ ] T023 [P] [US1] Add failing test for Ideate summarization prompt in tests/unit/loop/phaseSummarizer.spec.ts — verify IdeaCard[] extracted from LLM summary response
-- [ ] T024 [P] [US1] Add failing test for Design summarization + Mermaid diagram extraction in tests/unit/loop/phaseSummarizer.spec.ts (FR-007a)
-- [ ] T025 [P] [US1] Add failing integration test in tests/integration/summarizationFlow.spec.ts — full pipeline: ConversationLoop → phaseSummarize → session updated
+- [x] T020 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — with fake client returning JSON block, verify session field populated
+- [x] T021 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — with fake client returning invalid response, verify session unchanged (no crash)
+- [x] T022 [P] [US1] Add failing test for `phaseSummarize()` in tests/unit/loop/phaseSummarizer.spec.ts — field already populated, verify summarization skipped (no-op)
+- [x] T023 [P] [US1] Add failing test for Ideate summarization prompt in tests/unit/loop/phaseSummarizer.spec.ts — verify IdeaCard[] extracted from LLM summary response
+- [x] T024 [P] [US1] Add failing test for Design summarization + Mermaid diagram extraction in tests/unit/loop/phaseSummarizer.spec.ts (FR-007a)
+- [x] T025 [P] [US1] Add failing integration test in tests/integration/summarizationFlow.spec.ts — full pipeline: ConversationLoop → phaseSummarize → session updated
 
 ### Implementation for US1
 
-- [ ] T026 [US1] Create summarization prompt src/prompts/summarize/ideate-summary.md — IdeaCard[] schema shape + extraction instructions (FR-002)
-- [ ] T027 [P] [US1] Create summarization prompt src/prompts/summarize/design-summary.md — IdeaEvaluation schema + Mermaid diagram request (FR-002, FR-007a)
-- [ ] T028 [P] [US1] Create summarization prompt src/prompts/summarize/select-summary.md — SelectedIdea schema shape (FR-002)
-- [ ] T029 [P] [US1] Create summarization prompt src/prompts/summarize/plan-summary.md — ImplementationPlan schema shape (FR-002)
-- [ ] T030 [P] [US1] Create summarization prompt src/prompts/summarize/develop-summary.md — PocDevelopmentState schema shape (FR-002)
-- [ ] T031 [US1] Implement `phaseSummarize()` in src/loop/phaseSummarizer.ts — create new session, send transcript, extract with handler (FR-001, FR-003, FR-004, FR-005, FR-006). The Discover phase MAY skip this call if `businessContext` is already populated.
-- [ ] T032 [US1] Implement `needsSummarization()` in src/loop/phaseSummarizer.ts — check if phase's session field is null
-- [ ] T033 [US1] Implement `buildPhaseTranscript()` in src/loop/phaseSummarizer.ts — concatenate user+assistant turns for the phase
-- [ ] T034 [US1] Implement Mermaid diagram extraction in Design summarization path in src/loop/phaseSummarizer.ts — extract `mermaid` block from summarization response and store in session `evaluation.architectureDiagram` (FR-007a)
-- [ ] T035 [US1] Hook `phaseSummarize()` into ConversationLoop.run() after while loop exits, before return, in src/loop/conversationLoop.ts (FR-006)
-- [ ] T036 [US1] Run `npm run test:unit && npm run test:integration` — T020–T025 must PASS; all existing tests must still PASS
+- [x] T026 [US1] Create summarization prompt src/prompts/summarize/ideate-summary.md — IdeaCard[] schema shape + extraction instructions (FR-002)
+- [x] T027 [P] [US1] Create summarization prompt src/prompts/summarize/design-summary.md — IdeaEvaluation schema + Mermaid diagram request (FR-002, FR-007a)
+- [x] T028 [P] [US1] Create summarization prompt src/prompts/summarize/select-summary.md — SelectedIdea schema shape (FR-002)
+- [x] T029 [P] [US1] Create summarization prompt src/prompts/summarize/plan-summary.md — ImplementationPlan schema shape (FR-002)
+- [x] T030 [P] [US1] Create summarization prompt src/prompts/summarize/develop-summary.md — PocDevelopmentState schema shape (FR-002)
+- [x] T031 [US1] Implement `phaseSummarize()` in src/loop/phaseSummarizer.ts — create new session, send transcript, extract with handler (FR-001, FR-003, FR-004, FR-005, FR-006). The Discover phase MAY skip this call if `businessContext` is already populated.
+- [x] T032 [US1] Implement `needsSummarization()` in src/loop/phaseSummarizer.ts — check if phase's session field is null
+- [x] T033 [US1] Implement `buildPhaseTranscript()` in src/loop/phaseSummarizer.ts — concatenate user+assistant turns for the phase
+- [x] T034 [US1] Implement Mermaid diagram extraction in Design summarization path in src/loop/phaseSummarizer.ts — extract `mermaid` block from summarization response and store in session `evaluation.architectureDiagram` (FR-007a)
+- [x] T035 [US1] Hook `phaseSummarize()` into ConversationLoop.run() after while loop exits, before return, in src/loop/conversationLoop.ts (FR-006)
+- [x] T036 [US1] Run `npm run test:unit && npm run test:integration` — T020–T025 must PASS; all existing tests must still PASS
 
 **Checkpoint**: All phases extract structured data via summarization fallback. Session fields populated.
 
@@ -116,29 +116,29 @@
 
 ### Tests for US4 (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T037 [P] [US4] Add failing test for `buildSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — with full session, verify all fields projected
-- [ ] T038 [P] [US4] Add failing test for `buildSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — with null fields, verify graceful omission
-- [ ] T039 [P] [US4] Add failing test for `renderSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — verify markdown output format
-- [ ] T040 [P] [US4] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Ideate handler uses renderSummarizedContext (not ad-hoc context)
-- [ ] T041 [P] [US4] Add failing test for ConversationLoop infiniteSessions forwarding in tests/unit/loop/conversationLoop.spec.ts
-- [ ] T042 [P] [US4] Add failing test for timeout-retry fallback (FR-019a) in tests/unit/loop/conversationLoop.spec.ts — on timeout, retry with minimal context
-- [ ] T043 [P] [US4] Add failing test for user-directed fallback (FR-019a) in tests/unit/loop/conversationLoop.spec.ts — on second timeout, ask user for manual input
+- [x] T037 [P] [US4] Add failing test for `buildSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — with full session, verify all fields projected
+- [x] T038 [P] [US4] Add failing test for `buildSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — with null fields, verify graceful omission
+- [x] T039 [P] [US4] Add failing test for `renderSummarizedContext()` in tests/unit/phases/contextSummarizer.spec.ts — verify markdown output format
+- [x] T040 [P] [US4] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Ideate handler uses renderSummarizedContext (not ad-hoc context)
+- [x] T041 [P] [US4] Add failing test for ConversationLoop infiniteSessions forwarding in tests/unit/loop/conversationLoop.spec.ts
+- [x] T042 [P] [US4] Add failing test for timeout-retry fallback (FR-019a) in tests/unit/loop/conversationLoop.spec.ts — on timeout, retry with minimal context
+- [x] T043 [P] [US4] Add failing test for user-directed fallback (FR-019a) in tests/unit/loop/conversationLoop.spec.ts — on second timeout, ask user for manual input
 
 ### Implementation for US4
 
-- [ ] T044 [US4] Implement `buildSummarizedContext()` in src/phases/contextSummarizer.ts — project all structured session fields including discoveryEnrichment (FR-016, FR-017)
-- [ ] T045 [US4] Implement `renderSummarizedContext()` in src/phases/contextSummarizer.ts — render as compact markdown section (FR-017)
-- [ ] T046 [US4] Replace ad-hoc context blocks in Ideate handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
-- [ ] T047 [P] [US4] Replace ad-hoc context blocks in Design handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
-- [ ] T048 [P] [US4] Replace ad-hoc context blocks in Select handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
-- [ ] T049 [P] [US4] Replace ad-hoc context blocks in Plan handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
-- [ ] T050 [P] [US4] Replace ad-hoc context blocks in Develop handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
-- [ ] T051 [US4] Verify ConversationLoop.run() only injects current-phase turns (not prior phases) in system prompt history block in src/loop/conversationLoop.ts (FR-018 — already implemented, add regression test)
-- [ ] T052 [US4] Add `infiniteSessions` option to `ConversationLoopOptions` and forward to `createSession()` in src/loop/conversationLoop.ts (FR-019)
-- [ ] T053 [US4] Implement minimal-context retry on timeout in ConversationLoop — on `sendAndWait` timeout, retry with only structured session fields and no conversation turns (FR-019a)
-- [ ] T054 [US4] Implement user-directed fallback in ConversationLoop — on second timeout after retry, present the best available answer to user and ask for manual confirmation (FR-019a)
-- [ ] T055 [US4] Pass `infiniteSessions: { backgroundCompactionThreshold: 0.7, bufferExhaustionThreshold: 0.9 }` from workshopCommand.ts to ConversationLoop (FR-019)
-- [ ] T056 [US4] Run `npm run test:unit` — T037–T043 must PASS; all existing tests must still PASS
+- [x] T044 [US4] Implement `buildSummarizedContext()` in src/phases/contextSummarizer.ts — project all structured session fields including discoveryEnrichment (FR-016, FR-017)
+- [x] T045 [US4] Implement `renderSummarizedContext()` in src/phases/contextSummarizer.ts — render as compact markdown section (FR-017)
+- [x] T046 [US4] Replace ad-hoc context blocks in Ideate handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
+- [x] T047 [P] [US4] Replace ad-hoc context blocks in Design handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
+- [x] T048 [P] [US4] Replace ad-hoc context blocks in Select handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
+- [x] T049 [P] [US4] Replace ad-hoc context blocks in Plan handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
+- [x] T050 [P] [US4] Replace ad-hoc context blocks in Develop handler's `buildSystemPrompt()` with `renderSummarizedContext()` in src/phases/phaseHandlers.ts (FR-016)
+- [x] T051 [US4] Verify ConversationLoop.run() only injects current-phase turns (not prior phases) in system prompt history block in src/loop/conversationLoop.ts (FR-018 — already implemented, add regression test)
+- [x] T052 [US4] Add `infiniteSessions` option to `ConversationLoopOptions` and forward to `createSession()` in src/loop/conversationLoop.ts (FR-019)
+- [x] T053 [US4] Implement minimal-context retry on timeout in ConversationLoop — on `sendAndWait` timeout, retry with only structured session fields and no conversation turns (FR-019a)
+- [x] T054 [US4] Implement user-directed fallback in ConversationLoop — on second timeout after retry, present the best available answer to user and ask for manual confirmation (FR-019a)
+- [x] T055 [US4] Pass `infiniteSessions: { backgroundCompactionThreshold: 0.7, bufferExhaustionThreshold: 0.9 }` from workshopCommand.ts to ConversationLoop (FR-019)
+- [x] T056 [US4] Run `npm run test:unit` — T037–T043 must PASS; all existing tests must still PASS
 
 **Checkpoint**: Select/Plan phases complete without timeout. Context is compact and accurate.
 
@@ -152,24 +152,24 @@
 
 ### Tests for US3 (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T057 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify McpManager created from .vscode/mcp.json
-- [ ] T058 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify WebSearchClient created when configured and passed to Discover handler
-- [ ] T059 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify McpManager passed to Discover handler for WorkIQ consent flow (FR-012a)
-- [ ] T060 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Design handler queries Context7 via McpManager in postExtract (FR-013)
-- [ ] T061 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Plan handler queries Azure MCP via McpManager in postExtract (FR-014)
-- [ ] T062 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Design handler degrades gracefully when Context7 unavailable (FR-015)
+- [x] T057 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify McpManager created from .vscode/mcp.json
+- [x] T058 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify WebSearchClient created when configured and passed to Discover handler
+- [x] T059 [P] [US3] Add failing test in tests/unit/cli/workshopCommand.spec.ts — verify McpManager passed to Discover handler for WorkIQ consent flow (FR-012a)
+- [x] T060 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Design handler queries Context7 via McpManager in postExtract (FR-013)
+- [x] T061 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Plan handler queries Azure MCP via McpManager in postExtract (FR-014)
+- [x] T062 [P] [US3] Add failing test in tests/unit/phases/phaseHandlers.spec.ts — verify Design handler degrades gracefully when Context7 unavailable (FR-015)
 
 ### Implementation for US3
 
-- [ ] T063 [US3] Extend `PhaseHandlerConfig` with `mcpManager?: McpManager` and `webSearchClient?: WebSearchClient` in src/phases/phaseHandlers.ts (FR-011)
-- [ ] T064 [US3] Create `McpManager` in `workshopCommandInner()` from `.vscode/mcp.json` via `loadMcpConfig()` in src/cli/workshopCommand.ts (FR-011)
-- [ ] T065 [US3] Create `WebSearchClient` in `workshopCommandInner()` when `isWebSearchConfigured()` returns true in src/cli/workshopCommand.ts (FR-012)
-- [ ] T066 [US3] Pass `mcpManager` + `webSearchClient` to Discover handler via `PhaseHandlerConfig.discover` in src/cli/workshopCommand.ts (FR-012, FR-012a — verify existing WorkIQ consent flow activates when McpManager is wired)
-- [ ] T067 [US3] Pass `mcpManager` to all phase handler calls via `PhaseHandlerConfig` in src/cli/workshopCommand.ts
-- [ ] T068 [US3] Add `postExtract` hook to Design handler — query Context7 for technologies in `session.ideas` in src/phases/phaseHandlers.ts (FR-013)
-- [ ] T069 [US3] Add `postExtract` hook to Plan handler — query Azure MCP for services in `session.plan.architectureNotes` in src/phases/phaseHandlers.ts (FR-014)
-- [ ] T070 [US3] Wrap all MCP calls in try/catch for graceful degradation in src/phases/phaseHandlers.ts (FR-015)
-- [ ] T071 [US3] Run `npm run test:unit` — T057–T062 must PASS; all existing tests must still PASS
+- [x] T063 [US3] Extend `PhaseHandlerConfig` with `mcpManager?: McpManager` and `webSearchClient?: WebSearchClient` in src/phases/phaseHandlers.ts (FR-011)
+- [x] T064 [US3] Create `McpManager` in `workshopCommandInner()` from `.vscode/mcp.json` via `loadMcpConfig()` in src/cli/workshopCommand.ts (FR-011)
+- [x] T065 [US3] Create `WebSearchClient` in `workshopCommandInner()` when `isWebSearchConfigured()` returns true in src/cli/workshopCommand.ts (FR-012)
+- [x] T066 [US3] Pass `mcpManager` + `webSearchClient` to Discover handler via `PhaseHandlerConfig.discover` in src/cli/workshopCommand.ts (FR-012, FR-012a — verify existing WorkIQ consent flow activates when McpManager is wired)
+- [x] T067 [US3] Pass `mcpManager` to all phase handler calls via `PhaseHandlerConfig` in src/cli/workshopCommand.ts
+- [x] T068 [US3] Add `postExtract` hook to Design handler — query Context7 for technologies in `session.ideas` in src/phases/phaseHandlers.ts (FR-013)
+- [x] T069 [US3] Add `postExtract` hook to Plan handler — query Azure MCP for services in `session.plan.architectureNotes` in src/phases/phaseHandlers.ts (FR-014)
+- [x] T070 [US3] Wrap all MCP calls in try/catch for graceful degradation in src/phases/phaseHandlers.ts (FR-015)
+- [x] T071 [US3] Run `npm run test:unit` — T057–T062 must PASS; all existing tests must still PASS
 
 **Checkpoint**: MCP tools wired and operational. Enrichment flows working with graceful degradation.
 
@@ -183,23 +183,23 @@
 
 ### Tests for US5 (REQUIRED — write first, must FAIL) ⚠️
 
-- [ ] T072 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — Ideate export with null `session.ideas` but conversation turns produces ideate.md
-- [ ] T073 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — Design export with null `session.evaluation` but turns produces design.md
-- [ ] T074 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — export with both structured data + turns renders structured first then conversation
-- [ ] T075 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — summary.json lists all 6 phase files when all phases have turns
-- [ ] T076 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — summary.json highlights include one entry per phase with turns
-- [ ] T077 [P] [US5] Add failing integration test in tests/integration/exportFallbackFlow.spec.ts — full export pipeline with null structured data
+- [x] T072 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — Ideate export with null `session.ideas` but conversation turns produces ideate.md
+- [x] T073 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — Design export with null `session.evaluation` but turns produces design.md
+- [x] T074 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — export with both structured data + turns renders structured first then conversation
+- [x] T075 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — summary.json lists all 6 phase files when all phases have turns
+- [x] T076 [P] [US5] Add failing test in tests/unit/sessions/exportWriter.spec.ts — summary.json highlights include one entry per phase with turns
+- [x] T077 [P] [US5] Add failing integration test in tests/integration/exportFallbackFlow.spec.ts — full export pipeline with null structured data
 
 ### Implementation for US5
 
-- [ ] T078 [US5] Refactor `generateIdeateMarkdown()` in src/sessions/exportWriter.ts — remove early return null; add conversation turn fallback (FR-020, FR-021, FR-022)
-- [ ] T079 [P] [US5] Refactor `generateDesignMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
-- [ ] T080 [P] [US5] Refactor `generateSelectMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
-- [ ] T081 [P] [US5] Refactor `generatePlanMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
-- [ ] T082 [P] [US5] Refactor `generateDevelopMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
-- [ ] T083 [US5] Update `exportSession()` in src/sessions/exportWriter.ts — summary.json lists all generated files (FR-023)
-- [ ] T084 [US5] Update highlight generation in src/sessions/exportWriter.ts — include one highlight per phase with turns, fallback to first assistant turn opening (FR-024)
-- [ ] T085 [US5] Run `npm run test:unit && npm run test:integration` — T072–T077 must PASS; all existing tests must still PASS
+- [x] T078 [US5] Refactor `generateIdeateMarkdown()` in src/sessions/exportWriter.ts — remove early return null; add conversation turn fallback (FR-020, FR-021, FR-022)
+- [x] T079 [P] [US5] Refactor `generateDesignMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
+- [x] T080 [P] [US5] Refactor `generateSelectMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
+- [x] T081 [P] [US5] Refactor `generatePlanMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
+- [x] T082 [P] [US5] Refactor `generateDevelopMarkdown()` in src/sessions/exportWriter.ts — same pattern (FR-020, FR-021, FR-022)
+- [x] T083 [US5] Update `exportSession()` in src/sessions/exportWriter.ts — summary.json lists all generated files (FR-023)
+- [x] T084 [US5] Update highlight generation in src/sessions/exportWriter.ts — include one highlight per phase with turns, fallback to first assistant turn opening (FR-024)
+- [x] T085 [US5] Run `npm run test:unit && npm run test:integration` — T072–T077 must PASS; all existing tests must still PASS
 
 **Checkpoint**: Export produces complete artifacts for all 6 phases. summary.json includes all files and highlights.
 
@@ -209,13 +209,13 @@
 
 **Purpose**: Final validation, regression testing, cleanup
 
-- [ ] T086 [P] Update build assets script in package.json to copy `src/prompts/summarize/*.md` to `dist/src/prompts/summarize/`
-- [ ] T087 [P] Run `npm run typecheck` — zero errors
-- [ ] T088 [P] Run `npm run lint` — zero errors (fix any import ordering issues)
-- [ ] T089 Run full test suite: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] T090 Update Zava assessment test in tests/live/zavaFullWorkshop.spec.ts — relax assertion on `session.ideas` (now expected to pass), add assertions for extraction, export completeness
-- [ ] T091 Add failure/recovery E2E scenario to Zava live test in tests/live/zavaFullWorkshop.spec.ts — simulate a phase timeout and verify recovery fallback activates (FR-019a, Constitution Principle VI)
-- [ ] T092 Run quickstart.md validation — verify all file paths and commands in quickstart.md are accurate
+- [x] T086 [P] Update build assets script in package.json to copy `src/prompts/summarize/*.md` to `dist/src/prompts/summarize/`
+- [x] T087 [P] Run `npm run typecheck` — zero errors
+- [x] T088 [P] Run `npm run lint` — zero errors (fix any import ordering issues)
+- [x] T089 Run full test suite: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] T090 Update Zava assessment test in tests/live/zavaFullWorkshop.spec.ts — relax assertion on `session.ideas` (now expected to pass), add assertions for extraction, export completeness
+- [x] T091 Add failure/recovery E2E scenario to Zava live test in tests/live/zavaFullWorkshop.spec.ts — simulate a phase timeout and verify recovery fallback activates (FR-019a, Constitution Principle VI)
+- [x] T092 Run quickstart.md validation — verify all file paths and commands in quickstart.md are accurate
 
 ---
 

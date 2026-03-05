@@ -5,6 +5,8 @@
  * with New Session, Resume Session, Status, and Export menu options.
  * Drives phase-by-phase conversation with decision gates.
  */
+import { join } from 'node:path';
+
 import { ConversationLoop } from '../loop/conversationLoop.js';
 import { createCopilotClient } from '../shared/copilotClient.js';
 import type { CopilotClient } from '../shared/copilotClient.js';
@@ -14,9 +16,13 @@ import type { WorkshopSession, PhaseValue } from '../shared/schemas/session.js';
 import { SessionStore, createDefaultStore } from '../sessions/sessionStore.js';
 import { createLoopIO } from './ioContext.js';
 import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../phases/phaseHandlers.js';
+import type { PhaseHandlerConfig } from '../phases/phaseHandlers.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
-import { destroyWebSearchSession } from '../mcp/webSearch.js';
+import { destroyWebSearchSession, isWebSearchConfigured, createWebSearchTool } from '../mcp/webSearch.js';
+import type { WebSearchConfig } from '../mcp/webSearch.js';
+import { loadEnvFile } from './envLoader.js';
+import { loadMcpConfig, McpManager } from '../mcp/mcpManager.js';
 
 export interface WorkshopCommandOptions {
   session?: string;
@@ -112,6 +118,7 @@ async function runWorkshop(
   io: ReturnType<typeof createLoopIO>,
   store: SessionStore,
   options: WorkshopCommandOptions,
+  handlerConfig?: PhaseHandlerConfig,
 ): Promise<void> {
   const phaseOrder = getPhaseOrder();
   let currentPhaseIdx = phaseOrder.indexOf(session.phase);
@@ -135,7 +142,7 @@ async function runWorkshop(
     io.write(renderMarkdown(`\n## Phase: ${phase}\n`, { isTTY: io.isTTY }));
 
     // Create and preload the phase handler
-    const handler = createPhaseHandler(phase);
+    const handler = createPhaseHandler(phase, handlerConfig);
     await handler._preload();
 
     // Generate initial message for auto-start
@@ -265,6 +272,9 @@ export async function workshopCommand(opts: WorkshopCommandOptions): Promise<voi
 }
 
 async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void> {
+  // FR-010: Load .env before any env var checks (e.g., isWebSearchConfigured)
+  loadEnvFile(join(process.cwd(), '.env'));
+
   const store = createDefaultStore();
   const io = createLoopIO({
     json: opts.json,
@@ -289,6 +299,38 @@ async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void>
     return;
   }
 
+  // FR-011: Create McpManager from .vscode/mcp.json
+  let mcpManager: McpManager | undefined;
+  try {
+    const mcpConfigPath = join(process.cwd(), '.vscode', 'mcp.json');
+    const mcpConfig = await loadMcpConfig(mcpConfigPath);
+    mcpManager = new McpManager(mcpConfig);
+  } catch {
+    // MCP not configured — proceed without it
+  }
+
+  // FR-012: Create WebSearchClient when configured
+  let webSearchClient: import('../phases/discoveryEnricher.js').WebSearchClient | undefined;
+  if (isWebSearchConfigured()) {
+    const config: WebSearchConfig = {
+      projectEndpoint: process.env.FOUNDRY_PROJECT_ENDPOINT!,
+      modelDeploymentName: process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME!,
+    };
+    const searchFn = createWebSearchTool(config);
+    webSearchClient = { search: searchFn };
+  }
+
+  // Build handler config with MCP + web search
+  const handlerConfig: PhaseHandlerConfig = {
+    discover: {
+      io,
+      mcpManager,
+      webSearchClient,
+    },
+    mcpManager,
+    webSearchClient,
+  };
+
   // Direct session resumption
   if (opts.session) {
     if (await store.exists(opts.session)) {
@@ -298,7 +340,7 @@ async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void>
           isTTY: io.isTTY,
         }),
       );
-      await runWorkshop(session, client, io, store, opts);
+      await runWorkshop(session, client, io, store, opts, handlerConfig);
     } else {
       const msg = `Session "${opts.session}" not found.`;
       if (opts.json) {
@@ -324,7 +366,7 @@ async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void>
         renderMarkdown(`\nNew session created: **${session.sessionId}**\n`, { isTTY: io.isTTY }),
       );
     }
-    await runWorkshop(session, client, io, store, opts);
+    await runWorkshop(session, client, io, store, opts, handlerConfig);
     return;
   }
 
@@ -350,7 +392,7 @@ async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void>
       const session = createNewSession();
       await store.save(session);
       io.write(renderMarkdown(`\nNew session: **${session.sessionId}**\n`, { isTTY: io.isTTY }));
-      await runWorkshop(session, client, io, store, opts);
+      await runWorkshop(session, client, io, store, opts, handlerConfig);
       break;
     }
     case 'resume': {
@@ -388,7 +430,7 @@ async function workshopCommandInner(opts: WorkshopCommandOptions): Promise<void>
             isTTY: io.isTTY,
           }),
         );
-        await runWorkshop(session, client, io, store, opts);
+        await runWorkshop(session, client, io, store, opts, handlerConfig);
       } else {
         io.write('Invalid selection.\n');
       }

@@ -60,10 +60,7 @@ export const WEB_SEARCH_TOOL_DEFINITION: ToolDefinition = {
  * instead of legacy vars (`SOFIA_FOUNDRY_AGENT_ENDPOINT`, `SOFIA_FOUNDRY_AGENT_KEY`).
  */
 export function isWebSearchConfigured(): boolean {
-  return Boolean(
-    process.env.FOUNDRY_PROJECT_ENDPOINT &&
-    process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME,
-  );
+  return Boolean(process.env.FOUNDRY_PROJECT_ENDPOINT && process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME);
 }
 
 // ── Citation extraction ──────────────────────────────────────────────────────
@@ -117,6 +114,41 @@ export function extractCitations(output: unknown[]): {
   return { results, sources: [...seenUrls] };
 }
 
+/**
+ * Fallback extraction when a response has no URL citations.
+ *
+ * Some Foundry responses can contain only plain output text without
+ * `url_citation` annotations. This extracts text blocks into lightweight
+ * snippets so downstream enrichment still has useful context.
+ */
+export function extractTextSnippets(output: unknown[]): WebSearchResultItem[] {
+  const snippets: WebSearchResultItem[] = [];
+
+  for (const item of output) {
+    const messageItem = item as Record<string, unknown>;
+    if (messageItem.type !== 'message') continue;
+
+    const content = messageItem.content as unknown[];
+    if (!Array.isArray(content)) continue;
+
+    for (let i = 0; i < content.length; i++) {
+      const block = content[i] as Record<string, unknown>;
+      if (block.type !== 'output_text') continue;
+
+      const text = String(block.text ?? '').trim();
+      if (!text) continue;
+
+      snippets.push({
+        title: 'Foundry response',
+        url: `foundry://response/${i + 1}`,
+        snippet: text.length > 300 ? `${text.slice(0, 300)}…` : text,
+      });
+    }
+  }
+
+  return snippets;
+}
+
 // ── Agent Session ────────────────────────────────────────────────────────────
 
 /**
@@ -126,11 +158,20 @@ export function extractCitations(output: unknown[]): {
 export interface AgentSessionDeps {
   createClient: (endpoint: string) => unknown;
   getOpenAIClient: (client: unknown) => Promise<unknown>;
-  createAgentVersion: (client: unknown, name: string, options: unknown) => Promise<{ name: string; version: string }>;
+  createAgentVersion: (
+    client: unknown,
+    name: string,
+    options: unknown,
+  ) => Promise<{ name: string; version: string }>;
   deleteAgentVersion: (client: unknown, name: string, version: string) => Promise<void>;
   createConversation: (openAIClient: unknown) => Promise<{ id: string }>;
   deleteConversation: (openAIClient: unknown, id: string) => Promise<void>;
-  createResponse: (openAIClient: unknown, conversationId: string, input: string, agentName: string) => Promise<{ output: unknown[] }>;
+  createResponse: (
+    openAIClient: unknown,
+    conversationId: string,
+    input: string,
+    agentName: string,
+  ) => Promise<{ output: unknown[] }>;
 }
 
 interface AgentSessionState {
@@ -138,9 +179,13 @@ interface AgentSessionState {
   openAIClient: unknown;
   agentName: string;
   agentVersion: string;
-  conversationId: string;
+  queryCount: number;
   initialized: boolean;
 }
+
+const MAX_QUERIES_PER_AGENT = 3;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000; // 2 second initial delay
 
 let sessionState: AgentSessionState | null = null;
 let sessionDeps: AgentSessionDeps | null = null;
@@ -153,8 +198,7 @@ async function createDefaultDeps(): Promise<AgentSessionDeps> {
   const { DefaultAzureCredential } = await import('@azure/identity');
 
   return {
-    createClient: (endpoint: string) =>
-      new AIProjectClient(endpoint, new DefaultAzureCredential()),
+    createClient: (endpoint: string) => new AIProjectClient(endpoint, new DefaultAzureCredential()),
     getOpenAIClient: async (client: unknown) =>
       (client as InstanceType<typeof AIProjectClient>).getOpenAIClient(),
     createAgentVersion: async (client: unknown, name: string, options: unknown) => {
@@ -176,7 +220,12 @@ async function createDefaultDeps(): Promise<AgentSessionDeps> {
       const oai = openAIClient as { conversations: { delete: (id: string) => Promise<void> } };
       await oai.conversations.delete(id);
     },
-    createResponse: async (openAIClient: unknown, conversationId: string, input: string, agentName: string) => {
+    createResponse: async (
+      openAIClient: unknown,
+      conversationId: string,
+      input: string,
+      agentName: string,
+    ) => {
       const oai = openAIClient as {
         responses: {
           create: (params: unknown, options: unknown) => Promise<{ output: unknown[] }>;
@@ -192,12 +241,39 @@ async function createDefaultDeps(): Promise<AgentSessionDeps> {
 
 // ── Tool factory ─────────────────────────────────────────────────────────────
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function cleanupCurrentAgent(keepDeps: boolean): Promise<void> {
+  if (!sessionState?.initialized || !sessionDeps) {
+    sessionState = null;
+    return;
+  }
+
+  const { client, agentName, agentVersion } = sessionState;
+
+  sessionState = null;
+
+  try {
+    await sessionDeps.deleteAgentVersion(client, agentName, agentVersion);
+  } catch {
+    // Best-effort cleanup.
+  }
+
+  if (!keepDeps) {
+    sessionDeps = null;
+  }
+}
+
 /**
  * Create a web search function that calls the Azure AI Foundry Agent Service.
  *
  * The returned function:
  * - Lazily creates an ephemeral agent with web_search_preview on first call
- * - Reuses the agent and conversation for subsequent calls
+ * - Reuses the agent for subsequent calls
+ * - Rotates the agent after a few queries to avoid stale response behavior
+ * - Uses a fresh conversation per query to keep citation output stable
  * - Returns structured results with URL citations
  * - Degrades gracefully on errors (returns empty results with degraded flag)
  *
@@ -211,43 +287,77 @@ export function createWebSearchTool(
 
   return async (query: string): Promise<WebSearchResult> => {
     try {
+      const resolvedDeps = sessionDeps ?? (await createDefaultDeps());
+      sessionDeps = resolvedDeps;
+
+      if (sessionState?.initialized && sessionState.queryCount >= MAX_QUERIES_PER_AGENT) {
+        await cleanupCurrentAgent(true);
+      }
+
       // Lazy initialization
       if (!sessionState?.initialized) {
-        const resolvedDeps = sessionDeps ?? await createDefaultDeps();
-        sessionDeps = resolvedDeps;
-
         const client = resolvedDeps.createClient(config.projectEndpoint);
         const openAIClient = await resolvedDeps.getOpenAIClient(client);
 
         const agent = await resolvedDeps.createAgentVersion(client, 'sofia-web-search', {
           kind: 'prompt',
           model: config.modelDeploymentName,
-          instructions: 'You are a web search assistant. Search the web and return relevant results with citations.',
+          instructions:
+            'You are a web search assistant. Search the web and return relevant results with citations.',
           tools: [{ type: 'web_search_preview' }],
         });
-
-        const conversation = await resolvedDeps.createConversation(openAIClient);
 
         sessionState = {
           client,
           openAIClient,
           agentName: agent.name,
           agentVersion: agent.version,
-          conversationId: conversation.id,
+          queryCount: 0,
           initialized: true,
         };
       }
 
-      // Execute query
-      const response = await sessionDeps!.createResponse(
-        sessionState.openAIClient,
-        sessionState.conversationId,
-        query,
-        sessionState.agentName,
-      );
+      // Execute query in an isolated conversation with retry logic for rate limiting.
+      const conversation = await sessionDeps.createConversation(sessionState.openAIClient);
 
-      // Extract citations
-      const { results, sources } = extractCitations(response.output ?? []);
+      let response: { output: unknown[] };
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          response = await sessionDeps.createResponse(
+            sessionState.openAIClient,
+            conversation.id,
+            query,
+            sessionState.agentName,
+          );
+          break;
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+
+          // Check for 429 rate limiting
+          if (message.includes('429') && attempt < MAX_RETRIES) {
+            const delayMs = RETRY_DELAY_MS * Math.pow(2, attempt);
+            await sleep(delayMs);
+            continue;
+          }
+
+          throw err;
+        }
+      }
+
+      try {
+        await sessionDeps.deleteConversation(sessionState.openAIClient, conversation.id);
+      } catch {
+        // Conversation cleanup failures should not fail web search results.
+      }
+
+      sessionState.queryCount += 1;
+
+      // Extract citations. response is guaranteed to be assigned by loop logic:
+      // either break assigns it, or catch throws (exiting function).
+      const { results: citationResults, sources } = extractCitations(response!.output ?? []);
+      const results =
+        citationResults.length > 0 ? citationResults : extractTextSnippets(response!.output ?? []);
 
       return { results, sources };
     } catch (err: unknown) {
@@ -269,33 +379,10 @@ export function createWebSearchTool(
  * Safe to call multiple times. Logs warnings on cleanup failure but does not throw.
  */
 export async function destroyWebSearchSession(): Promise<void> {
-  if (!sessionState?.initialized || !sessionDeps) {
-    sessionState = null;
-    return;
-  }
-
-  const { client, openAIClient, agentName, agentVersion, conversationId } = sessionState;
-
-  // Reset state first so subsequent calls are no-ops
-  sessionState = null;
-
-  try {
-    await sessionDeps.deleteConversation(openAIClient, conversationId);
-  } catch {
-    // Log warning but do not throw — stale conversations are cleaned up manually
-  }
-
-  try {
-    await sessionDeps.deleteAgentVersion(client, agentName, agentVersion);
-  } catch {
-    // Log warning but do not throw — stale agents are cleaned up by TTL
-  }
-
-  sessionDeps = null;
+  await cleanupCurrentAgent(false);
 }
 
 // Register cleanup on process exit
 process.on('beforeExit', () => {
   void destroyWebSearchSession();
 });
-

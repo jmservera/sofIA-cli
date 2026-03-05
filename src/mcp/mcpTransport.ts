@@ -13,7 +13,7 @@
  * support. See research.md Topic 1 for the dual-path architecture.
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import type { Logger } from 'pino';
@@ -80,6 +80,47 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+function normalizeRpcErrorMessage(message: string): string {
+  const trimmed = message.trim();
+
+  const parseValidationArray = (raw: string): string | null => {
+    try {
+      const parsed = JSON.parse(raw) as Array<{ path?: Array<string | number>; message?: string }>;
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return null;
+      }
+
+      const details = parsed
+        .map((item) => {
+          const path =
+            Array.isArray(item.path) && item.path.length > 0 ? item.path.join('.') : 'input';
+          const detail = item.message ?? 'Invalid input';
+          return `${path}: ${detail}`;
+        })
+        .join('; ');
+
+      return details;
+    } catch {
+      return null;
+    }
+  };
+
+  const arraySuffixMatch = trimmed.match(/^(.*?):\s*(\[[\s\S]*\])$/);
+  if (arraySuffixMatch) {
+    const details = parseValidationArray(arraySuffixMatch[2]);
+    if (details) {
+      return `${arraySuffixMatch[1]}: ${details}`;
+    }
+  }
+
+  const wholeArrayDetails = parseValidationArray(trimmed);
+  if (wholeArrayDetails) {
+    return `Input validation error: ${wholeArrayDetails}`;
+  }
+
+  return trimmed;
+}
+
 // ── StdioMcpTransport ────────────────────────────────────────────────────────
 
 /**
@@ -131,7 +172,13 @@ export class StdioMcpTransport implements McpTransport {
             this.pendingRequests.delete(msg.id);
 
             if (msg.error) {
-              pending.reject(new McpTransportError(msg.error.message, name, 'rpc-error'));
+              pending.reject(
+                new McpTransportError(
+                  normalizeRpcErrorMessage(msg.error.message),
+                  name,
+                  'rpc-error',
+                ),
+              );
             } else {
               pending.resolve({
                 content: this.extractContent(msg.result),
@@ -192,6 +239,7 @@ export class StdioMcpTransport implements McpTransport {
         params: {
           protocolVersion: '1.0',
           clientInfo: { name: 'sofIA', version: '0.1.0' },
+          capabilities: {},
         },
       });
 
@@ -288,6 +336,23 @@ export class StdioMcpTransport implements McpTransport {
 // ── HttpMcpTransport ─────────────────────────────────────────────────────────
 
 /**
+ * Retrieve GitHub token from GitHub CLI if available.
+ * @returns Token string or null if GitHub CLI is not installed/authenticated.
+ */
+function getGitHubCliToken(): string | null {
+  try {
+    const token = execSync('gh auth token', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'], // suppress stderr
+      timeout: 2000,
+    }).trim();
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * MCP transport over HTTPS (stateless JSON-RPC 2.0 via native fetch).
  *
  * Used for: GitHub MCP, Microsoft Docs MCP.
@@ -321,8 +386,9 @@ export class HttpMcpTransport implements McpTransport {
       ...this.config.headers,
     };
 
-    // Add auth token if available
-    const token = process.env.GITHUB_TOKEN;
+    // Add auth token if available (GITHUB_TOKEN env var takes precedence, fallback to GitHub CLI)
+    const token =
+      process.env.GITHUB_TOKEN || (this.config.name === 'github' ? getGitHubCliToken() : null);
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -360,23 +426,61 @@ export class HttpMcpTransport implements McpTransport {
         );
       }
 
-      // Parse response body
+      // Parse response body (read as text first for better error reporting)
+      const bodyText = await response.text();
+      const contentType = response.headers.get('content-type') || '';
+
       let parsed: Record<string, unknown>;
-      try {
-        parsed = (await response.json()) as Record<string, unknown>;
-      } catch {
-        throw new McpTransportError(
-          `Non-JSON response from ${this.config.name}`,
-          this.config.name,
-          toolName,
-        );
+
+      // Handle Server-Sent Events (SSE) format from GitHub Copilot MCP
+      if (contentType.includes('text/event-stream')) {
+        try {
+          // Parse SSE format: "event: message\ndata: {...}\n\n"
+          const dataMatch = bodyText.match(/^data:\s*(.+)$/m);
+          if (!dataMatch) {
+            throw new Error('No data field in SSE response');
+          }
+          parsed = JSON.parse(dataMatch[1]) as Record<string, unknown>;
+        } catch (_sseError) {
+          this.logger.error(
+            { status: response.status, contentType, bodyPreview: bodyText.slice(0, 500) },
+            `Invalid SSE format from ${this.config.name}`,
+          );
+          throw new McpTransportError(
+            `Invalid SSE format from ${this.config.name}`,
+            this.config.name,
+            toolName,
+          );
+        }
+      } else {
+        // Regular JSON response
+        try {
+          parsed = JSON.parse(bodyText) as Record<string, unknown>;
+        } catch (_parseError) {
+          // Log response details for debugging
+          const preview = bodyText.slice(0, 500);
+          this.logger.error(
+            { status: response.status, contentType, bodyPreview: preview },
+            `Non-JSON response from ${this.config.name}`,
+          );
+          // Also output to stderr for visibility in tests
+          console.error(`[McpTransport] Non-JSON response from ${this.config.name}:`);
+          console.error(`  Status: ${response.status}`);
+          console.error(`  Content-Type: ${contentType}`);
+          console.error(`  Body preview: ${preview}`);
+          throw new McpTransportError(
+            `Non-JSON response from ${this.config.name} (HTTP ${response.status})`,
+            this.config.name,
+            toolName,
+          );
+        }
       }
 
       // Handle JSON-RPC error
       if (parsed.error) {
         const rpcError = parsed.error as { message?: string };
         throw new McpTransportError(
-          rpcError.message ?? 'JSON-RPC error',
+          normalizeRpcErrorMessage(rpcError.message ?? 'JSON-RPC error'),
           this.config.name,
           toolName,
         );

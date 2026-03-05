@@ -104,10 +104,15 @@ export class DiscoveryEnricher {
   ): Promise<Partial<DiscoveryEnrichment>> {
     const companyName = extractCompanyName(companySummary);
 
+    // GET CURRENT YEAR for dynamic query generation
+    const currentYear = new Date().getFullYear();
+
+    // Construct multiple queries to cover different angles
+
     const queries = [
-      `${companyName} recent news 2024 2025`,
-      `${companyName} competitors market 2024`,
-      `${companyName} industry AI trends 2025`,
+      `${companyName} recent news ${currentYear - 1} ${currentYear}`,
+      `${companyName} competitors market ${currentYear - 1}`,
+      `${companyName} industry AI trends ${currentYear}`,
     ];
 
     const allSnippets: string[] = [];
@@ -121,11 +126,19 @@ export class DiscoveryEnricher {
         if (result.degraded) continue;
 
         const mapped = mapResults(result.results);
+        if (mapped.length === 0) {
+          continue;
+        }
+
         allSnippets.push(...result.results.map((r) => r.snippet));
 
         if (i === 0) companyNews = mapped;
         else if (i === 1) competitorInfo = mapped;
         else if (i === 2) industryTrends = mapped;
+
+        // Stop after first successful query to avoid exhausting provider quotas
+        // across repeated enrichment calls in a single workshop run.
+        break;
       } catch {
         // Individual query failure — continue with remaining queries
         continue;

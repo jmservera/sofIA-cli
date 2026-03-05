@@ -104,6 +104,17 @@ fi
 
 echo "✅ Prerequisites passed"
 
+# ── Resolve current user's principal (object) ID for RBAC ─────────────────────
+
+echo "🔑 Resolving current user's principal ID..."
+USER_PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv 2>/dev/null || true)
+if [[ -z "$USER_PRINCIPAL_ID" ]]; then
+  echo "⚠️  Could not resolve user principal ID. Role assignment will be skipped." >&2
+  echo "   You may need to manually assign the 'Azure AI Developer' role." >&2
+else
+  echo "   Principal ID: $USER_PRINCIPAL_ID"
+fi
+
 # ── Deploy ────────────────────────────────────────────────────────────────────
 
 echo ""
@@ -127,6 +138,7 @@ if ! az deployment sub create \
     accountName="$ACCOUNT_NAME" \
     modelDeploymentName="$MODEL" \
     modelName="$MODEL" \
+    userPrincipalId="$USER_PRINCIPAL_ID" \
   --output json; then
   echo "" >&2
   echo "❌ Deployment failed." >&2

@@ -17,13 +17,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createCopilotClient } from '../../src/shared/copilotClient.js';
-import type { CopilotClient, CopilotMessage } from '../../src/shared/copilotClient.js';
+import type { CopilotClient } from '../../src/shared/copilotClient.js';
 import { ConversationLoop } from '../../src/loop/conversationLoop.js';
 import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop.js';
 import { createPhaseHandler, getPhaseOrder } from '../../src/phases/phaseHandlers.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
-import { SessionStore, createDefaultStore } from '../../src/sessions/sessionStore.js';
-import { createWebSearchTool, isWebSearchConfigured } from '../../src/mcp/webSearch.js';
+import { createDefaultStore } from '../../src/sessions/sessionStore.js';
+import { isWebSearchConfigured } from '../../src/mcp/webSearch.js';
 import type { SofiaEvent } from '../../src/shared/events.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -33,9 +33,9 @@ const PROJECT_ROOT = join(__dirname, '..', '..');
 const RESULTS_DIR = join(PROJECT_ROOT, 'tests', 'e2e', 'zava-assessment', 'results');
 
 // Per-phase timeout: 3 minutes each for LLM calls
-const PHASE_TIMEOUT = 180_000;
+const _PHASE_TIMEOUT = 180_000;
 // Per-turn timeout: 2 minutes
-const TURN_TIMEOUT = 120_000;
+const _TURN_TIMEOUT = 120_000;
 
 // ── Zava Industries Canned Inputs ──────────────────────────────────────────
 
@@ -209,7 +209,7 @@ function createTestIO(inputs: string[]): {
       toolSummaries.push({ tool: toolName, summary });
       process.stderr.write(`  ✓ ${toolName}: ${summary}\n`);
     },
-    async readInput(prompt?: string): Promise<string | null> {
+    async readInput(_prompt?: string): Promise<string | null> {
       if (inputIdx >= inputs.length) {
         // No more inputs — signal "done"
         process.stderr.write(`  [io] No more inputs, returning null (done)\n`);
@@ -315,7 +315,7 @@ describe('Zava Industries — Full Workshop Session', () => {
 
       // Get canned inputs for this phase
       const inputs = PHASE_INPUTS[phase] ?? [];
-      const { io, output, activityLog, toolSummaries } = createTestIO(inputs);
+      const { io, output: _output, activityLog: _activityLog, toolSummaries: _toolSummaries } = createTestIO(inputs);
 
       try {
         // Create and preload the handler

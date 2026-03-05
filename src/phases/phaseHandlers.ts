@@ -24,6 +24,7 @@ import {
 import { DiscoveryEnricher } from './discoveryEnricher.js';
 import type { WebSearchClient } from './discoveryEnricher.js';
 import type { McpManager } from '../mcp/mcpManager.js';
+import { buildSummarizedContext, renderSummarizedContext } from './contextSummarizer.js';
 
 // ── Initial message helper ──────────────────────────────────────────────────
 
@@ -187,10 +188,8 @@ function createIdeateHandler(): PhaseHandler & { _preload(): Promise<void> } {
     phase: 'Ideate',
 
     buildSystemPrompt(session: WorkshopSession): string {
-      // Include context from Discover phase
-      const context = session.businessContext
-        ? `\n\n## Previous Context\n- Business: ${session.businessContext.businessDescription}\n- Challenges: ${session.businessContext.challenges.join(', ')}`
-        : '';
+      // FR-016: Use unified summarized context instead of ad-hoc injection
+      const context = renderSummarizedContext(buildSummarizedContext(session));
       return (cachedPrompt ?? 'You are facilitating the Ideate phase.') + context;
     },
 
@@ -235,10 +234,9 @@ function createDesignHandler(): PhaseHandler & { _preload(): Promise<void> } {
     phase: 'Design',
 
     buildSystemPrompt(session: WorkshopSession): string {
-      const ideasCtx = session.ideas?.length
-        ? `\n\n## Ideas from Ideate Phase\n${session.ideas.map((i) => `- **${i.title}**: ${i.description}`).join('\n')}`
-        : '';
-      return (cachedPrompt ?? 'You are facilitating the Design phase.') + ideasCtx;
+      // FR-016: Use unified summarized context
+      const context = renderSummarizedContext(buildSummarizedContext(session));
+      return (cachedPrompt ?? 'You are facilitating the Design phase.') + context;
     },
 
     getReferences(_session: WorkshopSession): string[] {
@@ -276,10 +274,9 @@ function createSelectHandler(): PhaseHandler & { _preload(): Promise<void> } {
     phase: 'Select',
 
     buildSystemPrompt(session: WorkshopSession): string {
-      const evalCtx = session.evaluation
-        ? `\n\n## Evaluation Results\nMethod: ${session.evaluation.method}\nIdeas evaluated: ${session.evaluation.ideas.length}`
-        : '';
-      return (cachedPrompt ?? 'You are facilitating the Select phase.') + evalCtx;
+      // FR-016: Use unified summarized context
+      const context = renderSummarizedContext(buildSummarizedContext(session));
+      return (cachedPrompt ?? 'You are facilitating the Select phase.') + context;
     },
 
     getReferences(_session: WorkshopSession): string[] {
@@ -317,10 +314,9 @@ function createPlanHandler(): PhaseHandler & { _preload(): Promise<void> } {
     phase: 'Plan',
 
     buildSystemPrompt(session: WorkshopSession): string {
-      const selCtx = session.selection
-        ? `\n\n## Selected Idea\nIdea: ${session.selection.ideaId}\nRationale: ${session.selection.selectionRationale}`
-        : '';
-      return (cachedPrompt ?? 'You are facilitating the Plan phase.') + selCtx;
+      // FR-016: Use unified summarized context
+      const context = renderSummarizedContext(buildSummarizedContext(session));
+      return (cachedPrompt ?? 'You are facilitating the Plan phase.') + context;
     },
 
     getReferences(_session: WorkshopSession): string[] {
@@ -362,10 +358,9 @@ function createDevelopHandler(): PhaseHandler & { _preload(): Promise<void> } {
     phase: 'Develop',
 
     buildSystemPrompt(session: WorkshopSession): string {
-      const planCtx = session.plan
-        ? `\n\n## Implementation Plan\nMilestones: ${session.plan.milestones.map((m) => m.title).join(', ')}`
-        : '';
-      return (cachedPrompt ?? 'You are facilitating the Develop boundary phase.') + planCtx;
+      // FR-016: Use unified summarized context
+      const context = renderSummarizedContext(buildSummarizedContext(session));
+      return (cachedPrompt ?? 'You are facilitating the Develop boundary phase.') + context;
     },
 
     getReferences(_session: WorkshopSession): string[] {
@@ -400,6 +395,10 @@ export type PreloadablePhaseHandler = PhaseHandler & { _preload(): Promise<void>
 export interface PhaseHandlerConfig {
   /** Discovery enrichment config (only used for Discover phase) */
   discover?: DiscoverHandlerConfig;
+  /** MCP manager for tool calls (FR-011) */
+  mcpManager?: McpManager;
+  /** Web search client (FR-012) */
+  webSearchClient?: WebSearchClient;
 }
 
 const PHASE_FACTORIES: Record<
