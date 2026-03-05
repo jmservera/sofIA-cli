@@ -149,6 +149,9 @@ npm run test:unit
 npm run test:integration
 npm run test:e2e
 
+# Run live tests (requires SOFIA_LIVE_MCP_TESTS=true and real MCP access)
+SOFIA_LIVE_MCP_TESTS=true npm test
+
 # Watch mode (auto-reloads)
 npm run dev -- workshop
 

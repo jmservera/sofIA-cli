@@ -4,10 +4,10 @@ sofIA uses environment variables for optional integrations. All are optional —
 
 ## Web Search (Azure AI Foundry)
 
-| Variable | Description |
-|----------|-------------|
-| `FOUNDRY_PROJECT_ENDPOINT` | Azure AI Foundry project endpoint URL (e.g., `https://<name>.services.ai.azure.com/api/projects/<project>`) |
-| `FOUNDRY_MODEL_DEPLOYMENT_NAME` | Model deployment name for the web search agent (e.g., `gpt-4.1-mini`) |
+| Variable                        | Description                                                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `FOUNDRY_PROJECT_ENDPOINT`      | Azure AI Foundry project endpoint URL (e.g., `https://<name>.services.ai.azure.com/api/projects/<project>`) |
+| `FOUNDRY_MODEL_DEPLOYMENT_NAME` | Model deployment name for the web search agent (e.g., `gpt-4.1-mini`)                                       |
 
 Both must be set for the `web.search` tool to be available. When not configured, the web search tool is disabled and the workshop proceeds without web search capabilities.
 
@@ -24,6 +24,26 @@ If you previously used `SOFIA_FOUNDRY_AGENT_ENDPOINT` / `SOFIA_FOUNDRY_AGENT_KEY
 The CLI will display an error if it detects the old variables, guiding you through the migration.
 
 > **Note**: `SOFIA_FOUNDRY_AGENT_ENDPOINT` and `SOFIA_FOUNDRY_AGENT_KEY` are no longer used. API key authentication has been replaced by Azure Identity credentials.
+
+## Testing
+
+| Variable               | Description                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `SOFIA_LIVE_MCP_TESTS` | Set to `true` to enable end-to-end tests that require real MCP server access and external API calls (e.g., web search). Default: `false` |
+
+These tests are skipped by default because they:
+
+- Require external service credentials
+- May incur API costs
+- Have longer execution times
+- Depend on live network access
+
+To run live tests:
+
+```bash
+export SOFIA_LIVE_MCP_TESTS=true
+npm test  # or npm run test:e2e
+```
 
 ## Copilot SDK
 
