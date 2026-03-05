@@ -166,7 +166,7 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
   program
     .command('dev')
     .description('Generate a proof-of-concept repository for a completed workshop session')
-    .option('--max-iterations <n>', 'Maximum Ralph loop iterations (default: 10)', parseInt)
+    .option('--max-iterations <n>', 'Maximum Ralph loop iterations (default: 20)', parseInt)
     .option('--output <dir>', 'Output directory for the PoC (default: ./poc/<sessionId>/)')
     .option('--force', 'Overwrite existing output directory and start fresh')
     .action(async (opts) => {

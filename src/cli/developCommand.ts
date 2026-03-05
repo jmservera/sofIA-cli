@@ -137,7 +137,7 @@ export async function developCommand(
   // ── Determine output directory ───────────────────────────────────────────
   const outputDir = opts.output
     ? join(process.cwd(), opts.output)
-    : join(process.cwd(), 'poc', sessionId);
+    : join(process.cwd(), '..', 'poc', sessionId);
 
   // ── Handle --force: reset session.poc AND output directory ───────────────
   if (opts.force) {
@@ -293,6 +293,7 @@ export async function developCommand(
           'Recovery options:',
           `  • Resume: sofia dev --session ${sessionId}`,
           `  • More iterations: sofia dev --session ${sessionId} --max-iterations 20`,
+          `  • More iterations: sofia dev --session ${sessionId} --max-iterations 30`,
           `  • Start fresh: sofia dev --session ${sessionId} --force`,
           '',
         ].join('\n'),

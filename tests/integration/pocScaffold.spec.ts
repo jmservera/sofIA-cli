@@ -18,7 +18,8 @@ import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 // ── Load fixture session ──────────────────────────────────────────────────────
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 describe('PoC Scaffold Integration', () => {
   let tmpDir: string;
@@ -158,7 +159,7 @@ describe('PoC Scaffold Integration', () => {
     await scaffolder.scaffold(ctx);
 
     const indexContent = await readFile(join(tmpDir, 'src', 'index.ts'), 'utf-8');
-    expect(indexContent).toContain('export function main');
+    expect(indexContent).toContain('export async function main');
   });
 
   it('tests/index.test.ts contains vitest imports', async () => {

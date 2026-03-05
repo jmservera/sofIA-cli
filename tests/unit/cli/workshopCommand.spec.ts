@@ -293,14 +293,16 @@ describe('workshopCommand Plan→Develop transition (T052)', () => {
     await workshopCommand({ session: 'plan-test-001' });
 
     const allOutput = ioWrites.join(' ');
+    // FR-020: Shows transition message for PoC generation
+    expect(allOutput).toContain('Starting PoC Generation');
+    // Session lacks selection/plan so RalphLoop throws — workshop shows recovery guidance
     expect(allOutput).toContain('sofia dev --session plan-test-001');
-    expect(allOutput).toContain('Ready for PoC Generation');
   });
 });
 
-// ── T053: Workshop offers auto-transition prompt in interactive mode ──────
+// ── T053: Workshop auto-runs PoC generation after Plan phase ─────────────
 
-describe('workshopCommand auto-transition prompt (T053)', () => {
+describe('workshopCommand auto-run PoC generation (T053)', () => {
   beforeEach(() => {
     ioWrites = [];
     ioReadResponses = [];
@@ -316,7 +318,7 @@ describe('workshopCommand auto-transition prompt (T053)', () => {
     process.exitCode = undefined;
   });
 
-  it('offers auto-transition prompt in interactive mode after Plan phase (FR-021)', async () => {
+  it('auto-runs PoC generation after Plan phase, shows warning on failure (FR-021)', async () => {
     const session: WorkshopSession = {
       sessionId: 'transition-test-001',
       schemaVersion: '1.0.0',
@@ -339,16 +341,14 @@ describe('workshopCommand auto-transition prompt (T053)', () => {
     await workshopCommand({ session: 'transition-test-001' });
 
     const allOutput = ioWrites.join(' ');
-    // FR-021: The transition message includes tech stack info and scaffolding description
-    expect(allOutput).toContain('scaffold a project');
-    expect(allOutput).toContain('technology stack');
-    expect(allOutput).toContain('install dependencies');
-
-    // FR-021: readInput was called with the auto-transition prompt
-    expect(ioReadInputPrompts.some((p) => p.includes('Would you like to start PoC development'))).toBe(true);
+    // FR-021: PoC generation runs automatically after Plan phase
+    expect(allOutput).toContain('Starting PoC Generation');
+    // Session lacks selection/plan so RalphLoop throws — workshop shows recovery guidance
+    expect(allOutput).toContain('PoC generation failed');
+    expect(allOutput).toContain('sofia dev --session transition-test-001');
   });
 
-  it('exits workshop when user accepts auto-transition prompt (FR-021)', async () => {
+  it('continues workshop after PoC generation failure (FR-021)', async () => {
     const session: WorkshopSession = {
       sessionId: 'auto-transition-001',
       schemaVersion: '1.0.0',
@@ -364,17 +364,15 @@ describe('workshopCommand auto-transition prompt (T053)', () => {
     mockStore.exists.mockResolvedValue(true);
     mockStore.load.mockResolvedValue(session);
 
-    // Continue from Plan → user answers 'y' to auto-transition
-    decisionGateResponses = [{ choice: 'continue' }];
-    // First null exits the conversation loop; 'y' answers the auto-transition prompt
-    ioReadResponses = [null, 'y'];
+    // Continue from Plan → PoC fails → continues to Develop phase → exit
+    decisionGateResponses = [{ choice: 'continue' }, { choice: 'exit' }];
 
     const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
     await workshopCommand({ session: 'auto-transition-001' });
 
     const allOutput = ioWrites.join(' ');
-    // Workshop should show transition message and exit (returning early)
-    expect(allOutput).toContain('Starting PoC development');
+    // Workshop continues after PoC failure — doesn't block
+    expect(allOutput).toContain('Starting PoC Generation');
     expect(allOutput).toContain('sofia dev --session auto-transition-001');
   });
 });

@@ -51,7 +51,7 @@ As an operator, I want Develop to gracefully handle environments where GitHub MC
 
 ### D-003  Local scaffolding fallback
 
-- When GitHub MCP is unavailable or lacks permissions, MUST fall back to generating a **local** PoC scaffold under the workspace (e.g., `./poc/<sessionId>/`).
+- When GitHub MCP is unavailable or lacks permissions, MUST fall back to generating a **local** PoC scaffold outside the workspace (e.g., `./poc/<sessionId>/`).
 - MUST clearly mark in logs and artifacts that the PoC was generated locally rather than via GitHub MCP.
 
 ### D-004  Ralph loop iterations

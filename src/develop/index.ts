@@ -8,6 +8,9 @@
 export { PocScaffolder } from './pocScaffolder.js';
 export type { ScaffoldContext, ScaffoldResult } from './pocScaffolder.js';
 
+export { generateDynamicScaffold } from './dynamicScaffolder.js';
+export type { DynamicScaffoldContext, DynamicScaffoldResult } from './dynamicScaffolder.js';
+
 export { TestRunner } from './testRunner.js';
 
 export { CodeGenerator } from './codeGenerator.js';

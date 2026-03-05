@@ -1,7 +1,7 @@
 {
-  "name": "sofia-discovery-cli",
-  "version": "0.1.0",
-  "private": true,
+  "name": "sofia-cli",
+  "version": "0.1.2",
+  "private": false,
   "type": "module",
   "main": "dist/src/cli/index.js",
   "bin": {

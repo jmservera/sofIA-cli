@@ -24,6 +24,8 @@ import type {
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
 import { exportWorkshopDocs } from '../sessions/exportWriter.js';
 import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
+import { generateDynamicScaffold } from './dynamicScaffolder.js';
+import type { DynamicScaffoldResult } from './dynamicScaffolder.js';
 import { TestRunner } from './testRunner.js';
 import { CodeGenerator } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
@@ -134,10 +136,11 @@ export class RalphLoop {
   private currentSession: WorkshopSession;
 
   constructor(options: RalphLoopOptions) {
-    const outputDir = options.outputDir ?? join(process.cwd(), 'poc', options.session.sessionId);
+    const outputDir =
+      options.outputDir ?? join(process.cwd(), '..', 'poc', options.session.sessionId);
 
     this.options = {
-      maxIterations: 10,
+      maxIterations: 20,
       onSessionUpdate: async () => {},
       onEvent: () => {},
       ...options,
@@ -206,16 +209,34 @@ export class RalphLoop {
     const repoSource = 'local' as const;
     io.writeActivity(`Output directory: ${outputDir}`);
 
-    // ── Build scaffold context ─────────────────────────────────────────────
-    const scaffoldCtx = PocScaffolder.buildContext(session, outputDir, templateEntry);
-    const techStack = scaffoldCtx.techStack;
-
     // ── Scaffold (skip if resuming with valid output dir) ──────────────────
     const shouldSkipScaffold = checkpoint?.canSkipScaffold === true;
-    let scaffoldResult: Awaited<ReturnType<PocScaffolder['scaffold']>> | undefined;
+    let scaffoldResult: DynamicScaffoldResult | undefined;
+    let techStack: {
+      language: string;
+      runtime: string;
+      framework?: string;
+      testRunner: string;
+      buildCommand?: string;
+    } = {
+      language: 'unknown',
+      runtime: 'unknown',
+      testRunner: 'unknown',
+    };
 
     if (shouldSkipScaffold) {
       io.writeActivity('Skipping scaffold — output directory and .sofia-metadata.json present');
+      // When skipping scaffold, try to load tech stack from metadata
+      try {
+        const metadataPath = join(outputDir, '.sofia-metadata.json');
+        const metadataContent = await readFile(metadataPath, 'utf-8');
+        const metadata = JSON.parse(metadataContent);
+        if (metadata.techStack) {
+          techStack = metadata.techStack;
+        }
+      } catch {
+        // If metadata is missing or invalid, keep default techStack
+      }
     } else {
       // FR-007: Re-scaffold when output dir is missing but iterations exist
       if (checkpoint?.hasPriorRun) {
@@ -225,11 +246,33 @@ export class RalphLoop {
       io.writeActivity('Scaffolding PoC project structure...');
       spinner?.startThinking();
 
-      const scaffolder = this.options.scaffolder ?? new PocScaffolder();
       const scaffoldStart = Date.now();
 
       try {
-        scaffoldResult = await scaffolder.scaffold(scaffoldCtx);
+        // Use injected scaffolder (for tests) or dynamic LLM-based scaffolder
+        if (this.options.scaffolder) {
+          const scaffoldCtx = PocScaffolder.buildContext(session, outputDir, templateEntry);
+          const legacyResult = await this.options.scaffolder.scaffold(scaffoldCtx);
+          scaffoldResult = {
+            createdFiles: legacyResult.createdFiles,
+            techStack: scaffoldCtx.techStack
+              ? {
+                  language: scaffoldCtx.techStack.language ?? 'unknown',
+                  runtime: scaffoldCtx.techStack.runtime ?? 'unknown',
+                  testRunner: scaffoldCtx.techStack.testRunner ?? 'unknown',
+                  framework: scaffoldCtx.techStack.framework,
+                  buildCommand: scaffoldCtx.techStack.buildCommand,
+                }
+              : { language: 'unknown', runtime: 'unknown', testRunner: 'unknown' },
+          };
+        } else {
+          scaffoldResult = await generateDynamicScaffold({
+            client,
+            session,
+            outputDir,
+          });
+        }
+        techStack = scaffoldResult.techStack;
       } catch (err: unknown) {
         spinner?.stop();
         const msg = err instanceof Error ? err.message : String(err);

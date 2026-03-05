@@ -19,10 +19,17 @@ import { createPhaseHandler, getPhaseOrder, getNextPhase } from '../phases/phase
 import type { PhaseHandlerConfig } from '../phases/phaseHandlers.js';
 import type { SofiaEvent } from '../shared/events.js';
 import { renderMarkdown } from '../shared/markdownRenderer.js';
-import { destroyWebSearchSession, isWebSearchConfigured, createWebSearchTool } from '../mcp/webSearch.js';
+import {
+  destroyWebSearchSession,
+  isWebSearchConfigured,
+  createWebSearchTool,
+} from '../mcp/webSearch.js';
 import type { WebSearchConfig } from '../mcp/webSearch.js';
 import { loadEnvFile } from './envLoader.js';
 import { loadMcpConfig, McpManager } from '../mcp/mcpManager.js';
+import { RalphLoop } from '../develop/ralphLoop.js';
+import { deriveCheckpointState } from '../develop/checkpointState.js';
+import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';
 
 export interface WorkshopCommandOptions {
   session?: string;
@@ -120,6 +127,7 @@ async function runWorkshop(
   options: WorkshopCommandOptions,
   handlerConfig?: PhaseHandlerConfig,
 ): Promise<void> {
+  const logger = getLogger();
   const phaseOrder = getPhaseOrder();
   let currentPhaseIdx = phaseOrder.indexOf(session.phase);
   if (currentPhaseIdx === -1) currentPhaseIdx = 0;
@@ -192,35 +200,84 @@ async function runWorkshop(
           if (next === 'Develop') {
             io.write(
               renderMarkdown(
-                `\n### Ready for PoC Generation\n\n` +
-                  `The Plan phase is complete. To generate the proof-of-concept, run:\n\n` +
-                  '```\n' +
-                  `sofia dev --session ${session.sessionId}\n` +
-                  '```\n\n' +
-                  `This will scaffold a project matching your plan's technology stack, install dependencies,\n` +
-                  `and iteratively generate code until all tests pass.\n`,
+                `\n### Starting PoC Generation\n\n` +
+                  `The Plan phase is complete. Now generating proof-of-concept code...\n`,
                 { isTTY: io.isTTY },
               ),
             );
 
-            // FR-021: Offer auto-transition in interactive mode
-            if (!options.nonInteractive && io.isTTY) {
-              const answer = await io.readInput(
-                'Would you like to start PoC development now? (y/N): ',
+            // FR-021: Always run PoC generation after Plan phase
+            try {
+              const outputDir = join(process.cwd(), '..', 'poc', session.sessionId);
+              const checkpoint = deriveCheckpointState(session, outputDir);
+              const templateEntry = selectTemplate(
+                createDefaultRegistry(),
+                session.plan?.architectureNotes,
+                session.plan?.dependencies,
               );
-              if (answer?.trim().toLowerCase() === 'y') {
+
+              const ralphLoop = new RalphLoop({
+                client,
+                io,
+                session,
+                spinner,
+                maxIterations: 20,
+                outputDir,
+                onSessionUpdate: async (updated) => {
+                  session = updated;
+                  await store.save(session);
+                },
+                onEvent: (event: SofiaEvent) => {
+                  // Log PoC generation events if debug is enabled
+                  if (options.debug) {
+                    logger.debug('RalphLoop event', { event });
+                  }
+                },
+                checkpoint,
+                templateEntry,
+              });
+
+              const result = await ralphLoop.run();
+              session = result.session;
+
+              if (result.finalStatus === 'success') {
                 io.write(
                   renderMarkdown(
-                    `\nStarting PoC development. Run the following command:\n\n` +
-                      '```\n' +
-                      `sofia dev --session ${session.sessionId}\n` +
-                      '```\n',
+                    `\n✅ PoC generated successfully in ${result.outputDir}\n\n` +
+                      `Next steps:\n` +
+                      `- Review the generated code\n` +
+                      `- Run tests: \`cd ${result.outputDir} && npm test\`\n` +
+                      `- Continue developing: \`sofia dev --session ${session.sessionId}\`\n`,
                     { isTTY: io.isTTY },
                   ),
                 );
-                return;
+              } else {
+                io.write(
+                  renderMarkdown(
+                    `\n⚠️  PoC generation incomplete (${result.terminationReason})\n\n` +
+                      `The workshop can continue. To retry or resume PoC development:\n` +
+                      `\`\`\`\n` +
+                      `sofia dev --session ${session.sessionId}\n` +
+                      `\`\`\`\n`,
+                    { isTTY: io.isTTY },
+                  ),
+                );
               }
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              io.write(
+                renderMarkdown(
+                  `\n⚠️  PoC generation failed: ${msg}\n\n` +
+                    `The workshop can continue. To retry:\n` +
+                    `\`\`\`\n` +
+                    `sofia dev --session ${session.sessionId}\n` +
+                    `\`\`\`\n`,
+                  { isTTY: io.isTTY },
+                ),
+              );
             }
+
+            // Continue to next phase regardless of PoC outcome
           }
           currentPhaseIdx = phaseOrder.indexOf(next);
         } else {
