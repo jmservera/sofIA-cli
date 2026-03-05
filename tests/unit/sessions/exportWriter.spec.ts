@@ -12,7 +12,7 @@ import { mkdtemp, rm, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { exportSession } from '../../../src/sessions/exportWriter.js';
+import { exportSession, exportWorkshopDocs } from '../../../src/sessions/exportWriter.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
 function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSession {
@@ -637,5 +637,101 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     // Should have highlights for phases with turns (fallback to first assistant turn)
     expect(summary.highlights!.some((h) => h.includes('Ideate'))).toBe(true);
     expect(summary.highlights!.some((h) => h.includes('Design'))).toBe(true);
+  });
+});
+
+// ── exportWorkshopDocs — workshop docs for PoC repos ─────────────────────────
+
+describe('exportWorkshopDocs', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-wsdocs-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates docs/workshop/ directory with phase markdown files', async () => {
+    const session = createFullSession();
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+
+    expect(files).toContain('discover.md');
+    expect(files).toContain('ideate.md');
+    expect(files).toContain('select.md');
+    expect(files).toContain('plan.md');
+    expect(result.createdFiles.length).toBeGreaterThan(0);
+  });
+
+  it('creates a WORKSHOP.md index at the repo root', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'WORKSHOP.md'), 'utf-8');
+    expect(content).toContain('Workshop Summary');
+    expect(content).toContain('discover.md');
+    expect(content).toContain(session.sessionId);
+  });
+
+  it('excludes develop.md since the repo IS the PoC', async () => {
+    const session = createFullSession({
+      poc: {
+        repoSource: 'local',
+        repoPath: '/tmp/poc',
+        iterations: [],
+      },
+    });
+    await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+    expect(files).not.toContain('develop.md');
+  });
+
+  it('includes business context in discover.md', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'docs', 'workshop', 'discover.md'), 'utf-8');
+    expect(content).toContain('ACME Rockets Inc.');
+  });
+
+  it('includes selection rationale in select.md', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'docs', 'workshop', 'select.md'), 'utf-8');
+    expect(content).toContain('Highest feasibility score');
+  });
+
+  it('returns list of created files relative to repoDir', async () => {
+    const session = createFullSession();
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    expect(result.createdFiles).toContain('WORKSHOP.md');
+    expect(result.createdFiles.some((f) => f.startsWith('docs/workshop/'))).toBe(true);
+  });
+
+  it('handles session with only Discover data', async () => {
+    const session = createFullSession({
+      phase: 'Discover',
+      status: 'Active',
+      ideas: undefined,
+      selection: undefined,
+      plan: undefined,
+      evaluation: undefined,
+    });
+
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+    expect(files).toContain('discover.md');
+    expect(files).not.toContain('plan.md');
+    expect(result.createdFiles.length).toBeGreaterThan(0);
   });
 });

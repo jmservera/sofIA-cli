@@ -178,6 +178,13 @@ ${ctx.planSummary}
 - **Runtime**: ${ctx.techStack.runtime}
 - **Test Runner**: ${ctx.techStack.testRunner}
 ${ctx.techStack.framework ? `- **Framework**: ${ctx.techStack.framework}\n` : ''}
+## Workshop Context
+
+This project was selected and designed through a structured AI Discovery Workshop.
+See [WORKSHOP.md](WORKSHOP.md) for the full decision history, including business
+context, ideation, evaluation, selection rationale, and implementation plan.
+
+Detailed per-phase documentation is in [\`docs/workshop/\`](docs/workshop/).
 `,
   },
 

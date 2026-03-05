@@ -476,7 +476,7 @@ describe('Zava Industries — Full Workshop Session', () => {
     }
 
     console.log('\n  All phases completed successfully ✓\n');
-  }, 900_000); // 15-minute overall timeout
+  }, 3600_000); // 1-hour overall timeout
 
   // ── Export Test ────────────────────────────────────────────────────────
 

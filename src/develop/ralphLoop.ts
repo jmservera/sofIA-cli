@@ -22,6 +22,7 @@ import type {
   TestResults,
 } from '../shared/schemas/session.js';
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
+import { exportWorkshopDocs } from '../sessions/exportWriter.js';
 import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
 import { TestRunner } from './testRunner.js';
 import { CodeGenerator } from './codeGenerator.js';
@@ -258,6 +259,17 @@ export class RalphLoop {
 
       spinner?.stop();
       io.writeActivity(`Scaffold complete: ${scaffoldResult.createdFiles.length} files created`);
+
+      // Export workshop documentation into the PoC repo (docs/workshop/ + WORKSHOP.md)
+      try {
+        const workshopResult = await exportWorkshopDocs(session, outputDir);
+        io.writeActivity(
+          `✓ Workshop documentation added: ${workshopResult.createdFiles.length} files (docs/workshop/)`,
+        );
+      } catch {
+        // Non-fatal — the PoC is still usable without workshop docs
+        io.writeActivity('⚠️  Could not export workshop documentation');
+      }
 
       // Initialize local git repository
       const gitInitialized = await PocScaffolder.initializeGitRepo(outputDir);
