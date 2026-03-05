@@ -17,7 +17,6 @@ import type { WorkshopSession } from '../shared/schemas/session.js';
 import type { McpManager } from '../mcp/mcpManager.js';
 import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import { RalphLoop } from '../develop/ralphLoop.js';
-import { GitHubMcpAdapter } from '../develop/githubMcpAdapter.js';
 import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
 import { deriveCheckpointState } from '../develop/checkpointState.js';
 import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';

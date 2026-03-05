@@ -143,7 +143,7 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
     const availableMcpManager: McpManager = {
       isAvailable: (name: string) => name === 'github',
     } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(availableMcpManager);
+    const _githubAdapter = new GitHubMcpAdapter(availableMcpManager);
 
     const ralph = new RalphLoop({
       client,
@@ -153,7 +153,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -182,7 +181,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -214,7 +212,6 @@ describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     await ralph.run();

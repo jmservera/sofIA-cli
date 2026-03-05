@@ -703,7 +703,9 @@ describe('RalphLoop', () => {
     });
   });
 
-  describe('GitHub MCP adapter integration', () => {
+  // SKIPPED: Auto-push to GitHub removed per user safety requirements
+  // sofIA now initializes git locally only — users push manually
+  describe.skip('GitHub MCP adapter integration', () => {
     it('reads written files from disk and passes their content to pushFiles', async () => {
       const session = makeSession();
       const io = makeIo();
@@ -757,7 +759,7 @@ describe('RalphLoop', () => {
 
       // Create a mock GitHub adapter that captures pushFiles calls
       const pushFilesMock = vi.fn().mockResolvedValue({ available: true, commitSha: 'abc123' });
-      const githubAdapter = {
+      const _githubAdapter = {
         isAvailable: () => true,
         getRepoUrl: () => 'https://github.com/acme/poc-test',
         pushFiles: pushFilesMock,
@@ -776,7 +778,6 @@ describe('RalphLoop', () => {
         maxIterations: 5,
         testRunner,
         scaffolder,
-        githubAdapter,
       });
 
       await ralph.run();
@@ -1090,7 +1091,9 @@ describe('RalphLoop', () => {
     });
   });
 
-  describe('post-scaffold push (T024 — US2)', () => {
+  // SKIPPED: Auto-push to GitHub removed per user safety requirements
+  // sofIA now initializes git locally only — users push manually
+  describe.skip('post-scaffold push (T024 — US2)', () => {
     it('pushes scaffold files to GitHub after npm install, before first test iteration', async () => {
       const session = makeSession();
       const io = makeIo();
@@ -1103,7 +1106,7 @@ describe('RalphLoop', () => {
         pushOrder.push('pushFiles');
         return { available: true, commitSha: 'scaffold-sha' };
       });
-      const githubAdapter = {
+      const _githubAdapter = {
         isAvailable: () => true,
         getRepoUrl: () => 'https://github.com/acme/poc-test',
         pushFiles: pushFilesMock,
@@ -1131,7 +1134,6 @@ describe('RalphLoop', () => {
         maxIterations: 3,
         testRunner,
         scaffolder,
-        githubAdapter,
       });
 
       await ralph.run();

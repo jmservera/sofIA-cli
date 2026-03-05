@@ -45,19 +45,21 @@ This constitution governs the design, development, and operation of the sofIA Co
 - Each MCP call must have a **clear purpose** that supports the current workshop phase (e.g., research technology options, inspect existing codebases, understand documentation, analyze processes).
 - Tool use is **explainable**: the agent should be able to state what tool it used, why, and how the result influenced its recommendation.
 
-### V. Test‑First, Regressions‑Last (Red → Green → Review)
+### V. Test‑First, Regressions‑Last (Red → Green → Lint → Review)
 
 - New behavior must be covered by **automated tests** (unit where possible, integration/e2e where necessary).
 - **No implementation starts before tests**: for every task phase, the first committed change MUST be failing tests that describe the target behavior.
 - The project follows a **phase‑level TDD cycle** for every feature implemented:
   1. **Red**: Write all tests for the current task phase **before** writing any implementation code. All new tests MUST fail initially, confirming they test real behavior that does not yet exist.
   2. **Green**: Implement the minimum code needed to make all failing tests pass. Do not move to the next phase until every test is green.
-  3. **Review**: After green, perform a **mandatory self‑review** using the Test Review Checklist (see Development Workflow below) to identify gaps. Add new tests if gaps are found and repeat the red → green cycle for those additions.
+  3. **Lint**: After green, run `npm run lint && npm run typecheck`. **Both must pass before any commit.** Lint and typecheck failures are treated the same as failing tests — stop, fix, re‑verify. This step is mandatory in every iteration, not just at the end of a task.
+  4. **Review**: After lint passes, perform a **mandatory self‑review** using the Test Review Checklist (see Development Workflow below) to identify gaps. Add new tests if gaps are found and repeat the red → green → lint cycle for those additions.
+- **Loop invariant for every code change**: run `npm run lint && npm run typecheck` immediately after editing any file. Never commit code that fails either check.
 - Critical flows – idea evaluation, scoring, selection, and project planning – require **stable, deterministic tests** that avoid flaky external dependencies.
 - Interactive CLI flows (menus, phase gates, follow-up prompts, retries, resume, and Ctrl+C paths) MUST be testable from day one through deterministic automation, not only manual checks.
 - Test strategy: pure logic → unit tests; orchestration and tool integration → integration tests with fakes/mocks and a minimal set of live MCP smoke tests.
 - Generated PoC repositories MUST include **basic smoke/happy‑path tests** that validate the code runs successfully. Full TDD is not required for PoC code, but generated tests serve as a quality signal for the Ralph loop.
-- Each **Ralph loop iteration** MUST be test‑driven: every refinement cycle starts with a failing test or captured error that proves a defect exists, refines code until the failure is resolved, and then checks whether new issues were introduced.
+- Each **Ralph loop iteration** MUST be test‑driven: every refinement cycle starts with a failing test or captured error that proves a defect exists, refines code until the failure is resolved, runs lint + typecheck, and then checks whether new issues were introduced.
 
 ### VI. Interactive CLI Testability by Design
 
