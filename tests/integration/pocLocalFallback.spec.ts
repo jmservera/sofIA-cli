@@ -12,14 +12,12 @@ import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
 import { RalphLoop } from '../../src/develop/ralphLoop.js';
-import { GitHubMcpAdapter } from '../../src/develop/githubMcpAdapter.js';
 import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
 import { TestRunner } from '../../src/develop/testRunner.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../src/loop/conversationLoop.js';
 import type { CopilotClient } from '../../src/shared/copilotClient.js';
 import type { TestResults } from '../../src/shared/schemas/session.js';
-import type { McpManager } from '../../src/mcp/mcpManager.js';
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
