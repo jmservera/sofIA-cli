@@ -21,9 +21,12 @@ import type { CopilotClient } from '../../src/shared/copilotClient.js';
 import { ConversationLoop } from '../../src/loop/conversationLoop.js';
 import type { LoopIO, DecisionGateResult } from '../../src/loop/conversationLoop.js';
 import { createPhaseHandler, getPhaseOrder } from '../../src/phases/phaseHandlers.js';
+import type { PhaseHandlerConfig } from '../../src/phases/phaseHandlers.js';
 import type { WorkshopSession, PhaseValue } from '../../src/shared/schemas/session.js';
 import { createDefaultStore } from '../../src/sessions/sessionStore.js';
-import { isWebSearchConfigured } from '../../src/mcp/webSearch.js';
+import { isWebSearchConfigured, createWebSearchTool } from '../../src/mcp/webSearch.js';
+import type { WebSearchConfig } from '../../src/mcp/webSearch.js';
+import type { WebSearchClient } from '../../src/phases/discoveryEnricher.js';
 import type { SofiaEvent } from '../../src/shared/events.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -236,6 +239,7 @@ function createTestIO(inputs: string[]): {
 describe('Zava Industries — Full Workshop Session', () => {
   let client: CopilotClient;
   let canRun = false;
+  let webSearchClient: WebSearchClient | undefined;
   const results: TestResults = {
     startedAt: new Date().toISOString(),
     webSearchConfigured: isWebSearchConfigured(),
@@ -250,6 +254,16 @@ describe('Zava Industries — Full Workshop Session', () => {
 
       client = await createCopilotClient();
       canRun = true;
+
+      // FR-012: Create WebSearchClient when configured (after dotenv loads)
+      if (isWebSearchConfigured()) {
+        const wsConfig: WebSearchConfig = {
+          projectEndpoint: process.env.FOUNDRY_PROJECT_ENDPOINT!,
+          modelDeploymentName: process.env.FOUNDRY_MODEL_DEPLOYMENT_NAME!,
+        };
+        const searchFn = createWebSearchTool(wsConfig);
+        webSearchClient = { search: searchFn };
+      }
 
       // Ensure results directory
       await mkdir(RESULTS_DIR, { recursive: true });
@@ -318,8 +332,15 @@ describe('Zava Industries — Full Workshop Session', () => {
       const { io, output: _output, activityLog: _activityLog, toolSummaries: _toolSummaries } = createTestIO(inputs);
 
       try {
-        // Create and preload the handler
-        const handler = createPhaseHandler(phase as PhaseValue);
+        // Create and preload the handler (pass webSearchClient for Discover enrichment)
+        const handlerConfig: PhaseHandlerConfig = {
+          discover: {
+            io,
+            webSearchClient,
+          },
+          webSearchClient,
+        };
+        const handler = createPhaseHandler(phase as PhaseValue, handlerConfig);
         await handler._preload();
 
         // Update session phase
