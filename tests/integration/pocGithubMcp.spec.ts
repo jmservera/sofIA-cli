@@ -43,7 +43,8 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 function makeIo(): LoopIO {
   return {
@@ -62,9 +63,16 @@ function makeFakeScaffolder(outputDir: string): PocScaffolder {
     scaffold: vi.fn().mockImplementation(async () => {
       const { writeFile, mkdir } = await import('node:fs/promises');
       await mkdir(join(outputDir, 'src'), { recursive: true });
-      await writeFile(join(outputDir, 'package.json'), JSON.stringify({
-        name: 'test', scripts: { test: 'vitest run' }, dependencies: {}, devDependencies: {},
-      }), 'utf-8');
+      await writeFile(
+        join(outputDir, 'package.json'),
+        JSON.stringify({
+          name: 'test',
+          scripts: { test: 'vitest run' },
+          dependencies: {},
+          devDependencies: {},
+        }),
+        'utf-8',
+      );
       await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
       return {
         createdFiles: ['package.json', 'src/index.ts'],

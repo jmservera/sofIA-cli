@@ -493,8 +493,20 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
       ideas: undefined,
       turns: [
         { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: now },
-        { phase: 'Ideate', sequence: 2, role: 'user', content: 'brainstorm AI ideas', timestamp: now },
-        { phase: 'Ideate', sequence: 3, role: 'assistant', content: 'Here are some ideas for AI-powered solutions.', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'user',
+          content: 'brainstorm AI ideas',
+          timestamp: now,
+        },
+        {
+          phase: 'Ideate',
+          sequence: 3,
+          role: 'assistant',
+          content: 'Here are some ideas for AI-powered solutions.',
+          timestamp: now,
+        },
       ],
     });
 
@@ -514,7 +526,13 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
       evaluation: undefined,
       turns: [
         { phase: 'Design', sequence: 1, role: 'user', content: 'evaluate ideas', timestamp: now },
-        { phase: 'Design', sequence: 2, role: 'assistant', content: 'Let me evaluate.', timestamp: now },
+        {
+          phase: 'Design',
+          sequence: 2,
+          role: 'assistant',
+          content: 'Let me evaluate.',
+          timestamp: now,
+        },
       ],
     });
 
@@ -533,7 +551,13 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     const session = createFullSession({
       turns: [
         { phase: 'Ideate', sequence: 1, role: 'user', content: 'give ideas', timestamp: now },
-        { phase: 'Ideate', sequence: 2, role: 'assistant', content: 'here are ideas', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'assistant',
+          content: 'here are ideas',
+          timestamp: now,
+        },
       ],
     });
     // session already has ideas from createFullSession
@@ -552,8 +576,20 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     const now = new Date().toISOString();
     const phases = ['Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop'] as const;
     const turns = phases.flatMap((phase, i) => [
-      { phase, sequence: i * 2 + 1, role: 'user' as const, content: `${phase} input`, timestamp: now },
-      { phase, sequence: i * 2 + 2, role: 'assistant' as const, content: `${phase} response`, timestamp: now },
+      {
+        phase,
+        sequence: i * 2 + 1,
+        role: 'user' as const,
+        content: `${phase} input`,
+        timestamp: now,
+      },
+      {
+        phase,
+        sequence: i * 2 + 2,
+        role: 'assistant' as const,
+        content: `${phase} response`,
+        timestamp: now,
+      },
     ]);
 
     const session = createFullSession({ turns });
@@ -576,9 +612,21 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
       poc: undefined,
       turns: [
         { phase: 'Ideate', sequence: 1, role: 'user', content: 'ideas please', timestamp: now },
-        { phase: 'Ideate', sequence: 2, role: 'assistant', content: 'Here are creative ideas.', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'assistant',
+          content: 'Here are creative ideas.',
+          timestamp: now,
+        },
         { phase: 'Design', sequence: 3, role: 'user', content: 'evaluate', timestamp: now },
-        { phase: 'Design', sequence: 4, role: 'assistant', content: 'Evaluation results.', timestamp: now },
+        {
+          phase: 'Design',
+          sequence: 4,
+          role: 'assistant',
+          content: 'Evaluation results.',
+          timestamp: now,
+        },
       ],
     });
 

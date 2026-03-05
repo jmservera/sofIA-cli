@@ -268,7 +268,9 @@ export class RalphLoop {
         io.writeActivity('   1. Review the generated code');
         io.writeActivity(`   2. cd ${outputDir}`);
         io.writeActivity('   3. Create a GitHub repo: gh repo create --source=. --push');
-        io.writeActivity('   4. Or push to existing remote: git remote add origin <url> && git push -u origin main');
+        io.writeActivity(
+          '   4. Or push to existing remote: git remote add origin <url> && git push -u origin main',
+        );
         io.writeActivity('');
       } else {
         io.writeActivity('⚠️  Could not initialize git (git may not be installed)');
@@ -314,7 +316,8 @@ export class RalphLoop {
     }
 
     // ── Iteration loop ─────────────────────────────────────────────────────
-    const testRunner = this.options.testRunner ??
+    const testRunner =
+      this.options.testRunner ??
       new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
 
     // ── Iteration 2..max ──────────────────────────────────────────────────
@@ -520,7 +523,7 @@ export class RalphLoop {
           iterations,
           repoSource,
           outputDir,
- undefined, // No GitHub repo URL - local only
+          undefined, // No GitHub repo URL - local only
           techStack,
         );
         await onSessionUpdate(session);

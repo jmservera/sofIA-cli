@@ -121,24 +121,25 @@ coverage/
   {
     path: 'tsconfig.json',
     skipIfExists: true,
-    content: JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'Node16',
-          moduleResolution: 'Node16',
-          strict: true,
-          outDir: 'dist',
-          rootDir: 'src',
-          declaration: true,
-          esModuleInterop: true,
-          skipLibCheck: true,
+    content:
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'Node16',
+            moduleResolution: 'Node16',
+            strict: true,
+            outDir: 'dist',
+            rootDir: 'src',
+            declaration: true,
+            esModuleInterop: true,
+            skipLibCheck: true,
+          },
+          include: ['src'],
         },
-        include: ['src'],
-      },
-      null,
-      2,
-    ) + '\n',
+        null,
+        2,
+      ) + '\n',
   },
 
   {
@@ -305,7 +306,7 @@ export class PocScaffolder {
 
     const planSummary = session.plan?.architectureNotes
       ? session.plan.architectureNotes
-      : session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details';
+      : (session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details');
 
     const techStack: TechStack = templateEntry?.techStack
       ? { ...templateEntry.techStack }
@@ -469,7 +470,7 @@ export class PocScaffolder {
   /**
    * Initialize a local git repository in the output directory.
    * Creates an initial commit with all scaffold files.
-   * 
+   *
    * @param outputDir The directory to initialize git in
    * @returns true if successful, false otherwise
    */
@@ -484,15 +485,15 @@ export class PocScaffolder {
 
       // Initialize git repository
       execSync('git init', { cwd: outputDir, stdio: 'ignore' });
-      
+
       // Stage all files
       execSync('git add .', { cwd: outputDir, stdio: 'ignore' });
-      
+
       // Create initial commit
-      execSync('git commit -m "chore: initial scaffold from sofIA"', { 
-        cwd: outputDir, 
+      execSync('git commit -m "chore: initial scaffold from sofIA"', {
+        cwd: outputDir,
         stdio: 'ignore',
-        env: { 
+        env: {
           ...process.env,
           GIT_AUTHOR_NAME: 'sofIA',
           GIT_AUTHOR_EMAIL: 'sofia@workshop.local',
@@ -500,7 +501,7 @@ export class PocScaffolder {
           GIT_COMMITTER_EMAIL: 'sofia@workshop.local',
         },
       });
-      
+
       return true;
     } catch (_err) {
       // Git initialization failed - not critical, just return false
