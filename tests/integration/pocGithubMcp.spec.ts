@@ -111,7 +111,9 @@ function makePassingTestRunner(): TestRunner {
   } as unknown as TestRunner;
 }
 
-describe('RalphLoop — GitHub MCP flow (T034)', () => {
+// SKIPPED: Auto-push to GitHub removed per user safety requirements
+// sofIA now initializes git locally only - users push manually
+describe.skip('RalphLoop — GitHub MCP flow (T034)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {

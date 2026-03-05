@@ -131,12 +131,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    // GitHub MCP unavailable
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -145,7 +139,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -161,11 +154,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -174,7 +162,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -188,11 +175,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -201,7 +183,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     await ralph.run();

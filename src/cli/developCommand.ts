@@ -214,7 +214,6 @@ export async function developCommand(
   const spinner = createNoOpSpinner();
 
   const enricher = mcpManager ? new McpContextEnricher(mcpManager) : undefined;
-  const githubAdapter = mcpManager ? new GitHubMcpAdapter(mcpManager) : undefined;
 
   const ralph = new RalphLoop({
     client,
@@ -224,7 +223,6 @@ export async function developCommand(
     maxIterations: opts.maxIterations ?? 10,
     outputDir,
     enricher,
-    githubAdapter,
     checkpoint,
     scaffolder: new PocScaffolder(template),
     templateEntry: template,

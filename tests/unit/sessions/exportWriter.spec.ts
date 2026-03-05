@@ -289,10 +289,10 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     expect(content).toContain('local');
   });
 
-  it('includes repo URL when repoSource is github-mcp', async () => {
+  it('includes repo URL when manually set on local repoSource', async () => {
     const session = createSessionWithPoc({
       poc: {
-        repoSource: 'github-mcp',
+        repoSource: 'local',
         repoUrl: 'https://github.com/acme/poc-route-optimizer',
         iterations: [],
       },
@@ -300,7 +300,7 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     await exportSession(session, tmpDir);
     const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
     expect(content).toContain('https://github.com/acme/poc-route-optimizer');
-    expect(content).toContain('github-mcp');
+    expect(content).toContain('local');
   });
 
   it('includes tech stack summary', async () => {

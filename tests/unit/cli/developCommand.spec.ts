@@ -284,7 +284,7 @@ describe('developCommand — MCP wiring', () => {
     vi.mocked(RalphLoop).mockReset();
   });
 
-  it('passes non-undefined enricher and githubAdapter to RalphLoop when mcpManager provided', async () => {
+  it('passes non-undefined enricher to RalphLoop when mcpManager provided', async () => {
     const io = makeIo();
     const client = makeFakeClient();
     const mockMcpManager: McpManager = {
@@ -310,10 +310,9 @@ describe('developCommand — MCP wiring', () => {
 
     expect(capturedOptions).toBeDefined();
     expect(capturedOptions?.enricher).toBeDefined();
-    expect(capturedOptions?.githubAdapter).toBeDefined();
   });
 
-  it('passes undefined enricher and githubAdapter to RalphLoop when no mcpManager provided', async () => {
+  it('passes undefined enricher to RalphLoop when no mcpManager provided', async () => {
     const io = makeIo();
     const client = makeFakeClient();
 
@@ -328,7 +327,6 @@ describe('developCommand — MCP wiring', () => {
 
     expect(capturedOptions).toBeDefined();
     expect(capturedOptions?.enricher).toBeUndefined();
-    expect(capturedOptions?.githubAdapter).toBeUndefined();
   });
 });
 

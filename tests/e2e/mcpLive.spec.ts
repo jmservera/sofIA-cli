@@ -3,10 +3,14 @@
  *
  * Gated behind SOFIA_LIVE_MCP_TESTS=true environment variable.
  * These tests exercise real MCP server integrations:
- * - GitHub MCP: create/delete a test repository
+ * - GitHub MCP: create/delete a test repository (infrastructure validation only)
  * - Context7: resolve a library ID
  * - Azure MCP: return documentation for a simple query
  * - Web search: return results for a test query
+ *
+ * NOTE: GitHub MCP test validates the infrastructure works, but sofIA does NOT
+ * automatically create GitHub repos during PoC generation. PoCs are created locally
+ * with git init, and users manually push when ready (safer approach).
  *
  * Requires:
  * - GitHub MCP: GITHUB_TOKEN env var OR `gh auth login` (GitHub CLI)
