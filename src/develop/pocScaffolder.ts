@@ -9,6 +9,7 @@
  */
 import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
+import { execSync } from 'node:child_process';
 
 import type { TechStack } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
@@ -120,24 +121,25 @@ coverage/
   {
     path: 'tsconfig.json',
     skipIfExists: true,
-    content: JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'Node16',
-          moduleResolution: 'Node16',
-          strict: true,
-          outDir: 'dist',
-          rootDir: 'src',
-          declaration: true,
-          esModuleInterop: true,
-          skipLibCheck: true,
+    content:
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'Node16',
+            moduleResolution: 'Node16',
+            strict: true,
+            outDir: 'dist',
+            rootDir: 'src',
+            declaration: true,
+            esModuleInterop: true,
+            skipLibCheck: true,
+          },
+          include: ['src'],
         },
-        include: ['src'],
-      },
-      null,
-      2,
-    ) + '\n',
+        null,
+        2,
+      ) + '\n',
   },
 
   {
@@ -176,6 +178,13 @@ ${ctx.planSummary}
 - **Runtime**: ${ctx.techStack.runtime}
 - **Test Runner**: ${ctx.techStack.testRunner}
 ${ctx.techStack.framework ? `- **Framework**: ${ctx.techStack.framework}\n` : ''}
+## Workshop Context
+
+This project was selected and designed through a structured AI Discovery Workshop.
+See [WORKSHOP.md](WORKSHOP.md) for the full decision history, including business
+context, ideation, evaluation, selection rationale, and implementation plan.
+
+Detailed per-phase documentation is in [\`docs/workshop/\`](docs/workshop/).
 `,
   },
 
@@ -304,7 +313,7 @@ export class PocScaffolder {
 
     const planSummary = session.plan?.architectureNotes
       ? session.plan.architectureNotes
-      : session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details';
+      : (session.plan?.milestones?.map((m) => m.title).join(', ') ?? 'See plan for details');
 
     const techStack: TechStack = templateEntry?.techStack
       ? { ...templateEntry.techStack }
@@ -463,6 +472,48 @@ export class PocScaffolder {
    */
   getTemplateFiles(): string[] {
     return this.template.map((f) => f.path);
+  }
+
+  /**
+   * Initialize a local git repository in the output directory.
+   * Creates an initial commit with all scaffold files.
+   *
+   * @param outputDir The directory to initialize git in
+   * @returns true if successful, false otherwise
+   */
+  static async initializeGitRepo(outputDir: string): Promise<boolean> {
+    try {
+      // Check if git is already initialized
+      const gitDir = join(outputDir, '.git');
+      const exists = await fileExists(gitDir);
+      if (exists) {
+        return true; // Already initialized
+      }
+
+      // Initialize git repository
+      execSync('git init', { cwd: outputDir, stdio: 'ignore' });
+
+      // Stage all files
+      execSync('git add .', { cwd: outputDir, stdio: 'ignore' });
+
+      // Create initial commit
+      execSync('git commit -m "chore: initial scaffold from sofIA"', {
+        cwd: outputDir,
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: 'sofIA',
+          GIT_AUTHOR_EMAIL: 'sofia@workshop.local',
+          GIT_COMMITTER_NAME: 'sofIA',
+          GIT_COMMITTER_EMAIL: 'sofia@workshop.local',
+        },
+      });
+
+      return true;
+    } catch (_err) {
+      // Git initialization failed - not critical, just return false
+      return false;
+    }
   }
 }
 

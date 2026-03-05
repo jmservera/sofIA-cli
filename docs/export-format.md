@@ -78,7 +78,7 @@ The Develop export is generated from `PocDevelopmentState` and includes:
 
 | Section                | Content                                                                                                                                          |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **PoC Repository**     | Repository URL (if GitHub MCP) or local path, plus `repoSource` (`local` or `github-mcp`)                                                        |
+| **PoC Repository**     | Local path (always local git repository), plus `repoSource` (`local`). Users push manually to GitHub when ready (safer approach).                |
 | **Technology Stack**   | Language, runtime, test runner, framework (optional), build command (optional)                                                                   |
 | **Result**             | `finalStatus` (`success`, `failed`, `partial`), `terminationReason` (`tests-passing`, `max-iterations`, `user-stopped`, `error`), total duration |
 | **Final Test Results** | Passed/failed/skipped counts, duration, per-failure details (test name, message, expected/actual, file/line)                                     |

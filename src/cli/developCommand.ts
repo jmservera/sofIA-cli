@@ -17,7 +17,6 @@ import type { WorkshopSession } from '../shared/schemas/session.js';
 import type { McpManager } from '../mcp/mcpManager.js';
 import { createNoOpSpinner } from '../shared/activitySpinner.js';
 import { RalphLoop } from '../develop/ralphLoop.js';
-import { GitHubMcpAdapter } from '../develop/githubMcpAdapter.js';
 import { McpContextEnricher } from '../develop/mcpContextEnricher.js';
 import { deriveCheckpointState } from '../develop/checkpointState.js';
 import { createDefaultRegistry, selectTemplate } from '../develop/templateRegistry.js';
@@ -162,9 +161,7 @@ export async function developCommand(
       }
     }
     if (!json) {
-      io.writeActivity(
-        'Cleared existing output directory and session state (--force)',
-      );
+      io.writeActivity('Cleared existing output directory and session state (--force)');
     }
   }
 
@@ -214,7 +211,6 @@ export async function developCommand(
   const spinner = createNoOpSpinner();
 
   const enricher = mcpManager ? new McpContextEnricher(mcpManager) : undefined;
-  const githubAdapter = mcpManager ? new GitHubMcpAdapter(mcpManager) : undefined;
 
   const ralph = new RalphLoop({
     client,
@@ -224,7 +220,6 @@ export async function developCommand(
     maxIterations: opts.maxIterations ?? 10,
     outputDir,
     enricher,
-    githubAdapter,
     checkpoint,
     scaffolder: new PocScaffolder(template),
     templateEntry: template,

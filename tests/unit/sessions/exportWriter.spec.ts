@@ -12,7 +12,7 @@ import { mkdtemp, rm, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { exportSession } from '../../../src/sessions/exportWriter.js';
+import { exportSession, exportWorkshopDocs } from '../../../src/sessions/exportWriter.js';
 import type { WorkshopSession } from '../../../src/shared/schemas/session.js';
 
 function createFullSession(overrides?: Partial<WorkshopSession>): WorkshopSession {
@@ -289,10 +289,10 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     expect(content).toContain('local');
   });
 
-  it('includes repo URL when repoSource is github-mcp', async () => {
+  it('includes repo URL when manually set on local repoSource', async () => {
     const session = createSessionWithPoc({
       poc: {
-        repoSource: 'github-mcp',
+        repoSource: 'local',
         repoUrl: 'https://github.com/acme/poc-route-optimizer',
         iterations: [],
       },
@@ -300,7 +300,7 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
     await exportSession(session, tmpDir);
     const content = await readFile(join(tmpDir, 'develop.md'), 'utf-8');
     expect(content).toContain('https://github.com/acme/poc-route-optimizer');
-    expect(content).toContain('github-mcp');
+    expect(content).toContain('local');
   });
 
   it('includes tech stack summary', async () => {
@@ -483,5 +483,255 @@ describe('generateDevelopMarkdown (Feature 002 enrichment)', () => {
         expect.stringContaining('PoC termination: tests-passing'),
       ]),
     );
+  });
+
+  // ── Conversation Fallback Export Tests (T072-T076) ───────────────────────
+
+  it('generates ideate.md with conversation turns when ideas are null', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      ideas: undefined,
+      turns: [
+        { phase: 'Discover', sequence: 1, role: 'user', content: 'hello', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'user',
+          content: 'brainstorm AI ideas',
+          timestamp: now,
+        },
+        {
+          phase: 'Ideate',
+          sequence: 3,
+          role: 'assistant',
+          content: 'Here are some ideas for AI-powered solutions.',
+          timestamp: now,
+        },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).toContain('ideate.md');
+
+    const content = await readFile(join(tmpDir, 'ideate.md'), 'utf-8');
+    expect(content).toContain('# Ideate Phase');
+    expect(content).toContain('## Conversation');
+    expect(content).toContain('brainstorm AI ideas');
+  });
+
+  it('generates design.md with conversation turns when evaluation is null', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      evaluation: undefined,
+      turns: [
+        { phase: 'Design', sequence: 1, role: 'user', content: 'evaluate ideas', timestamp: now },
+        {
+          phase: 'Design',
+          sequence: 2,
+          role: 'assistant',
+          content: 'Let me evaluate.',
+          timestamp: now,
+        },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const files = await readdir(tmpDir);
+    expect(files).toContain('design.md');
+
+    const content = await readFile(join(tmpDir, 'design.md'), 'utf-8');
+    expect(content).toContain('# Design Phase');
+    expect(content).toContain('## Conversation');
+    expect(content).toContain('evaluate ideas');
+  });
+
+  it('renders structured data first then conversation when both exist', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      turns: [
+        { phase: 'Ideate', sequence: 1, role: 'user', content: 'give ideas', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'assistant',
+          content: 'here are ideas',
+          timestamp: now,
+        },
+      ],
+    });
+    // session already has ideas from createFullSession
+
+    await exportSession(session, tmpDir);
+    const content = await readFile(join(tmpDir, 'ideate.md'), 'utf-8');
+    // Structured data (Ideas section) should come before Conversation
+    const ideasIdx = content.indexOf('## Ideas');
+    const convIdx = content.indexOf('## Conversation');
+    expect(ideasIdx).toBeGreaterThan(-1);
+    expect(convIdx).toBeGreaterThan(-1);
+    expect(ideasIdx).toBeLessThan(convIdx);
+  });
+
+  it('summary.json lists all 6 phase files when all phases have turns', async () => {
+    const now = new Date().toISOString();
+    const phases = ['Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop'] as const;
+    const turns = phases.flatMap((phase, i) => [
+      {
+        phase,
+        sequence: i * 2 + 1,
+        role: 'user' as const,
+        content: `${phase} input`,
+        timestamp: now,
+      },
+      {
+        phase,
+        sequence: i * 2 + 2,
+        role: 'assistant' as const,
+        content: `${phase} response`,
+        timestamp: now,
+      },
+    ]);
+
+    const session = createFullSession({ turns });
+
+    await exportSession(session, tmpDir);
+    const summaryRaw = await readFile(join(tmpDir, 'summary.json'), 'utf-8');
+    const summary = JSON.parse(summaryRaw) as { files: Array<{ path: string }> };
+
+    const mdFiles = summary.files.filter((f) => f.path.endsWith('.md'));
+    expect(mdFiles.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('summary.json highlights include one entry per phase with turns', async () => {
+    const now = new Date().toISOString();
+    const session = createFullSession({
+      ideas: undefined,
+      evaluation: undefined,
+      selection: undefined,
+      plan: undefined,
+      poc: undefined,
+      turns: [
+        { phase: 'Ideate', sequence: 1, role: 'user', content: 'ideas please', timestamp: now },
+        {
+          phase: 'Ideate',
+          sequence: 2,
+          role: 'assistant',
+          content: 'Here are creative ideas.',
+          timestamp: now,
+        },
+        { phase: 'Design', sequence: 3, role: 'user', content: 'evaluate', timestamp: now },
+        {
+          phase: 'Design',
+          sequence: 4,
+          role: 'assistant',
+          content: 'Evaluation results.',
+          timestamp: now,
+        },
+      ],
+    });
+
+    await exportSession(session, tmpDir);
+    const summaryRaw = await readFile(join(tmpDir, 'summary.json'), 'utf-8');
+    const summary = JSON.parse(summaryRaw) as { highlights?: string[] };
+    expect(summary.highlights).toBeDefined();
+    // Should have highlights for phases with turns (fallback to first assistant turn)
+    expect(summary.highlights!.some((h) => h.includes('Ideate'))).toBe(true);
+    expect(summary.highlights!.some((h) => h.includes('Design'))).toBe(true);
+  });
+});
+
+// ── exportWorkshopDocs — workshop docs for PoC repos ─────────────────────────
+
+describe('exportWorkshopDocs', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'sofia-wsdocs-'));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates docs/workshop/ directory with phase markdown files', async () => {
+    const session = createFullSession();
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+
+    expect(files).toContain('discover.md');
+    expect(files).toContain('ideate.md');
+    expect(files).toContain('select.md');
+    expect(files).toContain('plan.md');
+    expect(result.createdFiles.length).toBeGreaterThan(0);
+  });
+
+  it('creates a WORKSHOP.md index at the repo root', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'WORKSHOP.md'), 'utf-8');
+    expect(content).toContain('Workshop Summary');
+    expect(content).toContain('discover.md');
+    expect(content).toContain(session.sessionId);
+  });
+
+  it('excludes develop.md since the repo IS the PoC', async () => {
+    const session = createFullSession({
+      poc: {
+        repoSource: 'local',
+        repoPath: '/tmp/poc',
+        iterations: [],
+      },
+    });
+    await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+    expect(files).not.toContain('develop.md');
+  });
+
+  it('includes business context in discover.md', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'docs', 'workshop', 'discover.md'), 'utf-8');
+    expect(content).toContain('ACME Rockets Inc.');
+  });
+
+  it('includes selection rationale in select.md', async () => {
+    const session = createFullSession();
+    await exportWorkshopDocs(session, tmpDir);
+
+    const content = await readFile(join(tmpDir, 'docs', 'workshop', 'select.md'), 'utf-8');
+    expect(content).toContain('Highest feasibility score');
+  });
+
+  it('returns list of created files relative to repoDir', async () => {
+    const session = createFullSession();
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    expect(result.createdFiles).toContain('WORKSHOP.md');
+    expect(result.createdFiles.some((f) => f.startsWith('docs/workshop/'))).toBe(true);
+  });
+
+  it('handles session with only Discover data', async () => {
+    const session = createFullSession({
+      phase: 'Discover',
+      status: 'Active',
+      ideas: undefined,
+      selection: undefined,
+      plan: undefined,
+      evaluation: undefined,
+    });
+
+    const result = await exportWorkshopDocs(session, tmpDir);
+
+    const workshopDir = join(tmpDir, 'docs', 'workshop');
+    const files = await readdir(workshopDir);
+    expect(files).toContain('discover.md');
+    expect(files).not.toContain('plan.md');
+    expect(result.createdFiles.length).toBeGreaterThan(0);
   });
 });

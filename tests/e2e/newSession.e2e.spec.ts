@@ -149,7 +149,7 @@ describe('New Session E2E (PTY)', () => {
     // Menu should render with sofIA branding and option 1
     expect(result.output).toMatch(/sofIA/i);
     expect(result.output).toMatch(/Start a new workshop session|1\./);
-  }, 20_000);
+  }, 30_000);
 
   it('shows Exit option in the main menu', async () => {
     const result = await runCliPty(

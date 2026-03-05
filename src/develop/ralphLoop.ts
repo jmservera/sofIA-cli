@@ -8,7 +8,7 @@
  */
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
 import type { LoopIO } from '../loop/conversationLoop.js';
@@ -22,11 +22,11 @@ import type {
   TestResults,
 } from '../shared/schemas/session.js';
 // McpManager import removed - accessed via McpContextEnricher.mcpManager public property
+import { exportWorkshopDocs } from '../sessions/exportWriter.js';
 import { PocScaffolder, validatePocOutput } from './pocScaffolder.js';
 import { TestRunner } from './testRunner.js';
-import { CodeGenerator, isPathWithinDirectory, isUnsafePath } from './codeGenerator.js';
+import { CodeGenerator } from './codeGenerator.js';
 import { McpContextEnricher } from './mcpContextEnricher.js';
-import { GitHubMcpAdapter } from './githubMcpAdapter.js';
 import type { CheckpointState } from './checkpointState.js';
 import type { TemplateEntry } from './templateRegistry.js';
 
@@ -51,8 +51,6 @@ export interface RalphLoopOptions {
   onEvent?: (event: SofiaEvent) => void;
   /** MCP context enricher (optional) */
   enricher?: McpContextEnricher;
-  /** GitHub MCP adapter (optional) */
-  githubAdapter?: GitHubMcpAdapter;
   /** Override TestRunner for testing */
   testRunner?: TestRunner;
   /** Override PocScaffolder for testing */
@@ -204,14 +202,9 @@ export class RalphLoop {
     }
 
     // ── Determine repo source ──────────────────────────────────────────────
-    const githubAdapter = this.options.githubAdapter;
-    const repoSource: 'local' | 'github-mcp' = githubAdapter?.isAvailable()
-      ? 'github-mcp'
-      : 'local';
-
-    if (repoSource === 'local') {
-      io.writeActivity(`GitHub MCP not available — using local output: ${outputDir}`);
-    }
+    // Always use local git repositories for safety - never auto-push to GitHub
+    const repoSource = 'local' as const;
+    io.writeActivity(`Output directory: ${outputDir}`);
 
     // ── Build scaffold context ─────────────────────────────────────────────
     const scaffoldCtx = PocScaffolder.buildContext(session, outputDir, templateEntry);
@@ -267,6 +260,34 @@ export class RalphLoop {
       spinner?.stop();
       io.writeActivity(`Scaffold complete: ${scaffoldResult.createdFiles.length} files created`);
 
+      // Export workshop documentation into the PoC repo (docs/workshop/ + WORKSHOP.md)
+      try {
+        const workshopResult = await exportWorkshopDocs(session, outputDir);
+        io.writeActivity(
+          `✓ Workshop documentation added: ${workshopResult.createdFiles.length} files (docs/workshop/)`,
+        );
+      } catch {
+        // Non-fatal — the PoC is still usable without workshop docs
+        io.writeActivity('⚠️  Could not export workshop documentation');
+      }
+
+      // Initialize local git repository
+      const gitInitialized = await PocScaffolder.initializeGitRepo(outputDir);
+      if (gitInitialized) {
+        io.writeActivity('✓ Initialized git repository with initial commit');
+        io.writeActivity('');
+        io.writeActivity('📌 Next steps:');
+        io.writeActivity('   1. Review the generated code');
+        io.writeActivity(`   2. cd ${outputDir}`);
+        io.writeActivity('   3. Create a GitHub repo: gh repo create --source=. --push');
+        io.writeActivity(
+          '   4. Or push to existing remote: git remote add origin <url> && git push -u origin main',
+        );
+        io.writeActivity('');
+      } else {
+        io.writeActivity('⚠️  Could not initialize git (git may not be installed)');
+      }
+
       // Persist after scaffold
       session = this.updateSessionPoc(
         session,
@@ -277,15 +298,6 @@ export class RalphLoop {
         techStack,
       );
       await onSessionUpdate(session);
-
-      // Push scaffold to GitHub if available
-      if (githubAdapter?.isAvailable()) {
-        await githubAdapter.createRepository({
-          name: scaffoldCtx.projectName,
-          description: scaffoldCtx.ideaDescription,
-        });
-        io.writeActivity(`Created GitHub repository: ${githubAdapter.getRepoUrl()}`);
-      }
     }
 
     // ── Dependency install (FR-003: always re-run on resume) ───────────────
@@ -316,36 +328,9 @@ export class RalphLoop {
     }
 
     // ── Iteration loop ─────────────────────────────────────────────────────
-    const testRunner = this.options.testRunner ??
+    const testRunner =
+      this.options.testRunner ??
       new TestRunner(testCommandStr ? { testCommand: testCommandStr } : undefined);
-    // Push scaffold files to GitHub after install
-    if (scaffoldResult && githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
-      const filesWithContent = await Promise.all(
-        scaffoldResult.createdFiles.map(async (f) => {
-          if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
-            io.writeActivity(`Warning: skipping out-of-bounds file path for push: ${f}`);
-            return null;
-          }
-          try {
-            const content = await readFile(resolve(outputDir, f), 'utf-8');
-            return { path: f, content };
-          } catch (err) {
-            io.writeActivity(
-              `Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`,
-            );
-            return { path: f, content: '' };
-          }
-        }),
-      );
-      const validFiles = filesWithContent.filter(
-        (file): file is { path: string; content: string } => file !== null,
-      );
-      await githubAdapter.pushFiles({
-        repoUrl: githubAdapter.getRepoUrl()!,
-        files: validFiles,
-        commitMessage: 'chore: initial scaffold',
-      });
-    }
 
     // ── Iteration 2..max ──────────────────────────────────────────────────
     const codeGenerator = new CodeGenerator(outputDir);
@@ -399,7 +384,7 @@ export class RalphLoop {
           iterations,
           repoSource,
           outputDir,
-          githubAdapter?.getRepoUrl(),
+          undefined, // No GitHub repo URL - local only
           techStack,
           'success',
           'tests-passing',
@@ -424,7 +409,7 @@ export class RalphLoop {
             iterations,
             repoSource,
             outputDir,
-            githubAdapter?.getRepoUrl(),
+            undefined, // No GitHub repo URL - local only
             techStack,
             'partial',
             'tests-passing',
@@ -550,7 +535,7 @@ export class RalphLoop {
           iterations,
           repoSource,
           outputDir,
-          githubAdapter?.getRepoUrl(),
+          undefined, // No GitHub repo URL - local only
           techStack,
         );
         await onSessionUpdate(session);
@@ -591,41 +576,12 @@ export class RalphLoop {
             iterations,
             repoSource,
             outputDir,
-            githubAdapter?.getRepoUrl(),
+            undefined, // No GitHub repo URL - local only
             techStack,
           );
           await onSessionUpdate(session);
           continue; // Continue — LLM may fix the bad dependency
         }
-      }
-
-      // Push iteration files to GitHub if available
-      if (githubAdapter?.isAvailable() && githubAdapter.getRepoUrl()) {
-        const filesWithContent = await Promise.all(
-          applyResult.writtenFiles.map(async (f) => {
-            if (isUnsafePath(f) || !isPathWithinDirectory(f, outputDir)) {
-              io.writeActivity(`Warning: skipping out-of-bounds file path for push: ${f}`);
-              return null;
-            }
-            try {
-              const content = await readFile(resolve(outputDir, f), 'utf-8');
-              return { path: f, content };
-            } catch (err) {
-              io.writeActivity(
-                `Warning: could not read file for push: ${f} — ${err instanceof Error ? err.message : String(err)}`,
-              );
-              return { path: f, content: '' };
-            }
-          }),
-        );
-        const validFiles = filesWithContent.filter(
-          (file): file is { path: string; content: string } => file !== null,
-        );
-        await githubAdapter.pushFiles({
-          repoUrl: githubAdapter.getRepoUrl()!,
-          files: validFiles,
-          commitMessage: `chore: iteration ${iterNum} — ${testResults.failed} test(s) failing`,
-        });
       }
 
       // FR-022: Rescan TODO markers after applying changes
@@ -651,7 +607,7 @@ export class RalphLoop {
         iterations,
         repoSource,
         outputDir,
-        githubAdapter?.getRepoUrl(),
+        undefined, // No GitHub repo URL - local only
         techStack,
       );
       await onSessionUpdate(session);
@@ -676,7 +632,7 @@ export class RalphLoop {
         iterations,
         repoSource,
         outputDir,
-        githubAdapter?.getRepoUrl(),
+        undefined, // No GitHub repo URL - local only
         techStack,
         undefined, // finalStatus deliberately omitted on user-stop
         'user-stopped',
@@ -722,7 +678,7 @@ export class RalphLoop {
         iterations,
         repoSource,
         outputDir,
-        githubAdapter?.getRepoUrl(),
+        undefined, // No GitHub repo URL - local only
         techStack,
         'success',
         'tests-passing',
@@ -747,7 +703,7 @@ export class RalphLoop {
           iterations,
           repoSource,
           outputDir,
-          githubAdapter?.getRepoUrl(),
+          undefined, // No GitHub repo URL - local only
           techStack,
           'partial',
           'tests-passing',
@@ -787,7 +743,7 @@ export class RalphLoop {
       iterations,
       repoSource,
       outputDir,
-      githubAdapter?.getRepoUrl(),
+      undefined, // No GitHub repo URL - local only
       techStack,
       finalStatus,
       'max-iterations',
@@ -928,7 +884,7 @@ export class RalphLoop {
   private updateSessionPoc(
     session: WorkshopSession,
     iterations: PocIteration[],
-    repoSource: 'local' | 'github-mcp',
+    repoSource: 'local',
     outputDir: string,
     repoUrl?: string,
     techStack?: {
@@ -945,8 +901,8 @@ export class RalphLoop {
   ): WorkshopSession {
     const poc: PocDevelopmentState = {
       repoSource,
-      repoPath: repoSource === 'local' ? outputDir : undefined,
-      repoUrl: repoSource === 'github-mcp' ? repoUrl : undefined,
+      repoPath: outputDir,
+      repoUrl: repoUrl, // User can manually set this after pushing
       techStack,
       iterations,
       finalStatus,
@@ -975,7 +931,7 @@ export class RalphLoop {
     terminationReason: 'tests-passing' | 'max-iterations' | 'user-stopped' | 'error',
     startTime: number,
     outputDir: string,
-    repoSource: 'local' | 'github-mcp',
+    repoSource: 'local',
     techStack?: {
       language: string;
       runtime: string;

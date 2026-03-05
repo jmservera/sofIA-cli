@@ -12,14 +12,12 @@ import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 
 import { RalphLoop } from '../../src/develop/ralphLoop.js';
-import { GitHubMcpAdapter } from '../../src/develop/githubMcpAdapter.js';
 import { PocScaffolder } from '../../src/develop/pocScaffolder.js';
 import { TestRunner } from '../../src/develop/testRunner.js';
 import type { WorkshopSession } from '../../src/shared/schemas/session.js';
 import type { LoopIO } from '../../src/loop/conversationLoop.js';
 import type { CopilotClient } from '../../src/shared/copilotClient.js';
 import type { TestResults } from '../../src/shared/schemas/session.js';
-import type { McpManager } from '../../src/mcp/mcpManager.js';
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
@@ -43,14 +41,17 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 const require = createRequire(import.meta.url);
-const fixtureSession: WorkshopSession = require('../fixtures/completedSession.json') as WorkshopSession;
+const fixtureSession: WorkshopSession =
+  require('../fixtures/completedSession.json') as WorkshopSession;
 
 function makeIo(): LoopIO & { activityMessages: string[] } {
   const activityMessages: string[] = [];
   return {
     activityMessages,
     write: vi.fn(),
-    writeActivity: vi.fn((msg: string) => { activityMessages.push(msg); }),
+    writeActivity: vi.fn((msg: string) => {
+      activityMessages.push(msg);
+    }),
     writeToolSummary: vi.fn(),
     readInput: vi.fn().mockResolvedValue(null),
     showDecisionGate: vi.fn(),
@@ -64,9 +65,16 @@ function makeFakeScaffolder(outputDir: string): PocScaffolder {
     scaffold: vi.fn().mockImplementation(async () => {
       const { writeFile, mkdir } = await import('node:fs/promises');
       await mkdir(join(outputDir, 'src'), { recursive: true });
-      await writeFile(join(outputDir, 'package.json'), JSON.stringify({
-        name: 'test', scripts: { test: 'vitest run' }, dependencies: {}, devDependencies: {},
-      }), 'utf-8');
+      await writeFile(
+        join(outputDir, 'package.json'),
+        JSON.stringify({
+          name: 'test',
+          scripts: { test: 'vitest run' },
+          dependencies: {},
+          devDependencies: {},
+        }),
+        'utf-8',
+      );
       await writeFile(join(outputDir, 'src', 'index.ts'), 'export function main() {}', 'utf-8');
       return {
         createdFiles: ['package.json', 'src/index.ts'],
@@ -131,12 +139,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    // GitHub MCP unavailable
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -145,7 +147,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -161,11 +162,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -174,7 +170,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     const result = await ralph.run();
@@ -188,11 +183,6 @@ describe('RalphLoop — local fallback (T033)', () => {
     const testRunner = makePassingTestRunner();
     const scaffolder = makeFakeScaffolder(tmpDir);
 
-    const unavailableMcpManager: McpManager = {
-      isAvailable: () => false,
-    } as unknown as McpManager;
-    const githubAdapter = new GitHubMcpAdapter(unavailableMcpManager);
-
     const ralph = new RalphLoop({
       client,
       io,
@@ -201,7 +191,6 @@ describe('RalphLoop — local fallback (T033)', () => {
       maxIterations: 3,
       testRunner,
       scaffolder,
-      githubAdapter,
     });
 
     await ralph.run();

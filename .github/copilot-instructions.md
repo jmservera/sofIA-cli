@@ -136,18 +136,22 @@ If this repo contains a `package.json`, prefer the scripts defined there
 
 ## Key Conventions
 
-### All Changes — Test-Driven Development (TDD)
+### All Changes — Test-Driven Development (TDD) + Lint/Typecheck Loop
 
-All new behavior and bug fixes **must** follow a TDD workflow (Red → Green → Review).
+All new behavior and bug fixes **must** follow a TDD workflow (Red → Green → Lint → Review).
 Do not modify production code until a failing test proves the change is needed.
+**Code must never be committed if `npm run lint` or `npm run typecheck` report errors.**
 
 1. **Reproduce** — Identify the root cause and the exact code path that fails.
 2. **Write a failing test first** — Create a test (unit or integration) that exercises the buggy behaviour and fails on the current code. The test name should describe the symptom (e.g., `"captures LLM text after tool-calling loop"`).
 3. **Run the test** — Confirm it fails for the expected reason (`npm test -- <test-file>`).
 4. **Fix the production code** — Make the minimal change needed to make the test pass.
-5. **Run the test again** — Confirm it passes.
-6. **Run the full suite** — Ensure the full test suite remains green (no regressions).
-7. **Run the linter/typecheck (if present)** — `npm run lint` / `npm run typecheck` must pass before closing the task.
+5. **Run lint + typecheck** — `npm run lint && npm run typecheck` must both pass. Fix any errors before continuing.
+6. **Run the test again** — Confirm it passes after the lint/typecheck fixes.
+7. **Run the full suite** — Ensure the full test suite remains green (no regressions).
+8. **Run lint + typecheck one final time** — Confirm both still pass after the full suite run. **Do not commit until they do.**
+
+> **Loop invariant:** After every code change — no matter how small — run `npm run lint && npm run typecheck` before moving on. Treat a lint or typecheck failure the same as a failing test: stop, fix, re-run.
 
 **Test placement guidelines (when a test suite exists):**
 | Scope | Directory | When to use |
@@ -160,7 +164,7 @@ Do not modify production code until a failing test proves the change is needed.
 
 **Mock boundaries:** Mock at the module boundary (e.g., Vitest `vi.mock()`), not inside functions. For Copilot SDK tests, prefer deterministic fakes for streaming/tool-calling sessions.
 
-> **Rationale:** Several bugs in the streaming pipeline (resolveIdle, onComplete fallback) were fixed without tests initially, requiring rework. Writing the test first catches regressions immediately and documents the expected SDK event sequence.
+> **Rationale:** Several bugs in the streaming pipeline (resolveIdle, onComplete fallback) were fixed without tests initially, requiring rework. Writing the test first catches regressions immediately and documents the expected SDK event sequence. Lint and typecheck failures have similarly caused hidden breakage (unused imports, removed interface properties still referenced in tests) that only surfaces at CI time — running them in every iteration prevents that drift.
 
 
 ### Agent State Management
@@ -198,17 +202,17 @@ import { Command } from 'commander';
 import type { PhaseValue } from '../shared/schemas/session.js';
 ```
 
-Always run `npm run lint` and `npm run typecheck` before finishing a task. If the linter reports `import/order` warnings, add blank lines between the import groups.
+**Run `npm run lint` after every code change — not just at the end.** Lint failures block commits the same way failing tests do. If the linter reports `import/order` warnings, add blank lines between the import groups.
 
 ### Typecheck
 
-The project enforces strict TypeScript checking via `npm run typecheck` (`tsc --noEmit`). Before marking any task as done:
+The project enforces strict TypeScript checking via `npm run typecheck` (`tsc --noEmit`). **Run `npm run typecheck` after every code change — not just at the end.** Typecheck failures block commits the same way failing tests do.
 
-1. Run `npm run typecheck` and fix all errors.
+1. Run `npm run typecheck` and fix all errors before proceeding to the next step.
 2. Never suppress errors with `@ts-ignore` or `any` — use proper types, type narrowing, or Vitest's `Mock<>` generic.
 3. For third-party packages without `@types`, add an ambient module declaration in `src/types/<package>.d.ts`.
 
-> **Rationale:** Type mismatches between production code and Zod schemas (e.g., wrong property names in `exportWriter.ts`) were only caught by strict typechecking, not by tests. Running `npm run typecheck` ensures schema shapes stay in sync.
+> **Rationale:** Type mismatches between production code and Zod schemas (e.g., wrong property names in `exportWriter.ts`) were only caught by strict typechecking, not by tests. Unused imports left behind after interface refactoring (e.g., removing `githubAdapter` from `RalphLoopOptions`) caused silent CI failures that would have been caught immediately by running `npm run lint && npm run typecheck` in every loop iteration.
 
 ## MCP Server Configuration
 

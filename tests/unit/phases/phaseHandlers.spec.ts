@@ -403,4 +403,81 @@ describe('phaseHandlers', () => {
       }
     });
   });
+
+  // T040: Verify Ideate handler uses renderSummarizedContext (not ad-hoc context)
+  describe('context summarizer integration', () => {
+    it('Ideate handler uses unified summarized context', async () => {
+      const handler = createPhaseHandler('Ideate');
+      await handler._preload();
+
+      const session = makeSession({
+        businessContext: {
+          businessDescription: 'Test Company',
+          challenges: ['Challenge A'],
+        },
+      });
+
+      const prompt = handler.buildSystemPrompt(session);
+      expect(prompt).toContain('Test Company');
+      expect(prompt).toContain('Prior Phase Context');
+    });
+
+    it('Design handler uses unified summarized context with ideas', async () => {
+      const handler = createPhaseHandler('Design');
+      await handler._preload();
+
+      const session = makeSession({
+        ideas: [
+          { id: 'idea-1', title: 'AI Bot', description: 'Smart assistant', workflowStepIds: [] },
+        ],
+      });
+
+      const prompt = handler.buildSystemPrompt(session);
+      expect(prompt).toContain('AI Bot');
+      expect(prompt).toContain('Prior Phase Context');
+    });
+
+    it('Select handler uses unified summarized context with evaluation', async () => {
+      const handler = createPhaseHandler('Select');
+      await handler._preload();
+
+      const session = makeSession({
+        evaluation: {
+          method: 'feasibility-value-matrix',
+          ideas: [{ ideaId: 'idea-1', feasibility: 8, value: 9 }],
+        },
+      });
+
+      const prompt = handler.buildSystemPrompt(session);
+      expect(prompt).toContain('feasibility-value-matrix');
+      expect(prompt).toContain('Prior Phase Context');
+    });
+
+    it('Plan handler uses unified summarized context with selection', async () => {
+      const handler = createPhaseHandler('Plan');
+      await handler._preload();
+
+      const session = makeSession({
+        selection: {
+          ideaId: 'idea-1',
+          selectionRationale: 'Best overall',
+          confirmedByUser: true,
+        },
+      });
+
+      const prompt = handler.buildSystemPrompt(session);
+      expect(prompt).toContain('idea-1');
+      expect(prompt).toContain('Prior Phase Context');
+    });
+
+    it('handlers omit Prior Phase Context section when session is empty', async () => {
+      for (const phase of ['Ideate', 'Design', 'Select', 'Plan', 'Develop'] as PhaseValue[]) {
+        const handler = createPhaseHandler(phase);
+        await handler._preload();
+        const prompt = handler.buildSystemPrompt(makeSession());
+        // Should not contain Prior Phase Context if session is empty
+        expect(prompt).not.toContain('Prior Phase Context');
+      }
+    });
+  });
 });

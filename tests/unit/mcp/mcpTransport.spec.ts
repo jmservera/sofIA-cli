@@ -258,6 +258,36 @@ describe('HttpMcpTransport', () => {
     }
   });
 
+  it('normalizes JSON-RPC validation errors with JSON details', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          error: {
+            code: -32602,
+            message:
+              'MCP error -32602: Input validation error: Invalid arguments for tool resolve-library-id: [{"path":["query"],"message":"Invalid input: expected string, received undefined"}]',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+
+    const transport = new HttpMcpTransport(makeHttpConfig(), makeLogger());
+
+    await expect(transport.callTool('resolve-library-id', {}, 5000)).rejects.toThrow(
+      McpTransportError,
+    );
+    try {
+      await transport.callTool('resolve-library-id', {}, 5000);
+    } catch (err) {
+      expect(err).toBeInstanceOf(McpTransportError);
+      expect((err as McpTransportError).message).not.toContain('[{');
+      expect((err as McpTransportError).message).toContain('query: Invalid input');
+    }
+  });
+
   it('extracts content from result.content[0].text', async () => {
     globalThis.fetch = vi.fn(async () => {
       return new Response(
@@ -446,6 +476,7 @@ describe('StdioMcpTransport', () => {
       params: {
         protocolVersion: '1.0',
         clientInfo: { name: 'sofIA', version: '0.1.0' },
+        capabilities: {},
       },
     });
   });

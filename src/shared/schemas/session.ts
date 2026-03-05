@@ -218,7 +218,7 @@ export type PocIteration = z.infer<typeof pocIterationSchema>;
 export const pocDevelopmentStateSchema = z.object({
   repoPath: z.string().optional(),
   repoUrl: z.string().optional(),
-  repoSource: z.enum(['local', 'github-mcp']),
+  repoSource: z.enum(['local']), // Always local - users push manually to GitHub when ready
   techStack: techStackSchema.optional(),
   iterations: z.array(pocIterationSchema),
   finalStatus: z.enum(['success', 'failed', 'partial']).optional(),

@@ -16,9 +16,16 @@ param modelSkuName string
 param modelSkuCapacity int
 param uniqueSuffix string
 
+@description('Object ID of the user principal to grant Azure AI Developer access. Obtain with: az ad signed-in-user show --query id -o tsv')
+param userPrincipalId string
+
 // ── Derived values ───────────────────────────────────────────────────────────
 
 var customSubDomainName = '${accountName}-${uniqueSuffix}'
+
+// Azure AI Developer — allows creating/managing agents and using models
+// https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#azure-ai-developer
+var azureAIDeveloperRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '64702f94-c441-49e6-a78b-ef80e0188fee')
 
 // ── Resource 1: AI Services Account (Foundry) ────────────────────────────────
 // Top-level Foundry account with project management enabled.
@@ -106,6 +113,20 @@ resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/ca
   dependsOn: [
     accountCapabilityHost
   ]
+}
+
+// ── Resource 6: Role Assignment — Azure AI Developer for the deploying user ──
+// Grants the deploying user permission to create ephemeral agents, use models,
+// and invoke web_search_preview through the Foundry Agent Service.
+
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(aiAccount.id, userPrincipalId, azureAIDeveloperRoleId)
+  scope: aiAccount
+  properties: {
+    principalId: userPrincipalId
+    roleDefinitionId: azureAIDeveloperRoleId
+    principalType: 'User'
+  }
 }
 
 // ── Outputs ──────────────────────────────────────────────────────────────────

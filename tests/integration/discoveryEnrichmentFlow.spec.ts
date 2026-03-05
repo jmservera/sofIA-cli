@@ -135,8 +135,8 @@ describe('Discovery enrichment integration flow (T029)', () => {
     // Second call: should not re-trigger
     const updates2 = await handler.postExtract!(session);
     expect(updates2).toEqual({});
-    // search was called 3 times in the first call only, not in second
-    expect(webSearchClient.search).toHaveBeenCalledTimes(3);
+    // search is called once (first successful query) in the first call only, not in second
+    expect(webSearchClient.search).toHaveBeenCalledTimes(1);
   });
 
   it('does not run enrichment when no webSearchClient or WorkIQ available', async () => {
