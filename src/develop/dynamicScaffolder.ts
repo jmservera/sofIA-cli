@@ -11,8 +11,12 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 
 import type { CopilotClient } from '../shared/copilotClient.js';
+import type { ConversationTurn } from '../shared/schemas/session.js';
 import type { WorkshopSession } from '../shared/schemas/session.js';
 import { exportWorkshopDocs } from '../sessions/exportWriter.js';
+
+/** Timeout for scaffold LLM calls — 5 minutes to handle large context. */
+const SCAFFOLD_TIMEOUT_MS = 300_000;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +45,30 @@ export interface DynamicScaffoldResult {
 // ── Helper Functions ─────────────────────────────────────────────────────────
 
 /**
+ * Summarize conversation turns into a compact section for the scaffold prompt.
+ * Groups by phase and includes key user/assistant exchanges so the LLM has
+ * workshop context without the full (potentially huge) transcript.
+ */
+function summarizeConversationTurns(turns?: ConversationTurn[]): string {
+  if (!turns || turns.length === 0) return '';
+
+  const byPhase = new Map<string, ConversationTurn[]>();
+  for (const t of turns) {
+    const group = byPhase.get(t.phase) ?? [];
+    group.push(t);
+    byPhase.set(t.phase, group);
+  }
+
+  const sections: string[] = [];
+  for (const [phase, phaseTurns] of byPhase) {
+    const lines = phaseTurns.map((t) => `- [${t.role}]: ${t.content.slice(0, 300)}`);
+    sections.push(`### ${phase}\n${lines.join('\n')}`);
+  }
+
+  return `\n## Workshop Conversation Summary\n\n${sections.join('\n\n')}\n`;
+}
+
+/**
  * Build a comprehensive prompt for scaffold generation.
  */
 function buildScaffoldPrompt(session: WorkshopSession): string {
@@ -64,6 +92,8 @@ function buildScaffoldPrompt(session: WorkshopSession): string {
   const selectionRationale = session.selection?.selectionRationale
     ? `## Why This Idea Was Selected\n\n${session.selection.selectionRationale}\n\n`
     : '';
+
+  const conversationSummary = summarizeConversationTurns(session.turns);
 
   return `# Generate Proof-of-Concept Project Structure
 
@@ -116,7 +146,8 @@ Generate all necessary files for a working project:
 - Test files (tests/) with meaningful assertions about expected behavior
 - README.md explaining the PoC and how to run it
 
-Focus on **quality over quantity** - generate files that matter for demonstrating the core idea.`;
+Focus on **quality over quantity** - generate files that matter for demonstrating the core idea.
+${conversationSummary}`;
 }
 
 /**
@@ -215,10 +246,11 @@ export async function generateDynamicScaffold(
   // Build comprehensive prompt from session
   const prompt = buildScaffoldPrompt(session);
 
-  // Create conversation session with system prompt
+  // Create conversation session with system prompt and extended timeout
   const conversationSession = await client.createSession({
     systemPrompt:
       'You are a senior software architect generating proof-of-concept project structures for AI solutions.',
+    timeout: SCAFFOLD_TIMEOUT_MS,
   });
 
   // Send user prompt and collect response

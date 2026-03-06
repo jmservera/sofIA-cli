@@ -40,7 +40,7 @@ function hasGitHubAuth(): boolean {
 
 describe.skipIf(!LIVE)('Live MCP Smoke Tests (T039)', () => {
   it.skipIf(!hasGitHubAuth())(
-    'GitHub MCP: creates and deletes a test repository',
+    'GitHub MCP: searches and retrieves repository information',
     { timeout: 35_000 },
     async () => {
       // This test requires GITHUB_TOKEN env var OR `gh auth login` (GitHub CLI)
@@ -49,41 +49,36 @@ describe.skipIf(!LIVE)('Live MCP Smoke Tests (T039)', () => {
       const manager = new McpManager(config);
       manager.markConnected('github');
 
-      const repoName = `sofia-mcp-test-${Date.now()}`;
       try {
-        const createResult = await manager.callTool(
+        // Search for a popular repository
+        const searchResult = await manager.callTool(
           'github',
-          'create_repository',
+          'search_repositories',
           {
-            name: repoName,
-            description: 'Automated MCP integration test — safe to delete',
-            private: true,
+            query: 'language:typescript stars:>1000',
+            limit: 5,
           },
           { timeoutMs: 30_000 },
         );
 
-        expect(createResult).toBeDefined();
-        expect(typeof createResult).toBe('object');
+        expect(searchResult).toBeDefined();
+        expect(Array.isArray(searchResult) || typeof searchResult === 'object').toBe(true);
 
-        // Verify the repository was created - McpManager already parses the content
-        expect(createResult).toHaveProperty('url');
-        expect((createResult as { url: string }).url).toContain(repoName);
+        // Get details about the GitHub Copilot SDK repository
+        const repoResult = await manager.callTool(
+          'github',
+          'get_repository',
+          {
+            owner: 'github',
+            repo: 'copilot-sdk',
+          },
+          { timeoutMs: 30_000 },
+        );
 
-        // Best-effort cleanup: delete the test repo using GitHub CLI
-        // Note: This requires delete_repo scope; if it fails, the repo will need manual cleanup
-        try {
-          const username = execSync('gh api user --jq .login', { encoding: 'utf8' }).trim();
-          execSync(`gh repo delete ${username}/${repoName} --yes`, {
-            encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe'], // capture all output
-          });
-        } catch (_cleanupError) {
-          // Cleanup failure is not a test failure - just log it
-          console.warn(
-            `⚠️  Could not auto-delete test repo ${repoName}. Please delete manually or grant delete_repo scope.`,
-          );
-          console.warn(`   Command: gh repo delete <username>/${repoName} --yes`);
-        }
+        expect(repoResult).toBeDefined();
+        expect(typeof repoResult).toBe('object');
+        expect(repoResult).toHaveProperty('name');
+        expect((repoResult as { name: string }).name).toBe('copilot-sdk');
       } finally {
         await manager.disconnectAll();
       }

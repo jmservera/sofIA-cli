@@ -27,8 +27,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "sofiacli": "node --enable-source-maps dist/cli/index.js",
-    "sofia": "npm run sofiacli",
+    "sofia": "npm run start",
     "prepublishOnly": "npm install && npm run build && npm link"
   },
   "dependencies": {

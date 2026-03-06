@@ -1357,6 +1357,129 @@ describe('RalphLoop', () => {
     });
   });
 
+  // ── Timeout config for code generation sessions ────────────────────────────
+
+  describe('code generation timeout', () => {
+    it('passes timeout to createSession for iteration LLM turns', async () => {
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockReturnValue({
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: 'TextDelta',
+              text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+              timestamp: '',
+            };
+          },
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+      const testRunner = makeAlwaysFailingTestRunner();
+      setupDynamicScaffoldMock(tmpDir);
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+      });
+
+      await ralph.run();
+
+      // The iteration LLM session should have a timeout > 120s
+      expect(createSessionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeout: expect.any(Number),
+        }),
+      );
+      const passedTimeout = createSessionSpy.mock.calls.find(
+        (c: [Record<string, unknown>]) => c[0]?.timeout !== undefined,
+      )?.[0]?.timeout as number;
+      expect(passedTimeout).toBeGreaterThan(120_000);
+    });
+  });
+
+  // ── File content budget enforcement ────────────────────────────────────────
+
+  describe('file content budget', () => {
+    it('excludes lockfiles and enforces budget on filtered files', async () => {
+      let capturedPrompt = '';
+      const createSessionSpy = vi.fn().mockResolvedValue({
+        send: vi.fn().mockImplementation((msg: { content: string }) => {
+          capturedPrompt = msg.content;
+          return {
+            async *[Symbol.asyncIterator]() {
+              yield {
+                type: 'TextDelta',
+                text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+                timestamp: '',
+              };
+            },
+          };
+        }),
+        getHistory: () => [],
+      });
+      const client: CopilotClient = { createSession: createSessionSpy };
+      const io = makeIo();
+      const session = makeSession();
+
+      const testRunner = {
+        run: vi.fn().mockResolvedValue({
+          passed: 0,
+          failed: 1,
+          skipped: 0,
+          total: 1,
+          durationMs: 400,
+          failures: [{ testName: 'suite > test', message: 'fail', file: 'tests/index.test.ts' }],
+          rawOutput: 'FAIL',
+        } satisfies TestResults),
+      } as unknown as TestRunner;
+
+      // Setup scaffold mock to create a large lockfile at root (which buildFileTree will find)
+      vi.mocked(generateDynamicScaffold).mockImplementation(async () => {
+        const { writeFile, mkdir } = await import('node:fs/promises');
+        await mkdir(join(tmpDir, 'src'), { recursive: true });
+        await mkdir(join(tmpDir, 'tests'), { recursive: true });
+        // Create a 150KB package-lock.json (root-level, read by readFileContents)
+        const lockContent = JSON.stringify({ lockfileVersion: 3, packages: { x: 'y'.repeat(150_000) } });
+        await writeFile(join(tmpDir, 'package-lock.json'), lockContent, 'utf-8');
+        await writeFile(
+          join(tmpDir, 'package.json'),
+          JSON.stringify({ name: 'test', scripts: { test: 'vitest' } }),
+        );
+        await writeFile(join(tmpDir, 'src/index.ts'), 'export const x = 1;\n', 'utf-8');
+        await writeFile(join(tmpDir, 'tests/index.test.ts'), 'test("x", ()=>{});\n', 'utf-8');
+        const metadataPath = join(tmpDir, '.sofia-metadata.json');
+        await writeFile(metadataPath, JSON.stringify({ sessionId: 'x' }), 'utf-8');
+        return {
+          createdFiles: ['package.json', 'package-lock.json', 'src/index.ts', 'tests/index.test.ts'],
+          techStack: { language: 'TypeScript', runtime: 'Node.js 20', testRunner: 'vitest' },
+        };
+      });
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 2,
+        testRunner,
+      });
+
+      await ralph.run();
+
+      // The prompt should NOT contain the massive lockfile content
+      expect(capturedPrompt).not.toContain('lockfileVersion');
+      // The "exceeds 50KB" warning should NOT appear since lockfiles should be excluded entirely
+      const activityCalls = (io.writeActivity as ReturnType<typeof vi.fn>).mock.calls.flat();
+      expect(activityCalls.some((c: string) => c.includes('exceeds 50KB'))).toBe(false);
+    });
+  });
+
   // ── T054: infiniteSessions config forwarding ──────────────────────────────
 
   describe('infiniteSessions config (T054)', () => {

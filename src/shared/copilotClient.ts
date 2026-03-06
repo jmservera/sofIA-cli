@@ -96,6 +96,12 @@ export interface SessionOptions {
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
   }) => void;
+  /**
+   * Timeout in milliseconds for the SDK `sendAndWait()` call.
+   * Defaults to 120 000 (2 minutes). Increase for complex prompts
+   * that require longer LLM generation time (e.g., scaffold generation).
+   */
+  timeout?: number;
 }
 
 /**
@@ -266,7 +272,7 @@ export async function createCopilotClient(): Promise<CopilotClient> {
             async *[Symbol.asyncIterator]() {
               const response = await sdkSession.sendAndWait(
                 { prompt: message.content },
-                120_000, // 2-minute timeout
+                options.timeout ?? 120_000,
               );
 
               const content = response?.data.content ?? '';

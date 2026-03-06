@@ -810,6 +810,17 @@ export class RalphLoop {
   /** Maximum total size of file contents to include in the prompt (50KB). */
   private static readonly MAX_FILE_CONTENT_BYTES = 50 * 1024;
 
+  /** Timeout for iteration LLM calls — 5 minutes to handle large prompts. */
+  private static readonly ITERATION_TIMEOUT_MS = 300_000;
+
+  /** Files excluded from LLM prompt content (lockfiles, generated artifacts). */
+  private static readonly EXCLUDED_FILES = new Set([
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'bun.lockb',
+  ]);
+
   /**
    * Read file contents from the PoC directory for inclusion in the iteration prompt.
    *
@@ -827,9 +838,10 @@ export class RalphLoop {
       .map((f) => f.replace(/^\s+/, ''))
       .filter((f) => !f.endsWith('/') && f.length > 0);
 
-    // Read all file contents
+    // Read all file contents, skipping lockfiles and generated artifacts
     const allContents: Array<{ path: string; content: string }> = [];
     for (const relPath of flatFiles) {
+      if (RalphLoop.EXCLUDED_FILES.has(relPath)) continue;
       try {
         const fullPath = join(outputDir, relPath);
         const content = await readFile(fullPath, 'utf-8');
@@ -860,7 +872,25 @@ export class RalphLoop {
       if (failure.file) failureFiles.add(failure.file);
     }
 
-    return allContents.filter((f) => coreFiles.has(f.path) || failureFiles.has(f.path));
+    const filtered = allContents.filter((f) => coreFiles.has(f.path) || failureFiles.has(f.path));
+
+    // Enforce budget on filtered set — truncate large files if still over
+    const filteredSize = filtered.reduce(
+      (sum, f) => sum + Buffer.byteLength(f.content, 'utf-8'),
+      0,
+    );
+    if (filteredSize > RalphLoop.MAX_FILE_CONTENT_BYTES) {
+      const perFileLimit = Math.floor(RalphLoop.MAX_FILE_CONTENT_BYTES / filtered.length);
+      return filtered.map((f) => ({
+        path: f.path,
+        content:
+          Buffer.byteLength(f.content, 'utf-8') > perFileLimit
+            ? f.content.slice(0, perFileLimit) + '\n// ... truncated ...\n'
+            : f.content,
+      }));
+    }
+
+    return filtered;
   }
 
   /**
@@ -883,6 +913,7 @@ export class RalphLoop {
 
     const conversationSession = await client.createSession({
       systemPrompt,
+      timeout: RalphLoop.ITERATION_TIMEOUT_MS,
       infiniteSessions: {
         backgroundCompactionThreshold: 0.7,
         bufferExhaustionThreshold: 0.9,
