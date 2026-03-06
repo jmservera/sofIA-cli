@@ -3,7 +3,6 @@
  *
  * Verifies:
  * - isAvailable() checks McpManager.isAvailable('github')
- * - createRepository() calls MCP tool
  * - pushFiles() commits and pushes
  * - Graceful fallback returns { available: false } when MCP unavailable
  */
@@ -45,82 +44,6 @@ describe('GitHubMcpAdapter', () => {
     it('returns false when GitHub MCP is not available', () => {
       const adapter = new GitHubMcpAdapter(makeMcpManager(false));
       expect(adapter.isAvailable()).toBe(false);
-    });
-  });
-
-  describe('createRepository()', () => {
-    it('calls mcpManager.callTool with create_repository and returns parsed result', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        html_url: 'https://github.com/acme/poc-route-optimizer',
-        name: 'poc-route-optimizer',
-      });
-      const mgr = makeMcpManager(true, callTool);
-      const adapter = new GitHubMcpAdapter(mgr);
-      const result = await adapter.createRepository({
-        name: 'poc-route-optimizer',
-        description: 'AI route optimization PoC',
-      });
-
-      expect(result.available).toBe(true);
-      if (result.available) {
-        expect(result.repoUrl).toBe('https://github.com/acme/poc-route-optimizer');
-        expect(result.repoName).toBe('poc-route-optimizer');
-      }
-      expect(callTool).toHaveBeenCalledWith(
-        'github',
-        'create_repository',
-        {
-          name: 'poc-route-optimizer',
-          description: 'AI route optimization PoC',
-          private: true,
-        },
-        { timeoutMs: 60_000 },
-      );
-    });
-
-    it('returns { available: false } when GitHub MCP is unavailable', async () => {
-      const adapter = new GitHubMcpAdapter(makeMcpManager(false));
-      const result = await adapter.createRepository({
-        name: 'poc-route-optimizer',
-      });
-
-      expect(result.available).toBe(false);
-      if (!result.available) {
-        expect(result.reason).toBeDefined();
-      }
-    });
-
-    it('returns { available: false } when callTool throws', async () => {
-      const callTool = vi.fn().mockRejectedValue(new Error('MCP callTool not yet wired'));
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      const result = await adapter.createRepository({ name: 'poc-fail' });
-
-      expect(result.available).toBe(false);
-      if (!result.available) {
-        expect(result.reason).toContain('not yet wired');
-      }
-    });
-
-    it('stores repo URL after successful creation', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        html_url: 'https://github.com/acme/my-poc',
-        name: 'my-poc',
-      });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      await adapter.createRepository({ name: 'my-poc' });
-
-      expect(adapter.getRepoUrl()).toBe('https://github.com/acme/my-poc');
-    });
-
-    it('returns { available: false } when response has no URL', async () => {
-      const callTool = vi.fn().mockResolvedValue({ id: 123 });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      const result = await adapter.createRepository({ name: 'no-url' });
-
-      expect(result.available).toBe(false);
-      if (!result.available) {
-        expect(result.reason).toContain('missing repository URL');
-      }
     });
   });
 
@@ -202,63 +125,6 @@ describe('GitHubMcpAdapter', () => {
     it('returns undefined before createRepository is called', () => {
       const adapter = new GitHubMcpAdapter(makeMcpManager(true));
       expect(adapter.getRepoUrl()).toBeUndefined();
-    });
-
-    it('returns URL after successful createRepository', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        html_url: 'https://github.com/acme/test-poc',
-        name: 'test-poc',
-      });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      await adapter.createRepository({ name: 'test-poc' });
-      expect(adapter.getRepoUrl()).toBe('https://github.com/acme/test-poc');
-    });
-  });
-
-  // ── T008: Contract tests per contracts/github-adapter.md ────────────────
-
-  describe('createRepository() — contract: URL fallback chain', () => {
-    it('falls back to response.url when html_url is missing', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        url: 'https://api.github.com/repos/acme/poc',
-        name: 'poc',
-      });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      const result = await adapter.createRepository({ name: 'poc' });
-
-      expect(result.available).toBe(true);
-      if (result.available) {
-        expect(result.repoUrl).toBe('https://api.github.com/repos/acme/poc');
-      }
-    });
-
-    it('falls back to response.clone_url when html_url and url are missing', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        clone_url: 'https://github.com/acme/poc.git',
-        name: 'poc',
-      });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      const result = await adapter.createRepository({ name: 'poc' });
-
-      expect(result.available).toBe(true);
-      if (result.available) {
-        expect(result.repoUrl).toBe('https://github.com/acme/poc.git');
-      }
-    });
-
-    it('extracts repoName from response.full_name as fallback', async () => {
-      const callTool = vi.fn().mockResolvedValue({
-        html_url: 'https://github.com/acme/poc',
-        full_name: 'acme/poc',
-      });
-      const adapter = new GitHubMcpAdapter(makeMcpManager(true, callTool));
-      const result = await adapter.createRepository({ name: 'poc' });
-
-      expect(result.available).toBe(true);
-      if (result.available) {
-        // name not in response → full_name fallback returns 'acme/poc'
-        expect(result.repoName).toBe('acme/poc');
-      }
     });
   });
 

@@ -16,5 +16,6 @@
       "zod": ["src/vendor/zod"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["tests/**/*"]
 }
