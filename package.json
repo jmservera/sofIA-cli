@@ -60,5 +60,20 @@
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
-  }
+  },
+  "description": "**sofIA** is an agentic CLI that guides facilitators through a structured AI Discovery Workshop — from understanding a business and brainstorming AI use cases, all the way to generating a working proof-of-concept. It reimagines two Microsoft open-source projects using the GitHub Copilot SDK for Node.js and extends them with idea selection, planning, and autonomous code generation.",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jmservera/sofia-cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/jmservera/sofia-cli/issues"
+  },
+  "homepage": "https://github.com/jmservera/sofia-cli#readme"
 }

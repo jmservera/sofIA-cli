@@ -185,7 +185,7 @@ echo "   Model deployment: $MODEL"
 
 # ── Write .env file ───────────────────────────────────────────────────────────
 
-ENV_FILE="$SCRIPT_DIR/../.env"
+ENV_FILE="$PWD/.env"
 
 set_env_var() {
   local key="$1" value="$2"

@@ -16,9 +16,9 @@ import { Command } from 'commander';
 import { loadEnvFile } from './envLoader.js';
 import type { PhaseValue } from '../shared/schemas/session.js';
 
-// ── Load .env from workspace root ──────────────────────────────────────────
+// ── Load .env from the directory where the CLI is invoked ───────────────────
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-loadEnvFile(path.resolve(__dirname, '../../.env'));
+loadEnvFile(path.resolve(process.cwd(), '.env'));
 
 // ── Read version from package.json (works from both src/ and dist/) ────────
 let _pkgRoot = __dirname;
@@ -193,19 +193,33 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
     .option('-m, --model <name>', 'Model deployment name (default: gpt-4.1-mini)')
     .action(async (opts) => {
       const { invokeInfraAction } = await import('./infraCommand.js');
-      await invokeInfraAction('deploy.sh', opts, ['resourceGroup', 'subscription', 'location', 'accountName', 'model']);
+      await invokeInfraAction('deploy.sh', opts, [
+        'resourceGroup',
+        'subscription',
+        'location',
+        'accountName',
+        'model',
+      ]);
     });
 
   infraCmd
     .command('gather-env')
     .description('Fetch environment values from an existing Azure deployment')
-    .requiredOption('-g, --resource-group <name>', 'Resource group containing the Foundry resources')
+    .requiredOption(
+      '-g, --resource-group <name>',
+      'Resource group containing the Foundry resources',
+    )
     .option('-s, --subscription <id>', 'Azure subscription ID')
     .option('-n, --account-name <name>', 'AI Services account name (default: sofia-foundry)')
     .option('-m, --model <name>', 'Override model deployment name')
     .action(async (opts) => {
       const { invokeInfraAction } = await import('./infraCommand.js');
-      await invokeInfraAction('gather-env.sh', opts, ['resourceGroup', 'subscription', 'accountName', 'model']);
+      await invokeInfraAction('gather-env.sh', opts, [
+        'resourceGroup',
+        'subscription',
+        'accountName',
+        'model',
+      ]);
     });
 
   infraCmd

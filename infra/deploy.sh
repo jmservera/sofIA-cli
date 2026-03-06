@@ -164,7 +164,7 @@ MODEL_DEPLOYMENT_NAME=$(az deployment sub show \
 
 # ── Write .env file ───────────────────────────────────────────────────────────
 
-ENV_FILE="$SCRIPT_DIR/../.env"
+ENV_FILE="$PWD/.env"
 
 # Helper: set or update a KEY=VALUE in the .env file
 set_env_var() {
