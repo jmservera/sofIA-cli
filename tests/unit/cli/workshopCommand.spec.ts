@@ -376,3 +376,52 @@ describe('workshopCommand auto-run PoC generation (T053)', () => {
     expect(allOutput).toContain('sofia dev --session auto-transition-001');
   });
 });
+
+// ── Develop phase runs Ralph Loop directly (not ConversationLoop) ────────
+
+describe('workshopCommand Develop phase runs Ralph Loop directly', () => {
+  beforeEach(() => {
+    ioWrites = [];
+    ioReadResponses = [];
+    ioReadIndex = 0;
+    ioReadInputPrompts = [];
+    decisionGateResponses = [];
+    decisionGateIndex = 0;
+    vi.clearAllMocks();
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
+  it('runs PoC generation when session starts directly at Develop phase', async () => {
+    const session: WorkshopSession = {
+      sessionId: 'develop-direct-001',
+      schemaVersion: '1.0.0',
+      createdAt: '2026-01-01T12:00:00Z',
+      updatedAt: '2026-01-01T12:30:00Z',
+      phase: 'Develop',
+      status: 'Active',
+      participants: [],
+      artifacts: { generatedFiles: [] },
+      turns: [],
+    };
+
+    mockStore.exists.mockResolvedValue(true);
+    mockStore.load.mockResolvedValue(session);
+
+    // Single gate for Develop phase, then exit
+    decisionGateResponses = [{ choice: 'exit' }];
+
+    const { workshopCommand } = await import('../../../src/cli/workshopCommand.js');
+    await workshopCommand({ session: 'develop-direct-001' });
+
+    const allOutput = ioWrites.join(' ');
+    // Should attempt PoC generation (Ralph Loop), not just a conversation
+    expect(allOutput).toContain('Starting PoC Generation');
+    // Session lacks selection/plan so RalphLoop throws — shows recovery guidance
+    expect(allOutput).toContain('PoC generation failed');
+    expect(allOutput).toContain('sofia dev --session develop-direct-001');
+  });
+});
