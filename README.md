@@ -250,6 +250,10 @@ npx sofia infra teardown -g sofia-workshop-rg --yes
 
 See [specs/005-ai-search-deploy/quickstart.md](specs/005-ai-search-deploy/quickstart.md) for detailed deployment instructions.
 
+## Watch the video
+
+[![Watch the video](https://img.youtube.com/vi/I0DkTt7iD1s/0.jpg)](https://www.youtube.com/watch?v=I0DkTt7iD1s)
+
 ## License
 
 See [LICENSE](LICENSE) for details.
