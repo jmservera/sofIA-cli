@@ -2,17 +2,21 @@
 
 ## Binary
 
-The CLI is invoked via `npm run start --` (development) or `sofia` (after building and linking).
+The CLI is invoked via `npx sofia` (recommended), or `sofia` if installed globally.
 
 ```bash
+# Recommended: run with npx (no global install needed)
+npx sofia <command> [options]
+
+# Or install globally
+npm install -g @jmservera/sofia-cli
+sofia <command> [options]
+
 # Development mode (tsx, no watch)
 npm run start -- <command> [options]
 
 # Watch mode (auto-reloads on file changes)
 npm run dev -- <command> [options]
-
-# Built mode (requires `npm run build` first)
-npm run sofia -- <command> [options]
 ```
 
 ## Global Options
@@ -169,6 +173,62 @@ npm run start -- export --session <id> --output ./my-export/
 | ---------------- | ----------------------------------------------------------- |
 | `--output <dir>` | Custom output directory (default: `./exports/<sessionId>/`) |
 
+### `infra`
+
+Manage Azure AI Foundry infrastructure. Groups three sub-commands for deploying, querying, and tearing down Azure resources.
+
+#### `infra deploy`
+
+Deploy Azure AI Foundry resources (resource group, AI Services account, model deployment).
+
+```bash
+# Deploy with required resource group
+npx sofia infra deploy -g sofia-workshop-rg
+
+# Full options
+npx sofia infra deploy -g sofia-workshop-rg -s <subscription-id> -l eastus -n my-foundry -m gpt-4.1-mini
+```
+
+| Flag                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `-g, --resource-group <name>`  | Resource group name (created if missing) **(required)** |
+| `-s, --subscription <id>`      | Azure subscription ID (default: current `az` subscription) |
+| `-l, --location <region>`      | Azure region (default: `swedencentral`)       |
+| `-n, --account-name <name>`    | Foundry account name (default: `sofia-foundry`) |
+| `-m, --model <name>`           | Model deployment name (default: `gpt-4.1-mini`) |
+
+#### `infra gather-env`
+
+Fetch environment values from an existing Azure AI Foundry deployment and write them to `.env`.
+
+```bash
+npx sofia infra gather-env -g sofia-workshop-rg
+```
+
+| Flag                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `-g, --resource-group <name>`  | Resource group containing the resources **(required)** |
+| `-s, --subscription <id>`      | Azure subscription ID                         |
+| `-n, --account-name <name>`    | AI Services account name (default: `sofia-foundry`) |
+| `-m, --model <name>`           | Override model deployment name                |
+
+#### `infra teardown`
+
+Remove the resource group and all contained Azure resources.
+
+```bash
+# Interactive confirmation
+npx sofia infra teardown -g sofia-workshop-rg
+
+# Skip confirmation prompt
+npx sofia infra teardown -g sofia-workshop-rg --yes
+```
+
+| Flag                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `-g, --resource-group <name>`  | Resource group to delete **(required)**       |
+| `--yes`                        | Skip confirmation prompt                      |
+
 ## Exit Codes
 
 | Code | Meaning                                                |
@@ -191,17 +251,24 @@ In JSON mode, errors are emitted as JSON objects with a consistent envelope:
 
 ```bash
 # Full interactive workshop flow
-npm run start -- workshop
+npx sofia workshop
 
 # Automation: run Ideate phase, JSON output, no prompts
-npm run start -- workshop --session abc123 --phase Ideate --json --non-interactive
+npx sofia workshop --session abc123 --phase Ideate --json --non-interactive
 
 # Check what phase a session is on
-npm run start -- status --session abc123 --json
+npx sofia status --session abc123 --json
 
 # Export artifacts after completing a workshop
-npm run start -- export --session abc123
+npx sofia export --session abc123
 
 # Enable debug logging to file
-npm run start -- workshop --debug --log-file .sofia/logs/dev.log
+npx sofia workshop --debug --log-file .sofia/logs/dev.log
+
+# Deploy Azure infrastructure and configure environment
+npx sofia infra deploy -g sofia-workshop-rg
+npx sofia infra gather-env -g sofia-workshop-rg
+
+# Tear down when done
+npx sofia infra teardown -g sofia-workshop-rg --yes
 ```

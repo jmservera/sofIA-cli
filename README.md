@@ -69,23 +69,33 @@ sofIA uses [Model Context Protocol](https://modelcontextprotocol.io/) servers to
 ```bash
 # Prerequisites: Node.js >= 20, a GitHub Copilot subscription
 
-# Install globally from npm
-npm install -g sofia-cli
+# Install as a dev dependency in your project
+npm install -D @jmservera/sofia-cli
 
-# Or run directly with npx (no install required)
-npx sofia-cli workshop
+# Run with npx (recommended)
+npx sofia workshop
 
-# Start an interactive workshop
+# Or install globally
+npm install -g @jmservera/sofia-cli
 sofia workshop
 
 # Check session status
-sofia status
+npx sofia status
 
 # Generate a PoC from a completed session
-sofia dev --session <id>
+npx sofia dev --session <id>
 
 # Export workshop artifacts
-sofia export --session <id>
+npx sofia export --session <id>
+
+# Deploy Azure AI Foundry infrastructure
+npx sofia infra deploy -g sofia-workshop-rg
+
+# Gather environment values from an existing deployment
+npx sofia infra gather-env -g sofia-workshop-rg
+
+# Tear down infrastructure
+npx sofia infra teardown -g sofia-workshop-rg --yes
 ```
 
 ### Development Setup
@@ -101,12 +111,15 @@ npm run start -- workshop
 
 ## CLI Commands
 
-| Command          | Description                                        |
-| ---------------- | -------------------------------------------------- |
-| `sofia workshop` | Start or resume an AI Discovery Workshop session   |
-| `sofia dev`      | Generate and refine a PoC from a completed session |
-| `sofia status`   | Display session status and next actions            |
-| `sofia export`   | Export workshop artifacts as Markdown + JSON       |
+| Command                  | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| `sofia workshop`         | Start or resume an AI Discovery Workshop session   |
+| `sofia dev`              | Generate and refine a PoC from a completed session |
+| `sofia status`           | Display session status and next actions            |
+| `sofia export`           | Export workshop artifacts as Markdown + JSON       |
+| `sofia infra deploy`     | Deploy Azure AI Foundry resources                  |
+| `sofia infra gather-env` | Fetch environment values from an existing deployment |
+| `sofia infra teardown`   | Remove Azure AI Foundry resources                  |
 
 See [docs/cli-usage.md](docs/cli-usage.md) for full command reference.
 
@@ -218,14 +231,17 @@ sofIA can search the web during the Discover phase to research companies, compet
 
 ```bash
 # Deploy infrastructure (requires Azure CLI + subscription)
-./infra/deploy.sh --subscription <id> --resource-group sofia-workshop-rg
+npx sofia infra deploy -g sofia-workshop-rg
+
+# Gather environment values into .env
+npx sofia infra gather-env -g sofia-workshop-rg
 
 # Configure sofIA with the output values
 export FOUNDRY_PROJECT_ENDPOINT="<endpoint from deploy output>"
 export FOUNDRY_MODEL_DEPLOYMENT_NAME="gpt-4.1-mini"
 
 # Teardown when done
-./infra/teardown.sh --resource-group sofia-workshop-rg
+npx sofia infra teardown -g sofia-workshop-rg --yes
 ```
 
 See [specs/005-ai-search-deploy/quickstart.md](specs/005-ai-search-deploy/quickstart.md) for detailed deployment instructions.

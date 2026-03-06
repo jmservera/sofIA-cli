@@ -171,6 +171,55 @@ export function buildCli(handlers?: Partial<CliHandlers>): Command {
       await exportCommand({ ...globalOpts, ...opts });
     });
 
+  // ── Infra command ─────────────────────────────────────────────────────
+
+  // Lazy-register: the infra sub-command tree is built synchronously but
+  // its actions use dynamic imports to keep cold-start fast.
+  const infraCmd = new Command('infra')
+    .description('Manage Azure AI Foundry infrastructure (deploy, gather-env, teardown)')
+    .action(async () => {
+      // When invoked without a sub-command, show help
+      infraCmd.help();
+    });
+
+  // Sub-commands delegate to infraCommand.ts actions at runtime
+  infraCmd
+    .command('deploy')
+    .description('Deploy Azure AI Foundry resources')
+    .requiredOption('-g, --resource-group <name>', 'Resource group name (created if missing)')
+    .option('-s, --subscription <id>', 'Azure subscription ID')
+    .option('-l, --location <region>', 'Azure region (default: swedencentral)')
+    .option('-n, --account-name <name>', 'Foundry account name (default: sofia-foundry)')
+    .option('-m, --model <name>', 'Model deployment name (default: gpt-4.1-mini)')
+    .action(async (opts) => {
+      const { invokeInfraAction } = await import('./infraCommand.js');
+      await invokeInfraAction('deploy.sh', opts, ['resourceGroup', 'subscription', 'location', 'accountName', 'model']);
+    });
+
+  infraCmd
+    .command('gather-env')
+    .description('Fetch environment values from an existing Azure deployment')
+    .requiredOption('-g, --resource-group <name>', 'Resource group containing the Foundry resources')
+    .option('-s, --subscription <id>', 'Azure subscription ID')
+    .option('-n, --account-name <name>', 'AI Services account name (default: sofia-foundry)')
+    .option('-m, --model <name>', 'Override model deployment name')
+    .action(async (opts) => {
+      const { invokeInfraAction } = await import('./infraCommand.js');
+      await invokeInfraAction('gather-env.sh', opts, ['resourceGroup', 'subscription', 'accountName', 'model']);
+    });
+
+  infraCmd
+    .command('teardown')
+    .description('Remove Azure AI Foundry resources')
+    .requiredOption('-g, --resource-group <name>', 'Resource group to delete')
+    .option('--yes', 'Skip confirmation prompt')
+    .action(async (opts) => {
+      const { invokeInfraAction } = await import('./infraCommand.js');
+      await invokeInfraAction('teardown.sh', opts, ['resourceGroup', 'yes']);
+    });
+
+  program.addCommand(infraCmd);
+
   // ── Dev command ───────────────────────────────────────────────────────
 
   program
