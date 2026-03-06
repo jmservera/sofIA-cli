@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && npm run build:assets",
-    "build:assets": "cp -r src/prompts/ dist/src/ && cp src/shared/data/cards.json dist/src/shared/data/ && cp -r infra/ dist/infra/ ",
+    "build:assets": "cp -r src/prompts/ dist/src/ && cp src/shared/data/cards.json dist/src/shared/data/ && cp -r infra dist/infra ",
     "dev": "tsx watch src/cli/index.ts",
     "start": "tsx src/cli/index.ts",
     "clean": "rimraf dist coverage .nyc_output",
