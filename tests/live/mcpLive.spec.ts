@@ -18,6 +18,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { execSync } from 'node:child_process';
+import { array } from 'zod';
 
 const LIVE = process.env.SOFIA_LIVE_MCP_TESTS === 'true';
 
@@ -67,18 +68,21 @@ describe.skipIf(!LIVE)('Live MCP Smoke Tests (T039)', () => {
         // Get details about the GitHub Copilot SDK repository
         const repoResult = await manager.callTool(
           'github',
-          'get_repository',
+          'search_repositories',
           {
-            owner: 'github',
-            repo: 'copilot-sdk',
+            query: 'repo:github/copilot-sdk',
+            limit: 1,
           },
           { timeoutMs: 30_000 },
         );
 
         expect(repoResult).toBeDefined();
         expect(typeof repoResult).toBe('object');
-        expect(repoResult).toHaveProperty('name');
-        expect((repoResult as { name: string }).name).toBe('copilot-sdk');
+        expect(repoResult).toHaveProperty('items');
+        const items = (repoResult as Record<string, unknown>).items as unknown as any[];
+        expect(items.length).toBeGreaterThan(0);
+        expect(items[0]).toHaveProperty('name');
+        expect(items[0].name).toBe('copilot-sdk');
       } finally {
         await manager.disconnectAll();
       }

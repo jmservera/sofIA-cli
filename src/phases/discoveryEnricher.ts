@@ -121,6 +121,11 @@ export class DiscoveryEnricher {
     let industryTrends: string[] = [];
 
     for (let i = 0; i < queries.length; i++) {
+      // Small delay between queries to avoid burst rate limiting
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
       try {
         const result: WebSearchResult = await webSearchClient.search(queries[i]);
         if (result.degraded) continue;

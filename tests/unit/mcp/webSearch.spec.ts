@@ -265,6 +265,7 @@ describe('web.search tool', () => {
     });
 
     it('returns empty results with degraded flag when query fails', async () => {
+      vi.useFakeTimers();
       const deps = createFakeDeps({
         createResponse: vi
           .fn()
@@ -279,12 +280,15 @@ describe('web.search tool', () => {
         deps,
       );
 
-      const result = await tool('test query');
+      const resultPromise = tool('test query');
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
 
       expect(result.results).toHaveLength(0);
       expect(result.degraded).toBe(true);
       expect(result.error).toContain('429');
-    }, 12000);
+      vi.useRealTimers();
+    });
 
     it('falls back to output text snippets when citations are missing', async () => {
       const deps = createFakeDeps({
@@ -396,6 +400,7 @@ describe('web.search tool', () => {
     });
 
     it('retries on 429 rate limiting with exponential backoff', async () => {
+      vi.useFakeTimers();
       let callCount = 0;
       const deps = createFakeDeps({
         createResponse: vi.fn().mockImplementation(async () => {
@@ -437,13 +442,17 @@ describe('web.search tool', () => {
         deps,
       );
 
-      const result = await tool('test query');
+      const resultPromise = tool('test query');
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
 
       expect(result.results).toHaveLength(1);
       expect(deps.createResponse).toHaveBeenCalledTimes(2);
-    }, 6000);
+      vi.useRealTimers();
+    });
 
     it('stops retrying after MAX_RETRIES and returns degraded', async () => {
+      vi.useFakeTimers();
       const deps = createFakeDeps({
         createResponse: vi
           .fn()
@@ -458,12 +467,15 @@ describe('web.search tool', () => {
         deps,
       );
 
-      const result = await tool('test query');
+      const resultPromise = tool('test query');
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
 
       expect(result.results).toHaveLength(0);
       expect(result.degraded).toBe(true);
-      expect(deps.createResponse).toHaveBeenCalledTimes(3); // initial + 2 retries
-    }, 12000);
+      expect(deps.createResponse).toHaveBeenCalledTimes(4); // initial + 3 retries
+      vi.useRealTimers();
+    });
 
     it('rotates the underlying agent after several queries', async () => {
       const deps = createFakeDeps();

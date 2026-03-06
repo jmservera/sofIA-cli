@@ -59,7 +59,10 @@ describe.skipIf(!LIVE)('Discovery web search relevance validation (T041 / SC-003
 
     const results: Array<{ company: string; relevant: boolean; snippetCount: number }> = [];
 
-    for (const company of TEST_COMPANIES) {
+    for (let ci = 0; ci < TEST_COMPANIES.length; ci++) {
+      // Delay between companies to avoid rate-limit bursts
+      if (ci > 0) await new Promise((r) => setTimeout(r, 5000));
+      const company = TEST_COMPANIES[ci];
       const enrichment = await enricher.enrichFromWebSearch(company.summary, webSearchClient);
 
       // Collect all result strings from enrichment
@@ -99,5 +102,5 @@ describe.skipIf(!LIVE)('Discovery web search relevance validation (T041 / SC-003
 
     // Acceptance: at least 3 out of 5
     expect(relevantCount).toBeGreaterThanOrEqual(3);
-  }, 120_000); // 2 minute timeout for multiple web searches
+  }, 300_000); // 5 minute timeout for multiple web searches with rate-limit delays
 });

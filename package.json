@@ -27,6 +27,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "test:live": "vitest run --config vitest.live.config.ts",
+    "test:zava": "vitest run --config vitest.zava.config.ts",
     "sofia": "npm run start",
     "prepublishOnly": "npm install && npm run build && npm link"
   },

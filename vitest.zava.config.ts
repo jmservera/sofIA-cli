@@ -8,8 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ['tests/setup/loadEnv.ts'],
-    include: ['tests/live/**/*.{test,spec}.ts'],
-    exclude: ['tests/live/zavaFullWorkshop.spec.ts'],
+    include: ['tests/live/zavaFullWorkshop.spec.ts'],
     testTimeout: 120_000,
     hookTimeout: 60_000,
     coverage: {

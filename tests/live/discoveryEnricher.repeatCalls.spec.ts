@@ -34,8 +34,8 @@ const TEST_COMPANIES = [
 
 describe.skipIf(!LIVE)('DiscoveryEnricher repeated web search calls (T041 focused)', () => {
   it('enrichFromWebSearch returns results for each company when called sequentially', async () => {
-    const { DiscoveryEnricher } = await import('../../../src/phases/discoveryEnricher.js');
-    const { createWebSearchTool } = await import('../../../src/mcp/webSearch.js');
+    const { DiscoveryEnricher } = await import('../../src/phases/discoveryEnricher.js');
+    const { createWebSearchTool } = await import('../../src/mcp/webSearch.js');
 
     const webSearchFn = createWebSearchTool({
       projectEndpoint: process.env.FOUNDRY_PROJECT_ENDPOINT!,
@@ -68,6 +68,8 @@ describe.skipIf(!LIVE)('DiscoveryEnricher repeated web search calls (T041 focuse
     }> = [];
 
     for (let idx = 0; idx < TEST_COMPANIES.length; idx++) {
+      // Delay between companies to avoid rate-limit bursts
+      if (idx > 0) await new Promise((r) => setTimeout(r, 5000));
       const company = TEST_COMPANIES[idx];
       console.log(
         `\n[${idx + 1}/${TEST_COMPANIES.length}] Processing: ${company.summary.split('"')[1]}`,
@@ -121,5 +123,5 @@ describe.skipIf(!LIVE)('DiscoveryEnricher repeated web search calls (T041 focuse
 
     // Simplified threshold: at least 2/3
     expect(relevantCount).toBeGreaterThanOrEqual(2);
-  }, 180_000); // 3 minute timeout for live queries
+  }, 300_000); // 5 minute timeout for live queries with rate-limit delays
 });

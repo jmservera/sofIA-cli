@@ -12,7 +12,7 @@ param modelDeploymentName = 'gpt-4.1-mini'
 param modelName = 'gpt-4.1-mini'
 param modelVersion = '2025-04-14'
 param modelSkuName = 'GlobalStandard'
-param modelSkuCapacity = 1
+param modelSkuCapacity = 5000
 
 // Resolved at deploy time by deploy.sh via: az ad signed-in-user show --query id -o tsv
 param userPrincipalId = ''

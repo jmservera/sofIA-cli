@@ -211,18 +211,19 @@ export class StdioMcpTransport implements McpTransport {
 
     // Send initialize handshake
     const initId = this.nextId++;
+    const initTimeoutMs = this.config.timeout ?? 30_000;
     const initResult = await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(initId);
         child.kill('SIGTERM');
         const err = new McpTransportError(
-          `MCP stdio server '${name}' initialization timed out after 5 seconds`,
+          `MCP stdio server '${name}' initialization timed out after ${initTimeoutMs / 1000} seconds`,
           name,
           'initialize',
         );
         (err as Error & { code?: string }).code = 'ETIMEDOUT';
         reject(err);
-      }, 5000);
+      }, initTimeoutMs);
 
       this.pendingRequests.set(initId, {
         resolve: () => {

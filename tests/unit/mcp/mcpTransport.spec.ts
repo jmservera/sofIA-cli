@@ -542,7 +542,7 @@ describe('StdioMcpTransport', () => {
     }
   });
 
-  it('rejects with timeout on failed handshake (5 second timeout)', async () => {
+  it('rejects with timeout on failed handshake (default 30 second timeout)', async () => {
     const proc = createMockProcess();
     mockSpawn.mockReturnValue(proc);
 
@@ -550,12 +550,12 @@ describe('StdioMcpTransport', () => {
     // Don't send any response — let it time out
     // We'll use a much shorter timeout for the test by checking the error
 
-    // We can't wait 5 real seconds, so we'll use fake timers
+    // We can't wait 30 real seconds, so we'll use fake timers
     vi.useFakeTimers();
     const connectPromise = transport.connect();
 
-    // Advance past the 5-second timeout
-    vi.advanceTimersByTime(5100);
+    // Advance past the 30-second timeout
+    vi.advanceTimersByTime(30_100);
 
     await expect(connectPromise).rejects.toThrow(McpTransportError);
     try {
@@ -563,7 +563,7 @@ describe('StdioMcpTransport', () => {
     } catch (err) {
       expect(err).toBeInstanceOf(McpTransportError);
       expect((err as McpTransportError).message).toContain('timed out');
-      expect((err as McpTransportError).message).toContain('5 seconds');
+      expect((err as McpTransportError).message).toContain('30 seconds');
       expect((err as Error & { code?: string }).code).toBe('ETIMEDOUT');
     }
 

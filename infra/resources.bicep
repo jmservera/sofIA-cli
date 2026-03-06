@@ -65,6 +65,7 @@ resource modelDeploy 'Microsoft.CognitiveServices/accounts/deployments@2025-06-0
       name: modelName
       version: modelVersion
     }
+    currentCapacity: modelSkuCapacity
   }
 }
 

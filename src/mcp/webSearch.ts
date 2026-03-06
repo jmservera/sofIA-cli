@@ -184,8 +184,8 @@ interface AgentSessionState {
 }
 
 const MAX_QUERIES_PER_AGENT = 3;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 2000; // 2 second initial delay
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000; // 5 second initial delay
 
 let sessionState: AgentSessionState | null = null;
 let sessionDeps: AgentSessionDeps | null = null;

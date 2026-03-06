@@ -1,5 +1,9 @@
 # sofIA — AI Discovery Workshop CLI
 
+[![npm](https://img.shields.io/npm/v/@jmservera/sofia-cli) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/@jmservera/sofia-cli) ![License](https://img.shields.io/npm/l/@jmservera/sofia-cli)](https://www.npmjs.com/package/@jmservera/sofia-cli)
+
+[![sofIA](docs/sofia.png)](https://www.npmjs.com/package/@jmservera/sofia-cli)
+
 **sofIA** is an agentic CLI that guides facilitators through a structured AI Discovery Workshop — from understanding a business and brainstorming AI use cases, all the way to generating a working proof-of-concept. It reimagines two Microsoft open-source projects using the GitHub Copilot SDK for Node.js and extends them with idea selection, planning, and autonomous code generation.
 
 ## Origins
@@ -111,15 +115,15 @@ npm run start -- workshop
 
 ## CLI Commands
 
-| Command                  | Description                                        |
-| ------------------------ | -------------------------------------------------- |
-| `sofia workshop`         | Start or resume an AI Discovery Workshop session   |
-| `sofia dev`              | Generate and refine a PoC from a completed session |
-| `sofia status`           | Display session status and next actions            |
-| `sofia export`           | Export workshop artifacts as Markdown + JSON       |
-| `sofia infra deploy`     | Deploy Azure AI Foundry resources                  |
+| Command                  | Description                                          |
+| ------------------------ | ---------------------------------------------------- |
+| `sofia workshop`         | Start or resume an AI Discovery Workshop session     |
+| `sofia dev`              | Generate and refine a PoC from a completed session   |
+| `sofia status`           | Display session status and next actions              |
+| `sofia export`           | Export workshop artifacts as Markdown + JSON         |
+| `sofia infra deploy`     | Deploy Azure AI Foundry resources                    |
 | `sofia infra gather-env` | Fetch environment values from an existing deployment |
-| `sofia infra teardown`   | Remove Azure AI Foundry resources                  |
+| `sofia infra teardown`   | Remove Azure AI Foundry resources                    |
 
 See [docs/cli-usage.md](docs/cli-usage.md) for full command reference.
 
