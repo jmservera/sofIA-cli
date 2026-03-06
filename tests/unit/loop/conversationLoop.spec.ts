@@ -716,4 +716,74 @@ describe('ConversationLoop', () => {
       expect(opts.onUsage).toBeUndefined();
     });
   });
+
+  describe('SIGINT force exit', () => {
+    it('closes IO and persists state on SIGINT to exit without second Ctrl+C', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+      const closeSpy = vi.fn();
+      const sessionUpdateSpy = vi.fn().mockResolvedValue(undefined);
+
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Response text' },
+      ]);
+
+      // readInput returns null on second call (simulating close() unblocking it)
+      const ioBase = makeIO(['hello', null]);
+      const io: LoopIO = { ...ioBase, close: closeSpy };
+      const handler = makePhaseHandler();
+      const session = makeSession();
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session,
+        phaseHandler: handler,
+        onSessionUpdate: sessionUpdateSpy,
+      });
+
+      const runPromise = loop.run();
+      // Fire SIGINT after the first turn processes
+      await new Promise((r) => setTimeout(r, 10));
+      process.emit('SIGINT', 'SIGINT');
+
+      await runPromise;
+
+      // io.close() was called to unblock readline
+      expect(closeSpy).toHaveBeenCalled();
+      // State was persisted (by both the turn save and the SIGINT handler)
+      expect(sessionUpdateSpy).toHaveBeenCalled();
+
+      exitSpy.mockRestore();
+    });
+
+    it('calls io.close() on SIGINT to unblock readline', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+      const closeSpy = vi.fn();
+
+      const client = createFakeCopilotClient([
+        { role: 'assistant', content: 'Response text' },
+      ]);
+
+      const ioBase = makeIO([null]); // EOF
+      const io: LoopIO = { ...ioBase, close: closeSpy };
+      const handler = makePhaseHandler();
+      const session = makeSession();
+
+      const loop = new ConversationLoop({
+        client,
+        io,
+        session,
+        phaseHandler: handler,
+      });
+
+      const runPromise = loop.run();
+      process.emit('SIGINT', 'SIGINT');
+
+      await runPromise;
+
+      expect(closeSpy).toHaveBeenCalled();
+
+      exitSpy.mockRestore();
+    });
+  });
 });

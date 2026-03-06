@@ -129,7 +129,9 @@ export class RalphLoop {
     RalphLoopOptions;
 
   private aborted = false;
+  private exitPending = false;
   private sigintHandler: (() => void) | null = null;
+  private forceExitTimer: ReturnType<typeof setTimeout> | null = null;
   /** Mutable reference to the latest session state, used by the SIGINT handler (F010). */
   private currentSession: WorkshopSession;
 
@@ -1038,7 +1040,14 @@ export class RalphLoop {
       this.aborted = true;
       this.options.io.writeActivity('\nCtrl+C detected — stopping after current iteration...');
       onEvent(createActivityEvent('User requested stop (SIGINT)'));
+      // Fire-and-forget state save
+      this.exitPending = true;
       void onSessionUpdate(this.currentSession);
+      // Force-exit safety net — if the loop can't exit within 3s, terminate
+      this.forceExitTimer = setTimeout(() => {
+        if (this.exitPending) process.exit(130);
+      }, 3000);
+      if (typeof this.forceExitTimer.unref === 'function') this.forceExitTimer.unref();
     };
     process.once('SIGINT', this.sigintHandler);
   }
@@ -1047,9 +1056,14 @@ export class RalphLoop {
    * Remove the SIGINT handler.
    */
   private cleanupSigint(): void {
+    this.exitPending = false;
     if (this.sigintHandler) {
       process.removeListener('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
+    }
+    if (this.forceExitTimer) {
+      clearTimeout(this.forceExitTimer);
+      this.forceExitTimer = null;
     }
   }
 }

@@ -50,6 +50,8 @@ export interface LoopIO {
   readInput(prompt?: string): Promise<string | null>;
   /** Show the decision gate and get user choice. */
   showDecisionGate(phase: PhaseValue): Promise<DecisionGateResult>;
+  /** Close any underlying resources (e.g., readline) to unblock pending reads. */
+  close?(): void;
   /** Check if running in JSON mode. */
   isJsonMode: boolean;
   /** Check if TTY. */
@@ -90,6 +92,8 @@ export interface ConversationLoopOptions {
 
 export class ConversationLoop {
   private aborted = false;
+  private exitPending = false;
+  private forceExitTimer: ReturnType<typeof setTimeout> | null = null;
   private session: WorkshopSession;
   private readonly client: CopilotClient;
   private readonly io: LoopIO;
@@ -262,7 +266,19 @@ export class ConversationLoop {
       // Summarization failure is non-fatal
     }
 
+    // Cancel force-exit timer if SIGINT was received but the loop exited normally
+    this.cancelForceExit();
+
     return this.session;
+  }
+
+  /** Cancel the force-exit timer if it was scheduled by SIGINT. */
+  private cancelForceExit(): void {
+    this.exitPending = false;
+    if (this.forceExitTimer) {
+      clearTimeout(this.forceExitTimer);
+      this.forceExitTimer = null;
+    }
   }
 
   /** Stream response from the LLM and render incrementally. */
@@ -338,7 +354,17 @@ export class ConversationLoop {
   private setupSignalHandler(): void {
     const handler = () => {
       this.aborted = true;
-      this.emitEvent(createActivityEvent('Ctrl+C received — finishing current turn'));
+      this.emitEvent(createActivityEvent('Ctrl+C received — shutting down'));
+      // Close readline to unblock any pending readInput
+      this.io.close?.();
+      // Fire-and-forget state save
+      this.exitPending = true;
+      void this.onSessionUpdate(this.session);
+      // Force-exit safety net — if the loop can't exit within 3s, terminate
+      this.forceExitTimer = setTimeout(() => {
+        if (this.exitPending) process.exit(130);
+      }, 3000);
+      if (typeof this.forceExitTimer.unref === 'function') this.forceExitTimer.unref();
     };
     // Avoid MaxListenersExceededWarning when many loops are created in tests
     const current = process.listenerCount('SIGINT');

@@ -220,6 +220,7 @@ describe('RalphLoop', () => {
   afterEach(async () => {
     await rm(tmpDir, { recursive: true, force: true });
     vi.clearAllMocks();
+    process.removeAllListeners('SIGINT');
   });
 
   describe('validation', () => {
@@ -431,6 +432,7 @@ describe('RalphLoop', () => {
     });
 
     it('leaves session.poc.finalStatus unset when user stops (Ctrl+C)', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
       const session = makeSession();
       const io = makeIo();
       const testRunner = makeAlwaysFailingTestRunner();
@@ -474,6 +476,7 @@ describe('RalphLoop', () => {
       // The persisted session updates should also not have finalStatus set
       const lastUpdate = sessionUpdates[sessionUpdates.length - 1];
       expect(lastUpdate?.poc?.finalStatus).toBeUndefined();
+      exitSpy.mockRestore();
     });
   });
 
@@ -578,6 +581,7 @@ describe('RalphLoop', () => {
 
   describe('SIGINT handler stale session (F009)', () => {
     it('persists latest session with iteration data when SIGINT fires after iterations', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
       const session = makeSession();
       const io = makeIo();
       const client = makePassingClient();
@@ -633,11 +637,13 @@ describe('RalphLoop', () => {
       expect(persistedSession).not.toBeNull();
       expect(persistedSession!.poc).toBeDefined();
       expect(persistedSession!.poc!.iterations.length).toBeGreaterThanOrEqual(1);
+      exitSpy.mockRestore();
     });
   });
 
   describe('user-stopped status (F011)', () => {
     it('returns finalStatus=partial when user stops and some tests were passing', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
       const session = makeSession();
       const io = makeIo();
       const client = makePassingClient();
@@ -681,6 +687,7 @@ describe('RalphLoop', () => {
 
       expect(result.terminationReason).toBe('user-stopped');
       expect(result.finalStatus).toBe('partial');
+      exitSpy.mockRestore();
     });
   });
 
@@ -1521,6 +1528,54 @@ describe('RalphLoop', () => {
           },
         }),
       );
+    });
+  });
+
+  describe('SIGINT force exit', () => {
+    it('schedules process.exit(130) when SIGINT fires and loop completes via user-stopped', async () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+
+      const session = makeSession();
+      const io = makeIo();
+      const testRunner = makeAlwaysFailingTestRunner();
+      setupDynamicScaffoldMock(tmpDir);
+
+      // Client that emits SIGINT mid-generation
+      const client: CopilotClient = {
+        createSession: vi.fn().mockResolvedValue({
+          send: vi.fn().mockReturnValue({
+            async *[Symbol.asyncIterator]() {
+              process.emit('SIGINT');
+              yield {
+                type: 'TextDelta',
+                text: '```typescript file=src/index.ts\nexport function main() { return "ok"; }\n```',
+                timestamp: '',
+              };
+            },
+          }),
+          getHistory: () => [],
+        }),
+      };
+
+      const ralph = new RalphLoop({
+        client,
+        io,
+        session,
+        outputDir: tmpDir,
+        maxIterations: 5,
+        testRunner,
+        onSessionUpdate: vi.fn().mockResolvedValue(undefined),
+      });
+
+      const result = await ralph.run();
+
+      // Loop completed via user-stopped path which calls cleanupSigint,
+      // so the force-exit timer is cancelled and process.exit is not called
+      expect(result.terminationReason).toBe('user-stopped');
+      // process.exit should NOT have been called because the loop exited normally
+      expect(exitSpy).not.toHaveBeenCalled();
+
+      exitSpy.mockRestore();
     });
   });
 });

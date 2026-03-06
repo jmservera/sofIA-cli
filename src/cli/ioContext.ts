@@ -41,7 +41,9 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
         output: isTTY ? (output as NodeJS.WritableStream) : undefined,
         terminal: isTTY,
       });
-      rl.on('close', () => { rlClosed = true; });
+      rl.on('close', () => {
+        rlClosed = true;
+      });
     }
     return rl;
   }
@@ -57,17 +59,25 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
       }
     },
 
-    writeToolSummary(toolName: string, summary: string, details?: { args?: Record<string, unknown>; result?: unknown }): void {
+    writeToolSummary(
+      toolName: string,
+      summary: string,
+      details?: { args?: Record<string, unknown>; result?: unknown },
+    ): void {
       if (isJsonMode || options.nonInteractive) return;
 
       (errorOutput as NodeJS.WritableStream).write(`✓ ${toolName}: ${summary}\n`);
 
       if (isDebug && details) {
         if (details.args) {
-          (errorOutput as NodeJS.WritableStream).write(`  args: ${JSON.stringify(details.args, null, 2)}\n`);
+          (errorOutput as NodeJS.WritableStream).write(
+            `  args: ${JSON.stringify(details.args, null, 2)}\n`,
+          );
         }
         if (details.result !== undefined) {
-          (errorOutput as NodeJS.WritableStream).write(`  result: ${JSON.stringify(details.result, null, 2)}\n`);
+          (errorOutput as NodeJS.WritableStream).write(
+            `  result: ${JSON.stringify(details.result, null, 2)}\n`,
+          );
         }
       }
     },
@@ -92,18 +102,24 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
       }
 
       const phaseOrder: PhaseValue[] = [
-        'Discover', 'Ideate', 'Design', 'Select', 'Plan', 'Develop', 'Complete',
+        'Discover',
+        'Ideate',
+        'Design',
+        'Select',
+        'Plan',
+        'Develop',
+        'Complete',
       ];
       const currentIdx = phaseOrder.indexOf(phase);
       const nextPhase = currentIdx < phaseOrder.length - 1 ? phaseOrder[currentIdx + 1] : null;
 
       const rendered = renderMarkdown(
         `\n---\n\n**Phase "${phase}" complete.**\n\n` +
-        `Options:\n` +
-        `  1. Continue to ${nextPhase ?? 'Complete'}\n` +
-        `  2. Refine current phase\n` +
-        `  3. Return to main menu\n` +
-        `  4. Exit\n`,
+          `Options:\n` +
+          `  1. Continue to ${nextPhase ?? 'Complete'}\n` +
+          `  2. Refine current phase\n` +
+          `  3. Return to main menu\n` +
+          `  4. Exit\n`,
         { isTTY },
       );
       (output as NodeJS.WritableStream).write(rendered);
@@ -126,6 +142,12 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
       });
     },
 
+    close(): void {
+      if (rl && !rlClosed) {
+        rl.close();
+      }
+    },
+
     isJsonMode,
     isTTY,
   };
@@ -133,7 +155,8 @@ export function createLoopIO(options: IoContextOptions = {}): LoopIO {
 
 /**
  * Close any open readline interfaces.
+ * @deprecated Use io.close() directly instead.
  */
-export function closeIO(_io: LoopIO): void {
-  // The IO might hold a readline interface — no-op if not applicable
+export function closeIO(io: LoopIO): void {
+  io.close?.();
 }
