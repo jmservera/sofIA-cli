@@ -1,6 +1,6 @@
 {
   "name": "@jmservera/sofia-cli",
-  "version": "0.1.5",
+  "version": "0.2.1",
   "private": false,
   "type": "module",
   "main": "dist/src/cli/index.js",
@@ -29,7 +29,7 @@
     "test:live": "vitest run --config vitest.live.config.ts",
     "sofiacli": "node --enable-source-maps dist/cli/index.js",
     "sofia": "npm run sofiacli",
-    "prepublishOnly": "npm run build && npm link"
+    "prepublishOnly": "npm install && npm run build && npm link"
   },
   "dependencies": {
     "@azure/ai-projects": "^2.0.0-beta.5",
