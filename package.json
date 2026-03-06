@@ -1,6 +1,6 @@
 {
   "name": "@jmservera/sofia-cli",
-  "version": "0.2.5",
+  "version": "0.2.4",
   "private": false,
   "type": "module",
   "main": "dist/src/cli/index.js",

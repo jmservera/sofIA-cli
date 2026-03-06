@@ -1,6 +1,6 @@
 # sofIA — AI Discovery Workshop CLI
 
-[![npm](https://img.shields.io/npm/v/@jmservera/sofia-cli) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/@jmservera/sofia-cli) ![License](https://img.shields.io/npm/l/@jmservera/sofia-cli)](https://www.npmjs.com/package/@jmservera/sofia-cli)
+[![npm](https://img.shields.io/npm/v/@jmservera/sofia-cli) ![License](https://img.shields.io/npm/l/@jmservera/sofia-cli)](https://www.npmjs.com/package/@jmservera/sofia-cli)
 
 [![sofIA](docs/sofia.png)](https://www.npmjs.com/package/@jmservera/sofia-cli)
 
